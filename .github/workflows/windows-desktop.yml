@@ -108,7 +108,7 @@ jobs:
             wsl.exe --install --distribution Ubuntu --no-launch
           }
           wsl.exe --distribution Ubuntu --exec true
-          wsl.exe --distribution Ubuntu --exec bash -lc "command -v node >/dev/null 2>&1 || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm)"
+          wsl.exe --distribution Ubuntu --user root --exec bash -lc "command -v node >/dev/null 2>&1 || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm)"
       - name: Unit tests for the desktop and OPL packages
         shell: pwsh
         run: >-
