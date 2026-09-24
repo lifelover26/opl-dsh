@@ -108,7 +108,7 @@ jobs:
             wsl.exe --install --distribution Ubuntu --no-launch
           }
           wsl.exe --distribution Ubuntu --user root --exec true
-          wsl.exe --distribution Ubuntu --user root --exec bash -lc "command -v node >/dev/null 2>&1 || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm)"
+          wsl.exe --distribution Ubuntu --user root --exec bash -lc "if ! command -v node >/dev/null 2>&1; then mkdir -p /usr/local/lib/node-v24.17.0; curl --fail --location --silent --show-error https://nodejs.org/download/release/v24.17.0/node-v24.17.0-linux-x64.tar.gz | tar -xz --strip-components=1 -C /usr/local/lib/node-v24.17.0; ln -sf /usr/local/lib/node-v24.17.0/bin/node /usr/local/bin/node; ln -sf /usr/local/lib/node-v24.17.0/bin/npm /usr/local/bin/npm; fi"
       - name: Unit tests for the desktop and OPL packages
         shell: pwsh
         run: >-
