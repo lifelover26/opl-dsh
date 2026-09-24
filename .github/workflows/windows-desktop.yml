@@ -44,9 +44,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # The upstream configuration requires a release identity; the OPL
-  # configuration overrides it with its own, so one value serves both lanes.
-  DSH_DESKTOP_APP_ID: com.onepersonlab.dsh
   DSH_TELEMETRY_DISABLED: '1'
 
 jobs:
@@ -112,6 +109,8 @@ jobs:
       # NSIS installer and the portable executable as unsigned artifacts.
       - name: Package OPL DSH for Windows x64 (unsigned)
         shell: pwsh
+        env:
+          DSH_DESKTOP_APP_ID: com.onepersonlab.dsh
         run: pnpm run package:opl:desktop:win:x64:unsigned
       # `afterPack` already ran this during packaging; repeating it over the
       # artifacts in the log makes the packaged contents reviewable in the

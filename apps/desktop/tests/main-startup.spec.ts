@@ -374,6 +374,8 @@ describe('desktop main startup', () => {
     expect(launched.environment.WSLENV).toBe('')
   })
 
+  // A real Windows runner can take longer than the default Vitest timeout to
+  // start its WSL host while the test harness is importing the desktop shell.
   it('reports the running WSL2 environment as current and not restart-pending', async () => {
     stubWindowsHost()
     harness.storedEnvironment = { kind: 'wsl2', distro: 'Ubuntu' }
@@ -386,7 +388,7 @@ describe('desktop main startup', () => {
       selectedDistro: 'Ubuntu',
       restartRequired: false,
     })
-  })
+  }, 15000)
 
   it('lets an explicit process-environment override win over the persisted selection', async () => {
     stubWindowsHost()
