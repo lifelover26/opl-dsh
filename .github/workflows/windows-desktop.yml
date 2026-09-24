@@ -97,6 +97,17 @@ jobs:
         shell: pwsh
         run: |
           node -e "const fs=require('node:fs'),path=require('node:path'),{createRequire}=require('node:module');const anchor=path.resolve('apps/cli/package.json'),req=createRequire(anchor),missing=[];for(const name of ['@deepseek-ai/dsh-base','@deepseek-ai/dsh-web-app']){const found=(req.resolve.paths(name)??[]).map(dir=>path.join(dir,name)).find(dir=>fs.existsSync(path.join(dir,'package.json')));if(found===undefined)missing.push(name);else console.log(name+' -> '+found)}if(missing.length>0){console.error('desktop profile bundles are not installed for the dsh anchor: '+missing.join(', '));process.exit(1)}"
+      # Windows packages embed a real Linux runtime and production dsh tree
+      # for the WSL2 execution option. The hosted runner includes WSL itself,
+      # but does not provision a distribution on every image.
+      - name: Provision Ubuntu for the WSL payload
+        shell: pwsh
+        run: |
+          $installed = @(wsl.exe --list --quiet 2>$null | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -ne '' })
+          if ($installed.Count -eq 0) {
+            wsl.exe --install --distribution Ubuntu --no-launch
+          }
+          wsl.exe --distribution Ubuntu --exec true
       - name: Unit tests for the desktop and OPL packages
         shell: pwsh
         run: >-
