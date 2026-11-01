@@ -9,7 +9,7 @@
  * The product exposes exactly two models. What each one can be told to do is taken from
  * the installed CLI itself rather than assumed, and the two models differ in kind:
  *
- *  - `MiniMax-M3.1-Flash-Preview` declares
+ *  - `MiniMax-M3.1-Flash` declares
  *    `thinking: { effortOptions: ['default','low','medium','high','xhigh','max'] }` and
  *    `thinking_config: { mode: 'forced_on' }`. Thinking is therefore not switchable and
  *    the only real control is the effort, which the CLI advertises as the
@@ -47,7 +47,7 @@ const ACP_PROVIDER = 'minimax'
 const SET_CONFIG_OPTION = 'session/set_config_option'
 const MODEL_OPTION = 'model'
 const THINKING_EFFORT_OPTION = 'thinkingEffort'
-const M3_FLASH = 'MiniMax-M3.1-Flash-Preview'
+const M3_FLASH = 'MiniMax-M3.1-Flash'
 const M3 = 'MiniMax-M3'
 /**
  * `iKn` in the official Runtime publishes a catalog's `none-thinking` variant as the

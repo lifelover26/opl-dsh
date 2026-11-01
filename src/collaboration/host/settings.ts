@@ -38,6 +38,7 @@ export async function coordinationAction(
       autoStart: config.autoStart !== false,
       version: process.env.OPL_OFFICIAL_VERSION ?? installed.officialVersion ?? 'unknown',
       enhancementVersion: installed.suiteVersion ?? 'unknown',
+      superagentSupported: process.platform === 'darwin',
       update: { ...JSON.parse(state), checkTrigger: 'maintenance-launcher' },
       paths: {
         suiteRoot: installed.suiteRoot,
@@ -49,6 +50,12 @@ export async function coordinationAction(
       wakeExecutable: settings?.wakeExecutable ?? '',
       wakeDistro: settings?.wakeDistro ?? '',
     }
+  }
+  if (action === 'superagent-open') {
+    const module = (await import(
+      pathToFileURL(join(installed.release, 'superagent.mjs')).href
+    )) as { openSuperagent: (installation: object) => Promise<{ state: string }> }
+    return module.openSuperagent(installed)
   }
   if (action === 'skill-install') {
     const module = (await import(

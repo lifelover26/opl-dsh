@@ -6,6 +6,7 @@ import { build } from 'esbuild'
 import { execFileSync } from 'node:child_process'
 import { generateRpc } from './scripts/generate-rpc.mjs'
 import { buildNativeBridge } from './scripts/build-native-bridge.mjs'
+import { buildSuperagent } from './scripts/build-superagent.mjs'
 const root = import.meta.dirname
 const output = process.env.OPL_DIST_DIR ? resolve(process.env.OPL_DIST_DIR) : join(root, 'dist')
 const project = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
@@ -138,6 +139,7 @@ const tar =
   process.platform === 'win32'
     ? join(process.env.SystemRoot ?? 'C:/Windows', 'System32', 'tar.exe')
     : 'tar'
+const superagent = await buildSuperagent(root, output, tar)
 execFileSync(tar, [
   '-czf',
   join(output, `opl-dsh-enhancements-${version}.tgz`),
@@ -158,6 +160,7 @@ const installer = join(output, 'OPL DSH 一键安装')
 await rm(installer, { recursive: true, force: true })
 await cp(join(root, 'installer'), installer, { recursive: true })
 await cp(join(output, name), join(installer, name))
+await cp(join(output, superagent.name), join(installer, superagent.name))
 const payloadFiles = {}
 for (const file of [
   'official-feed.awk',
@@ -173,6 +176,7 @@ for (const file of [
   'official-pnpm.cjs',
   'migrate.cjs',
   'setup.mjs',
+  'superagent.mjs',
   'desktop-platform.mjs',
   'update.mjs',
   'release-manifest.mjs',
@@ -191,6 +195,7 @@ for (const file of [
   'cleanup-skill/references/provider-contract.md',
   'windows-lifecycle.mjs',
   name,
+  superagent.name,
 ]) {
   payloadFiles[file] = createHash('sha256')
     .update(await readFile(join(installer, file)))
@@ -232,6 +237,7 @@ const officialVersion =
 const artifact = {
   version: officialVersion,
   officialVersion,
+  superagent,
   enhancementVersion: version,
   sourceCommit,
   sourceDirty,

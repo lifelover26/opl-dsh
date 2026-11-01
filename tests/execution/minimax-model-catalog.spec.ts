@@ -52,7 +52,7 @@ import { modelRefKey, type ModelRef } from '../../src/shared/models.ts'
  * The two models the official account serves. Written as literals so a rename
  * in the adapter is a failing test rather than a silently retargeted one.
  */
-const M3_FLASH = 'MiniMax-M3.1-Flash-Preview'
+const M3_FLASH = 'MiniMax-M3.1-Flash'
 const M3 = 'MiniMax-M3'
 const FIXED_MODELS: readonly string[] = [M3_FLASH, M3]
 /** The provider route the official CLI account owns. */
@@ -242,7 +242,12 @@ describe('MiniMax Code native model adapter', () => {
 
   it('refuses a model the official account does not serve instead of retargeting it', async () => {
     const ctx = await llmSurface()
-    for (const unknown of ['MiniMax-M2', 'MiniMax-M3.1-Flash-Preview:v:', 'deepseek-flash']) {
+    for (const unknown of [
+      'MiniMax-M2',
+      'MiniMax-M3.1-Flash-Preview',
+      'MiniMax-M3.1-Flash:v:',
+      'deepseek-flash',
+    ]) {
       const error = await ctx.llm.resolveModelInfo(PROVIDER, unknown).then(
         () => undefined,
         (thrown: unknown) => thrown,

@@ -312,7 +312,7 @@ test('升级保留旧候选、旧选择进入历史，并原样搬运代理/模�
     importCandidate({ source, env, select: true, activeTasks: 0 })
     const preserved = {
       proxy: { mode: 'system', url: 'http://127.0.0.1:7890' },
-      models: ['MiniMax-M3.1-Flash-Preview', 'MiniMax-M3'],
+      models: ['MiniMax-M3.1-Flash', 'MiniMax-M3'],
       permissions: {
         preset: 'danger-full-access',
         sandbox: 'danger-full-access',

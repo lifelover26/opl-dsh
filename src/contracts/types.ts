@@ -96,6 +96,7 @@ export interface CoordinationStatus extends WakeSettings {
   autoStart: boolean
   version: string
   enhancementVersion: string
+  superagentSupported?: boolean
   update: { state?: string; checkedAt?: string; message?: string; checkTrigger: string }
   paths: { suiteRoot: string; profileHome: string; skillDir: string }
 }

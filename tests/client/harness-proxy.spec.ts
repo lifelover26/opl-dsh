@@ -203,8 +203,8 @@ function catalog(proxies: Record<string, unknown> = {}) {
     version: 2,
     models: [
       {
-        ref: { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash-Preview' },
-        name: 'MiniMax-M3.1-Flash-Preview',
+        ref: { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash' },
+        name: 'MiniMax-M3.1-Flash',
         source: 'MiniMax 官方账号（mcode）',
         available: true,
       },
@@ -224,7 +224,7 @@ function catalog(proxies: Record<string, unknown> = {}) {
       {
         id: 'codex/one',
         name: 'Codex 组合',
-        modelRef: { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash-Preview' },
+        modelRef: { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash' },
         harnessRef: 'codex',
         permissionPolicy: 'full-access',
         isDefault: true,
@@ -233,7 +233,7 @@ function catalog(proxies: Record<string, unknown> = {}) {
       {
         id: 'inactive/one',
         name: '可启用但未启用',
-        modelRef: { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash-Preview' },
+        modelRef: { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash' },
         harnessRef: 'custom-cli',
         permissionPolicy: 'read-only',
         isDefault: false,
@@ -334,7 +334,7 @@ describe('每个外部 Harness 独立的代理设置', () => {
     const selects = () => walk(manual).filter((node) => node.nodeName === 'SELECT')
     expect(text(selects()[1])).toBe('先选择模型')
     await act(async () => {
-      selects()[0].value = JSON.stringify(['minimax-official', 'MiniMax-M3.1-Flash-Preview'])
+      selects()[0].value = JSON.stringify(['minimax-official', 'MiniMax-M3.1-Flash'])
       selects()[0].dispatchEvent('change')
     })
     expect(text(selects()[1])).toContain('MiniMax Code')
@@ -373,7 +373,7 @@ describe('每个外部 Harness 独立的代理设置', () => {
     expect(walk(manual).some((node) => node.nodeName === 'INPUT')).toBe(false)
     const selects = walk(manual).filter((node) => node.nodeName === 'SELECT')
     await act(async () => {
-      selects[0].value = JSON.stringify(['minimax-official', 'MiniMax-M3.1-Flash-Preview'])
+      selects[0].value = JSON.stringify(['minimax-official', 'MiniMax-M3.1-Flash'])
       selects[0].dispatchEvent('change')
     })
     await act(async () => {
@@ -382,7 +382,7 @@ describe('每个外部 Harness 独立的代理设置', () => {
     })
     await press(walk(manual).find((node) => node.nodeName === 'BUTTON')!)
     expect(stored().combinations.at(-1)).toMatchObject({
-      name: 'MiniMax-M3.1-Flash-Preview + MiniMax Code',
+      name: 'MiniMax-M3.1-Flash + MiniMax Code',
       enabled: true,
       permissionPolicy: 'workspace',
     })

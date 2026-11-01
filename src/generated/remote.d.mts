@@ -15,6 +15,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'auto-start': (enabled: boolean) => Promise<RemoteResult<null>>
     'coordination-status': () => Promise<RemoteResult<CoordinationStatus>>
     'skill-install': () => Promise<RemoteResult<null>>
+    'superagent-open': () => Promise<RemoteResult<{ state: string; }>>
     'wake-settings': (settings: WakeSettings) => Promise<RemoteResult<null>>
   }
   interface TypertRemoteNamespace$6f706c457865637574696f6e {
@@ -105,6 +106,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'oplCoordination/auto-start': (enabled: boolean) => Promise<RemoteResult<null>>
     'oplCoordination/coordination-status': () => Promise<RemoteResult<CoordinationStatus>>
     'oplCoordination/skill-install': () => Promise<RemoteResult<null>>
+    'oplCoordination/superagent-open': () => Promise<RemoteResult<{ state: string; }>>
     'oplCoordination/wake-settings': (settings: WakeSettings) => Promise<RemoteResult<null>>
     'oplExecution/answer': (request: { sessionId: string; approvalId: string; optionId?: string; }) => Promise<RemoteResult<HarnessSnapshot>>
     'oplExecution/cancel': (request: SessionRequest) => Promise<RemoteResult<HarnessSnapshot>>
@@ -196,6 +198,7 @@ export declare const TYPERT_REMOTE: TypertRemoteInfo<{
   readonly 'oplCoordination/auto-start': TypertRemoteMethod<{ readonly 'enabled': boolean }, null>
   readonly 'oplCoordination/coordination-status': TypertRemoteMethod<{  }, CoordinationStatus>
   readonly 'oplCoordination/skill-install': TypertRemoteMethod<{  }, null>
+  readonly 'oplCoordination/superagent-open': TypertRemoteMethod<{  }, { state: string; }>
   readonly 'oplCoordination/wake-settings': TypertRemoteMethod<{ readonly 'settings': WakeSettings }, null>
   readonly 'oplExecution/answer': TypertRemoteMethod<{ readonly 'request': { sessionId: string; approvalId: string; optionId?: string; } }, HarnessSnapshot>
   readonly 'oplExecution/cancel': TypertRemoteMethod<{ readonly 'request': SessionRequest }, HarnessSnapshot>

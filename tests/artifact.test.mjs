@@ -33,6 +33,25 @@ test('tarball checksum and contents bind the installer to an external plugin', a
   assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-llm'], '*')
   assert.equal(manifest.version, manifest.officialVersion)
   assert.equal(manifest.enhancementVersion, pkg.version)
+  const companion = manifest.superagent
+  assert.equal(companion.upstreamCommit, '6337fc823ce20251c8de8085948165c81aaa701e')
+  assert.equal(
+    createHash('sha256')
+      .update(await readFile(new URL(companion.name, output)))
+      .digest('hex'),
+    companion.sha256,
+  )
+  const original = JSON.parse(
+    await readFile(new URL('superagent-package/package/package.json', output), 'utf8'),
+  )
+  assert.equal(original.name, 'dsh-superagent')
+  assert.equal(original.peerDependencies['@deepseek-ai/dsh-session'], '0.2.1-rc.5')
+  assert.equal(original.dependencies['proper-lockfile'], '4.1.2')
+  const originalClient = await readFile(
+    new URL('superagent-package/package/lib/client.js', output),
+    'utf8',
+  )
+  assert.match(originalClient, /__ModuleLoader__/)
   const code = await readFile(new URL('package/lib/index.js', output), 'utf8')
   assert.doesNotMatch(code, /api\.modelarts-maas\.com|HUAWEI_MAAS_API_KEY|oplContextBudget/)
   assert.match(code, /from "@deepseek-ai\/dsh-llm-deepseek"/)

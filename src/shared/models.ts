@@ -58,7 +58,7 @@ export function displayModelName(ref: ModelRef, name?: string): string {
   // menu, and the thinking setting lives in the reasoning menu, so neither may be
   // baked into this label.
   if (ref.provider === 'minimax-official') {
-    if (id === 'MiniMax-M3.1-Flash-Preview') return 'MiniMax-M3.1-Flash-Preview'
+    if (id === 'MiniMax-M3.1-Flash') return 'MiniMax-M3.1-Flash'
     if (id === 'MiniMax-M3') return 'MiniMax-M3'
   }
   const route = ref.provider === 'opl-gateway' ? ref.model.split('::')[0] : ''

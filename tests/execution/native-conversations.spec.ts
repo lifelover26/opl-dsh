@@ -148,7 +148,7 @@ describe('ordinary official conversations for external tasks', () => {
       service = undefined
       session.append('model/selection', {
         provider: 'minimax-official',
-        model: 'MiniMax-M3.1-Flash-Preview',
+        model: 'MiniMax-M3.1-Flash',
         reasoningEffort: 'high',
       } as never)
       const length = session.seq
@@ -161,7 +161,7 @@ describe('ordinary official conversations for external tasks', () => {
           .snapshotEvents()
           .filter((e) => e.type === 'model/selection')
           .at(-1)?.data,
-      ).toMatchObject({ model: 'MiniMax-M3.1-Flash-Preview', reasoningEffort: 'high' })
+      ).toMatchObject({ model: 'MiniMax-M3.1-Flash', reasoningEffort: 'high' })
     } finally {
       await service?.dispose()
       await rm(root, { recursive: true, force: true })

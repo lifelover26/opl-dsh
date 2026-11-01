@@ -45,7 +45,7 @@ const { createRoot } = await import('react-dom/client')
 const PROVIDER = 'minimax-official'
 const HARNESS = 'minimax-code'
 const HARNESS_NAME = 'MiniMax Code'
-const M3_FLASH = 'MiniMax-M3.1-Flash-Preview'
+const M3_FLASH = 'MiniMax-M3.1-Flash'
 const M3 = 'MiniMax-M3'
 
 const flashCombination = {

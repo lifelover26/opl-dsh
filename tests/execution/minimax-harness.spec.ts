@@ -33,9 +33,9 @@ import type { HarnessSession } from '../../src/execution/contracts/sessions.ts'
 import { testPeerConnection } from '../test-peer.ts'
 
 const fixture = resolve('tests/fixtures/minimax-acp-agent.mjs')
-const M3_FLASH_COMBINATION = 'minimax-code/MiniMax-M3.1-Flash-Preview'
+const M3_FLASH_COMBINATION = 'minimax-code/MiniMax-M3.1-Flash'
 const M3_COMBINATION = 'minimax-code/MiniMax-M3'
-const M3_FLASH_VALUE = 'm:minimax:MiniMax-M3.1-Flash-Preview:v:thinking'
+const M3_FLASH_VALUE = 'm:minimax:MiniMax-M3.1-Flash:v:thinking'
 const M3_VALUE = 'm:minimax:MiniMax-M3:v:thinking'
 
 const cleanups: (() => Promise<unknown>)[] = []
@@ -156,11 +156,11 @@ const configureCalls = (entries: Journal[]) =>
 
 describe('official MiniMax Code ACP combination', () => {
   it('streams CLI reasoning separately, retains alternating blocks and title, and never replays an operation', async () => {
-    const { service, root, prompts } = await setup({ nativeModel: 'MiniMax-M3.1-Flash-Preview' })
+    const { service, root, prompts } = await setup({ nativeModel: 'MiniMax-M3.1-Flash' })
     const options = {
       sessionId: 'native-session',
       provider: MINIMAX_CODE_PROVIDER,
-      model: 'MiniMax-M3.1-Flash-Preview',
+      model: 'MiniMax-M3.1-Flash',
       messages: [
         createUserMessage({
           source: { kind: 'user' },
@@ -260,7 +260,7 @@ describe('official MiniMax Code ACP combination', () => {
     },
   )
 
-  it.each(['MiniMax-M3.1-Flash-Preview', 'MiniMax-M3'])(
+  it.each(['MiniMax-M3.1-Flash', 'MiniMax-M3'])(
     'executes the actual user request with injected reminders kept as context (%s)',
     async (model) => {
       const { service, prompts, current, journal } = await setup({ nativeModel: model })
@@ -422,7 +422,7 @@ describe('official MiniMax Code ACP combination', () => {
     expect(await prompts()).toContain('after')
   }, 30_000)
 
-  it.each(['MiniMax-M3.1-Flash-Preview', 'MiniMax-M3'])(
+  it.each(['MiniMax-M3.1-Flash', 'MiniMax-M3'])(
     'routes native model selection to the official CLI without a saved combination (%s)',
     async (model) => {
       const { service, prompts, current, journal } = await setup({ nativeModel: model })
@@ -547,7 +547,7 @@ describe('official MiniMax Code ACP combination', () => {
 
   it('fails without sending a prompt when the Flash model is not advertised', async () => {
     const { start, prompts } = await setup({ capability: 'legacy-models' })
-    await expect(start(M3_FLASH_COMBINATION)).rejects.toThrow(/MiniMax-M3\.1-Flash-Preview/)
+    await expect(start(M3_FLASH_COMBINATION)).rejects.toThrow(/MiniMax-M3\.1-Flash/)
     expect(await prompts()).toEqual([])
   })
 

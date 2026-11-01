@@ -35,7 +35,7 @@ describe('external model-source ownership', () => {
   })
   it('does not treat arbitrary OFM names or virtual routes as official account access', () => {
     const sources = new ExternalModelSources(ctx)
-    for (const model of ['gpt-6', 'MiniMax-M3.1-Flash-Preview', 'combo:free'])
+    for (const model of ['gpt-6', 'MiniMax-M3.1-Flash', 'combo:free'])
       expect(adapterFor('codex', { provider: 'our-free-model', model }, sources)).toBeUndefined()
   })
   it('rejects conflicting source ownership and reserved Gateway registration', () => {

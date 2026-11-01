@@ -5,7 +5,7 @@ const { createRequire } = require('node:module')
 const { mkdirSync, writeFileSync, existsSync } = require('node:fs')
 const { installModelPlugins, preserveModelPlugins } = require('./model-plugins.cjs')
 const { officialPnpm } = require('./official-pnpm.cjs')
-const [application, home, archive] = process.argv.slice(2)
+const [application, home, archive, companion] = process.argv.slice(2)
 async function main() {
   const resources =
     process.platform === 'win32'
@@ -54,6 +54,7 @@ async function main() {
   }
   await preserveModelPlugins({ dir, install: () => install(['add', resolve(archive)]) })
   await installModelPlugins({ dir, install })
+  if (companion) await install(['add', resolve(companion)])
 }
 main().catch((error) => {
   console.error(error.message)

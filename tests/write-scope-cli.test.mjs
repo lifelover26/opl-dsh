@@ -59,7 +59,7 @@ test('delegate and follow-up forward exact write ownership without changing perm
   const initial = [
     'delegate',
     '--combination',
-    'minimax-code/MiniMax-M3.1-Flash-Preview',
+    'minimax-code/MiniMax-M3.1-Flash',
     '--sandbox',
     'full-access',
     '--cwd',

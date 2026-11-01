@@ -11,6 +11,12 @@ Official DeepSeek Harness Desktop is downloaded separately from DeepSeek.
 Its original resources, signature, attribution and licenses are not modified.
 OPL DSH is independently maintained and is not affiliated with DeepSeek.
 
+The optional SuperAgent bundle includes and adapts dsh-superagent-prototype.
+Copyright (c) 2026 DeepSeek Harness Team. MIT License.
+Source: https://github.com/deepseek-ai/dsh-superagent-prototype
+Revision: 6337fc823ce20251c8de8085948165c81aaa701e
+Its license is preserved in vendor/dsh-superagent/LICENSE and the bundle.
+
 The native Claude bridge includes Claude Agent SDK 0.3.283.
 Copyright Anthropic PBC. All rights reserved.
 Its license notice is preserved in licenses/claude-agent-sdk.md.

@@ -1,6 +1,6 @@
 {
   "name": "@one-person-lab/dsh-opl",
-  "version": "0.2.52",
+  "version": "0.2.53",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -8,8 +8,8 @@
   "scripts": {
     "build": "node build.mjs",
     "build:bridge": "node scripts/build-native-bridge.mjs",
-    "typecheck": "tsc -p tsconfig.host.json && tsc -p tsconfig.client.json",
-    "test": "vitest run && node --test tests/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.host.json && tsc -p tsconfig.client.json && npm run typecheck --workspace dsh-superagent",
+    "test": "vitest run && node --test tests/*.test.mjs && npm test --workspace dsh-superagent",
     "package": "npm run build && node package.mjs",
     "release:manifest": "node scripts/create-release-manifest.mjs",
     "format": "prettier --write src tests scripts installer/*.mjs build.mjs",
@@ -82,7 +82,18 @@
     "typescript": "6.0.3",
     "vitest": "5.0.5",
     "yaml": "^2.9.1",
-    "zod": "4.4.3"
+    "zod": "4.4.3",
+    "@deepseek-ai/dsh-client-ui-plugin-manager": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-scope": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-session-persistence": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.5",
+    "@types/jsdom": "28.0.3",
+    "@types/proper-lockfile": "4.1.4",
+    "jsdom": "29.1.1",
+    "tsdown": "0.22.14",
+    "@deepseek-ai/dsh-skill": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-subprocess": "0.2.1-rc.5"
   },
   "engines": {
     "node": ">=24"
@@ -90,5 +101,8 @@
   "exports": {
     ".": "./src/suite/host.ts",
     "./types": "./src/contracts/types.ts"
-  }
+  },
+  "workspaces": [
+    "vendor/dsh-superagent"
+  ]
 }

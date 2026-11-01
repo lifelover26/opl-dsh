@@ -15,7 +15,7 @@ Windows 自动启动通过 WMI 的 `Win32_Process.Create` 创建套件启动器�
 
 正常退出被未保存内容对话框、系统策略或实际自动操作拒绝阻止时，说明具体阻塞和所需用户操作；不能仅因安装器要求先退出就转交用户。退出后的检查不要调用会自动启动 Desktop 的 helper；安装完成后沿用独立启动入口，核对安装清单与公开运行状态，并完成本轮回归。
 
-新任务未指定模型或 Harness 时，先读取 `config.json` 的 `preferredDelegation`（`harness`、`model`、`reasoningEffort`），按该偏好选择组合入口；用户明确指定时以用户选择为准。先查询 `delegate-list` 确认实际组合 ID、可用状态与固定参数，再使用 `delegate`。偏好为 MiniMax M3.1-Flash-Preview/max 时走官方 mcode 账号和 ACP，未显式选择时默认 max；权限仍须符合下文完整访问授权要求。偏好模型不可用时报告具体原因，不自动回退 DeepSeek 或其他模型。现有 Session 和 operation 的重试保留原模型与身份；此偏好只决定新任务。赞助或免费额度不代替任务权限，也不授权自动向厂商发送仓库、对话或诊断。
+新任务未指定模型或 Harness 时，先读取 `config.json` 的 `preferredDelegation`（`harness`、`model`、`reasoningEffort`），按该偏好选择组合入口；用户明确指定时以用户选择为准。先查询 `delegate-list` 确认实际组合 ID、可用状态与固定参数，再使用 `delegate`。偏好为 MiniMax M3.1-Flash/max 时走官方 mcode 账号和 ACP，未显式选择时默认 max；权限仍须符合下文完整访问授权要求。偏好模型不可用时报告具体原因，不自动回退 DeepSeek 或其他模型。现有 Session 和 operation 的重试保留原模型与身份；此偏好只决定新任务。赞助或免费额度不代替任务权限，也不授权自动向厂商发送仓库、对话或诊断。
 
 派发前，为任务选择绝对工作目录，把提示词保存为 UTF-8 文件。提示词引用工作目录之外的审查报告、负例或交付目录时，写明绝对路径；不要用“本目录”混指仓库和报告目录。使用稳定的 task 与 operation ID；对同一次失败重试必须沿用原 ID，不得换 ID重复执行。
 
@@ -95,7 +95,7 @@ MiniMax 新轮次的思考、正文、工具和官方 CLI 标题更新进入普�
 
 实时显示验收必须覆盖工具执行后仍在运行的思考片段，以及切换或重连后的恢复；完成后出现思考不能代替实时证据。官方 rc.2 的逐工具正文可能遮蔽同一步的活跃流，OPL 的公开 Conversation 扩展只在这种状态下显示实时内容，结束后交回官方正文；不修改官方应用资源。
 
-MiniMax 只走官方 `mcode` CLI 的官方账号与 ACP 接入。登录由用户在本机完成（中国大陆账号 `mcode login`，Global 账号 `mcode login --region global`）；Skill 不代登录、不读取或输出 token，也不使用 OPL Gateway 的 MiniMax 密钥，不驱动 MiniMax Code GUI。DSH 只为 MiniMax 提供两个模型组合：M3.1-Flash-Preview 可选 `default/low/medium/high/xhigh/max`，未指定时默认 `max`；M3 只有思考开关，未指定时默认开启。官方模型菜单中的显式选择在新建、恢复和每次发送前精确验证，`default` 不改写为 `max`。
+MiniMax 只走官方 `mcode` CLI 的官方账号与 ACP 接入。登录由用户在本机完成（中国大陆账号 `mcode login`，Global 账号 `mcode login --region global`）；Skill 不代登录、不读取或输出 token，也不使用 OPL Gateway 的 MiniMax 密钥，不驱动 MiniMax Code GUI。DSH 只为 MiniMax 提供两个模型组合：M3.1-Flash 可选 `default/low/medium/high/xhigh/max`，未指定时默认 `max`；M3 只有思考开关，未指定时默认开启。官方模型菜单中的显式选择在新建、恢复和每次发送前精确验证，`default` 不改写为 `max`。
 
 mcode 自身工具没有可验证的 DSH read-only/workspace 隔离接口。MiniMax 只支持用户明确授权的完整访问：原生 DSH 会话须选 `danger-full-access`，外部 `delegate`/`delegate-start` 须显式传 `--sandbox full-access`。受限任务在启动前拒绝，旧受限记录不能直接升级；用户授权后另建会话。明确授权的完整访问对齐官方 `danger-full-access`（sandbox 完整访问、approval `never`），并通过 mcode ACP 将 `permissionMode` 设为广告的 `bypassPermissions`（Full access），新建、恢复和每次发送前验证回读。该官方接口会记录 mcode 的权限模式选择；不删除显式拒绝规则，不替用户回答已经挂起的审批。未授权或受限记录不得自动升级。
 

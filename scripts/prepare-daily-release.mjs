@@ -17,6 +17,14 @@ const productPaths = [
   'install.sh',
   'install.ps1',
   'scripts/build-native-bridge.mjs',
+  'scripts/build-superagent.mjs',
+  'vendor/dsh-superagent/src',
+  'vendor/dsh-superagent/cordis.patch.yml',
+  'vendor/dsh-superagent/package.json',
+  'vendor/dsh-superagent/tsdown.config.ts',
+  'vendor/dsh-superagent/prompts',
+  'vendor/dsh-superagent/skills',
+  'vendor/dsh-superagent/locale',
 ]
 const git = (root, args) =>
   execFileSync('git', args, {

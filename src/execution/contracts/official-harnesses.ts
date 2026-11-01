@@ -44,7 +44,7 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
   {
     id: 'minimax-code',
     officialModels: [
-      { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash-Preview' },
+      { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash' },
       { provider: 'minimax-official', model: 'MiniMax-M3' },
     ],
   },

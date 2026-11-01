@@ -17,7 +17,7 @@ it.skipIf(process.platform !== 'win32' || !candidate)(
     await mkdir(cwd)
     const results: unknown[] = []
     try {
-      for (const model of ['MiniMax-M3.1-Flash-Preview', 'MiniMax-M3']) {
+      for (const model of ['MiniMax-M3.1-Flash', 'MiniMax-M3']) {
         const record = {
           cwd,
           sandbox: 'full-access',

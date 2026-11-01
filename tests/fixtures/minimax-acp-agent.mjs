@@ -6,7 +6,7 @@
  * Reproduced behavior, all confirmed against the installed CLI:
  *  - `session/new` and `session/load` advertise `permissionMode` and `model`.
  *  - `thinkingEffort` is advertised *only* after a model that owns it is selected.
- *  - `m:minimax:MiniMax-M3.1-Flash-Preview:v:` is advertised but rejected with
+ *  - `m:minimax:MiniMax-M3.1-Flash:v:` is advertised but rejected with
  *    `-32603 Invalid model reasoning`, because that model is forced-on.
  *  - Any value outside the advertised model list is rejected with `-32602`.
  *  - The selection survives a process restart and is returned by `session/load`.
@@ -30,7 +30,7 @@ const journal = join(state, 'journal.ndjson')
 const sessionFile = join(state, 'session.json')
 const callsFile = join(state, 'prompts.txt')
 
-const M3_FLASH = 'MiniMax-M3.1-Flash-Preview'
+const M3_FLASH = 'MiniMax-M3.1-Flash'
 const M3 = 'MiniMax-M3'
 const ACP_PROVIDER = 'minimax'
 const modelValue = (model, variant) =>

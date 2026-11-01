@@ -15,7 +15,7 @@ import { adapterFor } from '../../src/execution/host/adapters/index.ts'
 import { testPeerConnection } from '../test-peer.ts'
 
 const provider = 'minimax-official'
-const flash = 'MiniMax-M3.1-Flash-Preview'
+const flash = 'MiniMax-M3.1-Flash'
 const m3 = 'MiniMax-M3'
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => {

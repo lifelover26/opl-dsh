@@ -32,8 +32,8 @@ export function CoordinationSection({
       await operation()
       await load()
       setNotice(message)
-    } catch {
-      setNotice('操作未完成。手动修改过的 Skill 会被保留，请检查安装状态。')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '操作未完成，请检查安装状态。')
     } finally {
       setBusy(false)
     }
@@ -89,6 +89,31 @@ export function CoordinationSection({
           执行完成后仍需核验实际产物。权限或问题等待由你处理；失败和重启中断不会自动重派。
         </p>
         {cooperationError && <p role="alert">{cooperationError}</p>}
+      </div>
+      <div className={css.card}>
+        <h3 className={css.name}>SuperAgent 仓库协作</h3>
+        <p className={css.muted}>
+          从 GitHub 或飞书接收请求，按授权策略创建工单、分配工作目录并执行、回传结果。
+          在独立窗口中管理仓库、机器人账号、授权名单、提示词和执行设置。
+        </p>
+        <Button
+          variant="outline"
+          disabled={busy || !status?.superagentSupported}
+          onClick={() =>
+            void act(async () => {
+              const result = await call('superagent-open')
+              if (result.state === 'running')
+                throw new Error('SuperAgent 窗口已在运行，请切换到该窗口。关闭后再次打开可更新。')
+            }, '已启动 SuperAgent 独立窗口。首次请完成模型、仓库与机器人账号设置。')
+          }
+        >
+          打开 SuperAgent
+        </Button>
+        <p className={css.muted}>
+          {status?.superagentSupported
+            ? '首次打开需准备插件。使用独立的登录、会话和数据目录；在面板完成设置后开始接单。'
+            : '本版 SuperAgent 原型支持 macOS；其账户与执行命令需要 POSIX 环境。'}
+        </p>
       </div>
       <details className={css.details}>
         <summary>外部 Codex 接入</summary>

@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import { openSync, closeSync, readFileSync } from 'node:fs'
 const [home, root, application] = process.argv.slice(2)
 if (!home || !root || !application) throw new Error('缺少桌面启动路径')
-await refreshEnhancements(root, application)
+if (!process.argv.includes('--no-update')) await refreshEnhancements(root, application)
 const executable =
   process.platform === 'win32'
     ? join(application, 'DeepSeek Harness.exe')
