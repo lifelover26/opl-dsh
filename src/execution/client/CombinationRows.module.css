@@ -102,10 +102,6 @@
 .discoveryStatus {
   color: var(--dsw-alias-label-secondary);
 }
-.discoveryUnavailable {
-  color: var(--dsw-alias-state-error-primary);
-  font-weight: 500;
-}
 .editor {
   padding: 8px 0 14px;
 }

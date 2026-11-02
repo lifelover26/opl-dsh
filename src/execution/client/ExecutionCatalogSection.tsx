@@ -1,12 +1,8 @@
 import { RecommendationPicker } from './RecommendationPicker.tsx'
+import { ModelAvailabilityStatus } from './ModelAvailabilityStatus.tsx'
 import { useExecutionCatalog } from './use-execution-catalog.ts'
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
-import {
-  displayModelSource,
-  selectableModels,
-  modelRefKey,
-  unavailableModelLabel,
-} from '../contracts/catalog.ts'
+import { displayModelSource, selectableModels, modelRefKey } from '../contracts/catalog.ts'
 import { isOfficialPairing } from '../contracts/official-harnesses.ts'
 import type { CombinationDefinition, ExecutionCatalog } from '../contracts/catalog.ts'
 import type { HarnessCatalog } from '../../contracts/types.ts'
@@ -77,9 +73,7 @@ export function ExecutionCatalogSection({
                 <div className={listCss.discoveryRow} key={modelRefKey(item.modelRef)}>
                   <span className={listCss.discoveryName}>{item.name}</span>
                   <span className={listCss.discoveryMetadata} title={item.modelRef.model}>
-                    {!item.available && (
-                      <span className={listCss.discoveryUnavailable}>当前不可用</span>
-                    )}
+                    <ModelAvailabilityStatus {...item} />
                     <span className={listCss.discoveryStatus}>{item.status.label}</span>
                   </span>
                 </div>
@@ -213,14 +207,15 @@ function CombinationRow({
   const model = catalog.models.find((x) => modelRefKey(x.ref) === modelRefKey(item.modelRef)),
     harness = catalog.harnesses.find((x) => x.id === item.harnessRef)
   const status = availability.find((c) => c.id === item.id)
-  const failure =
+  const availabilityState =
     model?.available === false
-      ? (model.reason ?? '模型不可用')
-      : status && !status.available
-        ? (status.reason ?? '尚未就绪')
-        : !status && model?.available !== true
-          ? (model?.reason ?? '尚未验证')
-          : undefined
+      ? model
+      : (status ?? {
+          available: false,
+          unavailableKind: 'unconfirmed' as const,
+          reason: '执行组合状态尚未确认',
+        })
+  const failure = !availabilityState.available
   const hasAlternatives =
     catalog.combinations.filter(
       (candidate) =>
@@ -243,13 +238,7 @@ function CombinationRow({
           {item.name}
         </span>
         <span className={listCss.metadata}>
-          {failure && (
-            <span className={listCss.failure} title={failure}>
-              {unavailableModelLabel(
-                model?.available === false ? model.unavailableKind : undefined,
-              )}
-            </span>
-          )}
+          <ModelAvailabilityStatus {...availabilityState} />
           <span className={listCss.source} title={source}>
             {source}
           </span>

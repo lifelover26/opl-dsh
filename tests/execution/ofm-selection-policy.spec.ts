@@ -285,11 +285,21 @@ it('distinguishes removed OFM references from a failed directory read and preser
       reason: 'OFM 当前目录已移除此模型，保留原组合配置',
     })
     expect(missing.recommendations?.some((item) => item.modelRef.model === ref.model)).toBe(false)
+    expect(missing.ofmDiscovery?.find((item) => item.modelRef.model === ref.model)).toMatchObject({
+      available: false,
+      unavailableKind: 'catalog-missing',
+      reason: 'OFM 当前目录已移除此模型，保留原组合配置',
+    })
     fail = true
     const unknown = await resolver.resolve()
     expect(unknown.models.find((item) => item.ref.model === ref.model)).toMatchObject({
       available: false,
       unavailableKind: 'unconfirmed',
+    })
+    expect(unknown.ofmDiscovery?.find((item) => item.modelRef.model === ref.model)).toMatchObject({
+      available: false,
+      unavailableKind: 'unconfirmed',
+      reason: 'OFM 状态读取失败，对应模型尚未确认启用',
     })
     expect((await store.get()).combinations.find((item) => item.id === 'saved-kimi')).toEqual(
       saved.combinations.at(-1),

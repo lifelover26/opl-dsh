@@ -502,7 +502,15 @@ export class ExecutionModelResolver {
             : harnesses.length
               ? { kind: 'manual' as const, harnesses, label: '仅可手动尝试' }
               : { kind: 'unknown' as const, label: '尚未适配' }
-      return { modelRef: model.ref, name: model.name, available: model.available, status }
+      return {
+        modelRef: model.ref,
+        name: model.name,
+        available: model.available,
+        ...(!model.available
+          ? { reason: model.reason, unavailableKind: model.unavailableKind }
+          : {}),
+        status,
+      }
     })
     return catalog
   }

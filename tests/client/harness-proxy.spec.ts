@@ -831,6 +831,76 @@ describe('每个外部 Harness 独立的代理设置', () => {
     expect(text(summary)).not.toContain('可执行')
   })
 
+  it.each([
+    ['catalog-missing', '目录已移除'],
+    ['disabled', '未启用'],
+    ['unconfirmed', '状态未确认'],
+    [undefined, '不可用'],
+  ] as const)('新模型发现与已启用组合共享状态 %s 和悬停原因', async (unavailableKind, label) => {
+    const data = catalog()
+    const reason = '来源返回的具体原因'
+    Object.assign(data.models[0], { available: false, reason, unavailableKind })
+    Object.assign(data, {
+      ofmDiscovery: [
+        {
+          modelRef: data.models[0].ref,
+          name: 'OFM 模型',
+          available: false,
+          reason,
+          unavailableKind,
+          status: { kind: 'recommended', harness: 'codex', label: '推荐 Codex CLI' },
+        },
+      ],
+    })
+    const { call } = fixture(data)
+    const view = await open(call, ExecutionCatalogSection)
+    const discovery = walk(view).find(
+      (node) => node.getAttribute?.('data-opl-panel') === 'ofm-discovery',
+    )!
+    const row = walk(view).find(
+      (node) => node.getAttribute?.('data-opl-combination') === 'codex/one',
+    )!
+    const summary = walk(row).find((node) => node.nodeName === 'SUMMARY')!
+    for (const scope of [discovery, summary]) {
+      const badge = walk(scope).find((node) => node.getAttribute?.('title') === reason)!
+      expect(text(badge)).toBe(label)
+      expect(badge.getAttribute('class')).toContain('failure')
+      expect(text(scope)).not.toContain('当前不可用')
+      expect(text(scope)).not.toContain('未就绪')
+    }
+    expect(text(discovery)).toContain('推荐 Codex CLI')
+    const picker = walk(view).find(
+      (node) => node.getAttribute?.('data-opl-panel') === 'recommended-combinations',
+    )!
+    expect(
+      walk(picker).filter((node) => node.getAttribute?.('data-opl-recommendation-item')),
+    ).toHaveLength(0)
+  })
+
+  it('重新读取恢复可用的目录后移除两处旧状态和移除入口', async () => {
+    const data = catalog()
+    const discovery = {
+      modelRef: data.models[0].ref,
+      name: 'OFM 模型',
+      available: false,
+      unavailableKind: 'unconfirmed',
+      reason: '来源状态未确认',
+      status: { kind: 'recommended', harness: 'codex', label: '推荐 Codex CLI' },
+    }
+    Object.assign(data.models[0], discovery)
+    Object.assign(data, { ofmDiscovery: [discovery] })
+    const unavailable = await open(fixture(data).call, ExecutionCatalogSection)
+    expect(text(unavailable)).toContain('状态未确认')
+    Object.assign(data.models[0], { available: true })
+    discovery.available = true
+    const recovered = await open(fixture(data).call, ExecutionCatalogSection)
+    expect(text(recovered)).not.toContain('状态未确认')
+    expect(text(recovered)).not.toContain('当前不可用')
+    expect(
+      walk(recovered).some((node) => node.getAttribute?.('aria-label') === '移除 Codex 组合'),
+    ).toBe(false)
+  })
+
   it('普通保存保留未操作的隐藏组合和目录移除状态', async () => {
     const data = catalog()
     const ref = { provider: 'our-free-model', model: 'moonshotai/kimi-k3' }

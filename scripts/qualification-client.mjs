@@ -347,6 +347,23 @@ export async function verifyDesktopClient(
       )
         throw new Error('执行组合仍重复提供 Harness 代理配置')
       result.combinationsOnly = true
+      result.modelAvailability = await pipe.evaluate(
+        session,
+        `Array.from(document.querySelectorAll('[data-opl-panel="catalog"] [data-opl-model-availability]')).map(node=>({kind:node.dataset.oplModelAvailability,label:node.textContent.trim(),reason:node.title}))`,
+      )
+      const availabilityLabels = {
+        'catalog-missing': '目录已移除',
+        disabled: '未启用',
+        unconfirmed: '状态未确认',
+        unavailable: '不可用',
+      }
+      if (
+        !result.modelAvailability.length ||
+        result.modelAvailability.some(
+          (item) => item.label !== availabilityLabels[item.kind] || !item.reason,
+        )
+      )
+        throw new Error('模型可用状态未使用统一分类或缺少悬停原因')
       await waitFor(
         `Boolean(document.querySelector('[data-opl-recommendation-item]'))`,
         '组合选择列表未加载',

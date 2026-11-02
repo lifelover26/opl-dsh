@@ -39,10 +39,10 @@ export type OfmDiscoveryStatus =
   | { kind: 'excluded'; reason: string; label: string }
   | { kind: 'unknown'; label: string }
 
-export interface OfmDiscoveryItem {
+export interface OfmDiscoveryItem
+  extends Pick<ModelDefinition, 'available' | 'reason' | 'unavailableKind'> {
   modelRef: ModelRef
   name: string
-  available: boolean
   status: OfmDiscoveryStatus
 }
 export interface ExecutionCatalog {
