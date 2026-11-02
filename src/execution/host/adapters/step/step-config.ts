@@ -108,6 +108,8 @@ export interface StepProviderEntry {
      * therefore silently removes the thinking tier instead of failing loudly.
      */
     readonly reasoning?: boolean
+    /** Source-configured context budget, when the model source reports one. */
+    readonly contextWindow?: number
   }[]
 }
 
@@ -127,6 +129,7 @@ export function buildStepModelsConfig(options: {
   baseURL: string
   api: string
   reasoning?: boolean
+  contextWindow?: number
 }): Record<string, unknown> {
   const entry: StepProviderEntry = {
     baseUrl: options.baseURL,
@@ -135,9 +138,12 @@ export function buildStepModelsConfig(options: {
     // request time, so this file holds no credential.
     apiKey: `$${STEP_CREDENTIAL_ENV}`,
     models: [
-      options.reasoning === true
-        ? { id: options.model, name: options.model, reasoning: true }
-        : { id: options.model, name: options.model },
+      {
+        id: options.model,
+        name: options.model,
+        ...(options.reasoning === true ? { reasoning: true } : {}),
+        ...(options.contextWindow === undefined ? {} : { contextWindow: options.contextWindow }),
+      },
     ],
   }
   return { providers: { [options.provider]: entry } }

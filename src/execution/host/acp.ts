@@ -3,6 +3,8 @@ import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child
 import { createInterface } from 'node:readline'
 import { join } from 'node:path'
 import { failureDiagnosticSuffix, safeFailureDetails } from './adapters/failure-diagnostics.ts'
+import { canonicalHarnessContext, canonicalHarnessUsage } from './usage.ts'
+import type { HarnessStatistics } from '../contracts/usage.ts'
 export const object = (value: unknown): Record<string, any> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
     ? (value as Record<string, any>)
@@ -106,8 +108,18 @@ export class HarnessTransportError extends Error {}
 /** A matched ACP error response; transport loss never creates this observation. */
 export class HarnessRequestError extends HarnessTransportError {
   readonly promptSettled: boolean
+  /** Validated per-prompt observations supplied by an owned bridge, never raw error data. */
+  readonly statistics: HarnessStatistics
   constructor(message: string, method: string, code: unknown, data?: unknown) {
     super(message)
+    const meta = method === 'session/prompt' ? object(object(data)._meta) : {}
+    const account = object(meta['opl/turnUsage'])
+    const usage = account.version === 1 ? canonicalHarnessUsage(account.usage) : undefined
+    const contextUsage = canonicalHarnessContext(meta['opl/contextUsage'])
+    this.statistics = {
+      ...(usage ? { usage } : {}),
+      ...(contextUsage ? { contextUsage } : {}),
+    }
     this.promptSettled =
       method === 'session/prompt' &&
       (object(data).oplTurnSettled === true ||

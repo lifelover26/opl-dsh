@@ -4,7 +4,7 @@ import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 export interface HarnessContextUsage {
   used?: number
   size?: number
-  /** The Harness estimates occupancy rather than reporting an exact provider count. */
+  /** Occupancy or the effective CLI budget is estimated, rather than an exact provider limit. */
   estimated?: boolean
 }
 

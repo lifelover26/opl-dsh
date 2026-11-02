@@ -137,7 +137,7 @@ export function createOfmModelSource(
       // Exact-model identity, before the final catalog read. Upstream synthesizes
       // this for unknown ids, so it can only ever agree on identity; it is not
       // evidence that the model exists.
-      let owned: { provider?: string; id?: string } | undefined
+      let owned: { provider?: string; id?: string; context?: { contextWindow: number } } | undefined
       try {
         owned = await ctx.llm.resolveModelInfo(provider, ref.model)
       } catch {
@@ -154,7 +154,16 @@ export function createOfmModelSource(
       // Synchronous lifetime recheck directly after the final await, with no
       // further suspension point between it and returning the route.
       if (!registered(ctx, provider)) throw Error('Our Free Model 插件已卸载该渠道')
-      return { baseURL: facts.baseURL, model: ref.model, apiKey: facts.apiKey, protocol }
+      const capacity = owned.context?.contextWindow
+      return {
+        baseURL: facts.baseURL,
+        model: ref.model,
+        apiKey: facts.apiKey,
+        protocol,
+        ...(typeof capacity === 'number' && Number.isSafeInteger(capacity) && capacity > 0
+          ? { contextWindow: capacity }
+          : {}),
+      }
     },
   }
 }

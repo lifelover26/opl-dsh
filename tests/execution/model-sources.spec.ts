@@ -38,6 +38,36 @@ describe('external model-source ownership', () => {
     for (const model of ['gpt-6', 'MiniMax-M3.1-Flash', 'combo:free'])
       expect(adapterFor('codex', { provider: 'our-free-model', model }, sources)).toBeUndefined()
   })
+  it.each([131072, undefined])(
+    'retains only a supplied source context budget: %s',
+    async (contextWindow) => {
+      const sources = new ExternalModelSources(ctx)
+      sources.register(owner, {
+        provider: ref.provider,
+        supports: () => true,
+        resolve: async () => ({
+          ...route,
+          ...(contextWindow === undefined ? {} : { contextWindow }),
+        }),
+      })
+      expect(await sources.resolve('codex', ref, 'responses')).toEqual({
+        ...route,
+        ...(contextWindow === undefined ? {} : { contextWindow }),
+      })
+    },
+  )
+  it.each([0, -1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    'refuses invalid source context budgets: %s',
+    async (contextWindow) => {
+      const sources = new ExternalModelSources(ctx)
+      sources.register(owner, {
+        provider: ref.provider,
+        supports: () => true,
+        resolve: async () => ({ ...route, contextWindow }),
+      })
+      await expect(sources.resolve('codex', ref, 'responses')).rejects.toThrow('上下文容量')
+    },
+  )
   it('rejects conflicting source ownership and reserved Gateway registration', () => {
     const sources = new ExternalModelSources(ctx)
     const entry = { provider: ref.provider, supports: () => true, resolve: async () => route }

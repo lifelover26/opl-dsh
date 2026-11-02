@@ -6,6 +6,7 @@ import {
 } from './minimax-account-locales.ts'
 import { MiniMaxAccountSection } from './MiniMaxAccountSection.tsx'
 import { QueueStatus } from './QueueStatus.tsx'
+import { installHarnessContextMeter } from './HarnessContextMeter.tsx'
 import { SETTINGS_ORDER } from '../../shared/client/settings-navigation.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import { watchStopEditSession } from './stop-edit-session-watch.ts'
@@ -292,11 +293,21 @@ export function apply(ctx: Context, config: ClientConfig = {}): void {
       (listener) => slots.subscribe('sidebar.workspaces', listener),
     ),
   )
-  ctx.effect(() =>
-    installProjectlessOfficialComposer(
+  ctx.effect(() => {
+    const stopComposer = installProjectlessOfficialComposer(
       () => slots.entries('conversation.composer.bar'),
       (listener) => slots.subscribe('conversation.composer.bar', listener),
       () => composerText('restoring'),
-    ),
-  )
+    )
+    const stopMeter = installHarnessContextMeter({
+      entries: () => slots.entries('conversation.composer.bar'),
+      subscribe: (listener) => slots.subscribe('conversation.composer.bar', listener),
+      contextUsage: (sessionId) => call('context-usage', { sessionId }),
+      sessionChanges: sessionChangesFor,
+    })
+    return () => {
+      stopMeter()
+      stopComposer()
+    }
+  })
 }

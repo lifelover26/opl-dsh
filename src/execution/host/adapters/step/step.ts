@@ -105,6 +105,7 @@ export async function resolveStepRoute(
   api: string
   baseURL: string
   apiKey: string
+  contextWindow?: number
 }> {
   const lane = stepLane(record.modelRef)
   if (!lane)
@@ -138,6 +139,7 @@ export async function resolveStepRoute(
     api: stepApiForProtocol(protocol),
     baseURL: route.baseURL,
     apiKey: route.apiKey,
+    ...(route.contextWindow === undefined ? {} : { contextWindow: route.contextWindow }),
   }
 }
 
@@ -296,6 +298,9 @@ async function prepareStepLaunch(
       OPL_STEP_BASE_URL: route.baseURL,
       OPL_STEP_API: route.api,
       OPL_STEP_REASONING: stepLaneReasoning(record.modelRef) ? '1' : '0',
+      ...(route.contextWindow === undefined
+        ? {}
+        : { OPL_STEP_CONTEXT_WINDOW: String(route.contextWindow) }),
       OPL_STEP_PROTOCOL: route.protocol,
       OPL_STEP_THINKING: thinking,
       OPL_STEP_PRESET: permissions.preset,

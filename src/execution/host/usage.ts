@@ -60,7 +60,14 @@ export function canonicalHarnessContext(value: unknown): HarnessContextUsage | u
   if (raw.size !== undefined && (!isUsageCount(raw.size) || raw.size === 0)) return
   if (raw.estimated !== undefined && typeof raw.estimated !== 'boolean') return
   if (raw.used === undefined && raw.size === undefined) return
-  if (raw.used !== undefined && raw.size !== undefined && raw.used > raw.size) return
+  // An estimated CLI budget may be a compaction threshold exceeded by the final output.
+  if (
+    raw.used !== undefined &&
+    raw.size !== undefined &&
+    raw.used > raw.size &&
+    raw.estimated !== true
+  )
+    return
   return {
     ...(raw.used === undefined ? {} : { used: Number(raw.used) }),
     ...(raw.size === undefined ? {} : { size: Number(raw.size) }),

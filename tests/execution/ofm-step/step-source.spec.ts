@@ -17,6 +17,8 @@ import {
   type StepSourceAnswer,
 } from '../../../src/execution/host/adapters/step/index.ts'
 import type { ModelRef } from '../../../src/execution/contracts/catalog.ts'
+import { resolveStepRoute } from '../../../src/execution/host/adapters/step/step.ts'
+import type { AdapterOptions } from '../../../src/execution/host/adapters/types.ts'
 
 const owner = { effect: (effect: () => () => void) => effect() } as unknown as Context
 const ctx = { credentials: {}, get: () => undefined } as unknown as Context
@@ -63,6 +65,14 @@ function registered(initial: Partial<StepSourceAnswer> = {}) {
 }
 
 describe('StepCode source registration', () => {
+  it('passes the source-configured context budget to the launch route without adding a default', async () => {
+    const source = registered({ contextWindow: 262_144 })
+    const options = { modelSources: source.sources } as AdapterOptions
+    expect((await resolveStepRoute({ modelRef: free }, options)).contextWindow).toBe(262_144)
+    options.modelSources = registered().sources
+    expect(await resolveStepRoute({ modelRef: free }, options)).not.toHaveProperty('contextWindow')
+  })
+
   it('authorizes only this harness and the exact lane ids', () => {
     const sources = new ExternalModelSources(ctx)
     sources.register(

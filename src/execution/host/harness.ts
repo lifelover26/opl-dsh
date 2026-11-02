@@ -76,6 +76,7 @@ import type { HarnessReasoningPreflight, HarnessStartRequest } from '../../contr
 import { STOP_EDIT_VERSION } from '../contracts/stop-edit.ts'
 import { projectlessSessionCwd } from './projectless-path.ts'
 import { canonicalHarnessContext, canonicalHarnessUsage, latestHarnessContext } from './usage.ts'
+import { VibeTurnUsageTracker } from './usage-vibe.ts'
 import {
   parseGrokTurnUsage,
   parseOpenCodeKiloTurnUsage,
@@ -304,6 +305,7 @@ interface Active {
   createdSession?: boolean
   contextUsage?: import('../contracts/usage.ts').HarnessContextUsage
   contextWindowRecorded?: number
+  vibeUsage?: VibeTurnUsageTracker
   watchdog?: ProgressWatchdog
   deadlineError?: string
   deadlineCleanup?: Promise<void>
@@ -718,12 +720,16 @@ export class HarnessService {
     this.revisionCounter += 1
     this.events.emit(record.id)
   }
-  /** Persist ACP's context-window capacity once per route; occupancy never becomes billing. */
+  /** Record ACP capacity inside an open official turn; idle observations stay in Harness state. */
   private recordContextWindow(record: HarnessSession, active: Active, size: number) {
     const nativeSessionId = record.nativeSessionId
     if (!nativeSessionId || active.contextWindowRecorded === size) return
     const session = this.ctx.sessions?.get(asSessionId<SessionId>(nativeSessionId))
     if (!session) return
+    const boundary = session
+      .snapshotEvents()
+      .findLast((event) => event.type === 'turn/start' || event.type === 'turn/end')
+    if (boundary?.type !== 'turn/start') return
     const current = session.requestContext?.()
     if (
       current?.provider === record.modelRef.provider &&
@@ -1453,6 +1459,7 @@ export class HarnessService {
       launchSettings,
       editLaunch: { ...launch, env: harnessProxyEnvironment(launch.env, chosenHarness?.proxy) },
       provisional,
+      ...(record.harnessRef === 'vibe' ? { vibeUsage: new VibeTurnUsageTracker() } : {}),
     }
     const bindingPath = join(home, record.id + '.control.json')
     const bridgeStop = await startControlBridge(
@@ -1527,13 +1534,24 @@ export class HarnessService {
     )
     const wireModel =
       adapter.acpModelId?.(record.modelRef) ?? record.modelRef.model.split('::').at(-1)!
+    const pendingUsage: unknown[] = []
+    let sessionReady = false
     const acp = new AcpProcess(
       launch.command,
       launch.args,
       record.cwd,
       harnessProxyEnvironment(launch.env, chosenHarness?.proxy),
       (value) => {
+        if (!sessionReady && !record.acpSessionId) {
+          if (object(object(value).update).sessionUpdate === 'usage_update') {
+            if (pendingUsage.length === 16) pendingUsage.shift()
+            pendingUsage.push(value)
+          }
+          return
+        }
         if (!active.provisional) this.update(this.records.get(record.id) ?? record, active, value)
+        else if (object(value).sessionId === record.acpSessionId)
+          active.vibeUsage?.observeUpdate(object(value).update)
       },
       (id, value) => this.ask(this.records.get(record.id) ?? record, active, id, value),
       () => {
@@ -1582,6 +1600,22 @@ export class HarnessService {
         record.acpSessionId = required(session.sessionId, 'ACP sessionId')
         if (!provisional) await this.save(record)
       }
+      sessionReady = true
+      const initialContext = canonicalHarnessContext(object(session._meta)['opl/contextUsage'])
+      if (initialContext) {
+        active.contextUsage = initialContext
+        const previous = record.turns.at(-1)
+        if (previous && !provisional) {
+          previous.contextUsage = initialContext
+          this.changed(record)
+        }
+      }
+      for (const value of pendingUsage) {
+        if (!provisional) this.update(record, active, value)
+        else if (object(value).sessionId === record.acpSessionId)
+          active.vibeUsage?.observeUpdate(object(value).update)
+      }
+      pendingUsage.length = 0
       // An adapter that owns a fixed model and reasoning configuration pins it here,
       // after the session exists and before any prompt can be sent. A refusal to honor
       // the pinned values must abort the connection rather than run on other settings.
@@ -1613,12 +1647,24 @@ export class HarnessService {
     const u = object(envelope.update)
     if (u.sessionUpdate === 'usage_update') {
       const account =
-        record.harnessRef === 'pool'
-          ? parsePoolContextUsage(u)
-          : record.harnessRef === 'minimax-code'
-            ? parseMiniMaxContextUsage(u)
-            : {}
-      const contextUsage = canonicalHarnessContext(account.contextUsage ?? u)
+        record.harnessRef === 'vibe'
+          ? active.vibeUsage!.observeUpdate(u)
+          : record.harnessRef === 'pool'
+            ? parsePoolContextUsage(u)
+            : record.harnessRef === 'minimax-code'
+              ? parseMiniMaxContextUsage(u)
+              : {}
+      const contextUsage = canonicalHarnessContext(
+        account.contextUsage ??
+          (record.harnessRef === 'vibe'
+            ? undefined
+            : (object(u._meta)['opl/contextUsage'] ?? {
+                ...u,
+                ...(typeof object(u._meta)['opl/contextEstimated'] === 'boolean'
+                  ? { estimated: object(u._meta)['opl/contextEstimated'] }
+                  : {}),
+              })),
+      )
       if (contextUsage) {
         active.contextUsage = contextUsage
         const usageTurn = active.turn ?? record.turns.at(-1)
@@ -2173,6 +2219,7 @@ export class HarnessService {
             throw Error('编辑消息的发送身份不一致')
           await this.externalMessageEdits.beginPrompt(record.nativeSessionId!, edit.requestId)
         }
+        active.vibeUsage?.beginTurn()
         const result = object(
           await active.acp!.request(
             'session/prompt',
@@ -2223,13 +2270,15 @@ export class HarnessService {
         const resultContext = canonicalHarnessContext(resultMeta['opl/contextUsage'])
         if (resultContext) turn.contextUsage = resultContext
         const account =
-          record.harnessRef === 'grok-build'
-            ? parseGrokTurnUsage(result)
-            : record.harnessRef === 'pool'
-              ? parsePoolTurnUsage(result)
-              : ['opencode', 'kilo'].includes(record.harnessRef)
-                ? parseOpenCodeKiloTurnUsage(result)
-                : {}
+          record.harnessRef === 'vibe'
+            ? active.vibeUsage!.finishTurn(result)
+            : record.harnessRef === 'grok-build'
+              ? parseGrokTurnUsage(result)
+              : record.harnessRef === 'pool'
+                ? parsePoolTurnUsage(result)
+                : ['opencode', 'kilo'].includes(record.harnessRef)
+                  ? parseOpenCodeKiloTurnUsage(result)
+                  : {}
         if (!usage) usage = account.usage
         if (usage) turn.usage = usage
         if (account.contextUsage) turn.contextUsage = account.contextUsage
@@ -2343,6 +2392,10 @@ export class HarnessService {
       // the barrier before exposing terminal state to stream/state readers.
       this.finalizing.set(record.id, settled.promise)
       turn.state = active.cancelled ? 'cancelled' : 'failed'
+      if (error instanceof HarnessRequestError) {
+        if (error.statistics.usage) turn.usage = error.statistics.usage
+        if (error.statistics.contextUsage) turn.contextUsage = error.statistics.contextUsage
+      }
       if (error instanceof HarnessRequestError && error.promptSettled)
         turn.stopReason = 'error_response'
       if (error instanceof HarnessRequestError && error.promptSettled && record.nativeSessionId) {
@@ -2360,6 +2413,10 @@ export class HarnessService {
           ? error.message
           : '执行未完成，请检查 Harness 安装、所选渠道和模型。原任务未自动重发。')
     } finally {
+      const partial = active.vibeUsage?.finishTurn()
+      if (partial?.usage && !turn.usage) turn.usage = partial.usage
+      if (partial?.contextUsage && !turn.contextUsage) turn.contextUsage = partial.contextUsage
+      active.vibeUsage?.endTurn()
       this.finalizing.set(record.id, settled.promise)
       try {
         await this.finishTurn(record, active, turn, editBefore)

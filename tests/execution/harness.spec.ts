@@ -486,7 +486,7 @@ async function nativeSetup(
     id: 'native-session',
     header: { cwd: root },
     append: vi.fn(),
-    snapshotEvents: () => [],
+    snapshotEvents: () => [{ seq: 0, time: 1, type: 'turn/start', data: { turn: 1 } }],
   }
   const ctx = {
     connection: testPeerConnection,

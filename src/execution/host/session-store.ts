@@ -177,7 +177,8 @@ function parseRecord(raw: unknown): HarnessSession {
           (!Number.isSafeInteger(turn.contextUsage.size) || turn.contextUsage.size <= 0)) ||
         (turn.contextUsage.used !== undefined &&
           turn.contextUsage.size !== undefined &&
-          turn.contextUsage.used > turn.contextUsage.size) ||
+          turn.contextUsage.used > turn.contextUsage.size &&
+          turn.contextUsage.estimated !== true) ||
         (turn.contextUsage.estimated !== undefined &&
           typeof turn.contextUsage.estimated !== 'boolean'))
     )

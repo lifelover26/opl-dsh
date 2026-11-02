@@ -52,6 +52,8 @@ export interface StepSourceAnswer {
    * pins for the lane; an incompatible answer is refused instead of being coerced.
    */
   readonly protocol: string
+  /** Source-configured context budget; absence leaves Step's effective runtime window unchanged. */
+  readonly contextWindow?: number
 }
 
 /** The one capability this source group needs from its owner. */
@@ -138,6 +140,7 @@ export function createStepCodeSource(owner: StepSourceOwner): ExternalModelSourc
         model: lane!.model,
         apiKey: route.apiKey,
         protocol: route.protocol as StepProtocol,
+        ...(route.contextWindow === undefined ? {} : { contextWindow: route.contextWindow }),
       }
     },
   }

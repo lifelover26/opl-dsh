@@ -46,6 +46,12 @@ import { join, resolve, sep } from 'node:path'
 import { commandLaunch } from '../../harness-registry.ts'
 import { RpcTurnOutcome } from '../rpc-turn-outcome.ts'
 import {
+  nativeContextUpdate,
+  nativeContextUsageMeta,
+  nativeTurnUsageMeta,
+} from '../native-usage.ts'
+import { StepTurnUsage, stepContextUsage } from './step-usage.ts'
+import {
   STEP_AGENT_DIR_ENV,
   STEP_SESSION_DIR_ENV,
   STEP_STORAGE_ROOT_ENV,
@@ -69,6 +75,9 @@ const provider = process.env.OPL_STEP_PROVIDER ?? ''
 const model = process.env.OPL_STEP_MODEL ?? ''
 const baseURL = process.env.OPL_STEP_BASE_URL ?? ''
 const api = process.env.OPL_STEP_API ?? ''
+/** Source-configured context budget; unset leaves the official CLI's effective window in force. */
+const contextWindowValue = process.env.OPL_STEP_CONTEXT_WINDOW
+const contextWindow = contextWindowValue === undefined ? undefined : Number(contextWindowValue)
 /** Whether the lane exposes a reasoning tier; declared per lane by the adapter. */
 const reasoning = process.env.OPL_STEP_REASONING === '1'
 /** Empty means "the caller expressed no choice"; nothing is written. */
@@ -92,6 +101,7 @@ class StepBridgeError extends Error {
   constructor(
     message: string,
     readonly code: string,
+    readonly data?: { oplTurnSettled: true; _meta?: object },
   ) {
     super(message)
   }
@@ -173,6 +183,7 @@ let turnActive = false
 let resolveTurn: ((value: unknown) => void) | undefined
 let rejectTurn: ((error: Error) => void) | undefined
 const turnOutcome = new RpcTurnOutcome()
+const turnUsage = new StepTurnUsage(provider, model)
 /** Permission asks currently with the host, keyed by the ACP request id. */
 const asks = new Map<string, (optionId: string | undefined) => void>()
 
@@ -467,6 +478,7 @@ function answerPermission(id: string, outcome: any): void {
 
 // ── Official events → ACP updates ──────────────────────────────────────────────────
 function handleEvent(event: any): void {
+  if (resolveTurn) turnUsage.accept(event)
   switch (event.type) {
     case 'message_update': {
       const delta = event.assistantMessageEvent ?? {}
@@ -511,7 +523,9 @@ function handleEvent(event: any): void {
       const failure = turnOutcome.failure
       turnOutcome.reset()
       if (!cancelled && failure)
-        rejectTurn?.(new StepBridgeError('官方渠道报告本轮请求失败', failure))
+        rejectTurn?.(
+          new StepBridgeError('官方渠道报告本轮请求失败', failure, { oplTurnSettled: true }),
+        )
       else resolveTurn?.({ stopReason: cancelled ? 'cancelled' : 'end_turn' })
       resolveTurn = undefined
       rejectTurn = undefined
@@ -536,6 +550,38 @@ async function readState(): Promise<any> {
   const state = await stepRequest('get_state')
   if (state?.success !== true) throw configuration('官方 StepCode 未返回会话状态')
   return state.data
+}
+
+/** Optional statistics must not hold a completed answer behind an unresponsive RPC. */
+const STATISTICS_TIMEOUT_MS = 2000
+
+/** Fresh context after completion or load; a failed statistics request never retries a prompt. */
+async function contextMetadata(): Promise<object> {
+  const read = async (type: string): Promise<unknown> => {
+    try {
+      const response = await stepRequest(type, {}, STATISTICS_TIMEOUT_MS)
+      return response?.success === true ? response.data : undefined
+    } catch (error) {
+      // Optional state/statistics can be unavailable after an otherwise successful turn.
+      return undefined
+    }
+  }
+  const [state, stats] = await Promise.all([read('get_state'), read('get_session_stats')])
+  const context = stepContextUsage(state, stats, {
+    sessionId,
+    provider,
+    model,
+    ...(contextWindow === undefined ? {} : { contextWindow }),
+  })
+  const update = nativeContextUpdate(context)
+  if (update) emit(update)
+  return nativeContextUsageMeta(context) ?? {}
+}
+
+/** Completed calls belong to this prompt; session-wide token and cost totals are never used. */
+async function turnMetadata(interrupted: boolean): Promise<object> {
+  const usage = turnUsage.snapshot(interrupted)
+  return { ...nativeTurnUsageMeta(usage), ...(await contextMetadata()) }
 }
 
 /**
@@ -680,12 +726,25 @@ function readSessionIndex(id: string): string {
 
 /** Write the credential-blind files the official CLI loads from its config root. */
 function writeProviderConfig(): void {
+  if (contextWindow !== undefined && (!Number.isSafeInteger(contextWindow) || contextWindow <= 0))
+    throw configuration('模型来源提供的上下文容量无效，已停止，未启动 CLI。')
   mkdirSync(configRoot, { recursive: true })
   mkdirSync(agentDir, { recursive: true })
   mkdirSync(sessionDir, { recursive: true })
   writeFileSync(
     join(configRoot, 'models.json'),
-    JSON.stringify(buildStepModelsConfig({ provider, model, baseURL, api, reasoning }), null, 2),
+    JSON.stringify(
+      buildStepModelsConfig({
+        provider,
+        model,
+        baseURL,
+        api,
+        reasoning,
+        ...(contextWindow === undefined ? {} : { contextWindow }),
+      }),
+      null,
+      2,
+    ),
     { mode: 0o600 },
   )
   writeFileSync(
@@ -755,10 +814,12 @@ async function invoke(method: string, params: any): Promise<unknown> {
       await assertModel()
       const pinned = await applyThinking(thinking)
       await replayHistory()
+      const options = await configOptions(pinned)
       return {
         sessionId,
         models: { currentModelId: model },
-        configOptions: await configOptions(pinned),
+        configOptions: options,
+        _meta: await contextMetadata(),
       }
     }
 
@@ -775,10 +836,12 @@ async function invoke(method: string, params: any): Promise<unknown> {
     await stepCommand('set_model', { provider, modelId: model })
     await assertModel()
     const pinned = await applyThinking(thinking)
+    const options = await configOptions(pinned)
     return {
       sessionId,
       models: { currentModelId: model },
-      configOptions: await configOptions(pinned),
+      configOptions: options,
+      _meta: await contextMetadata(),
     }
   }
 
@@ -788,8 +851,8 @@ async function invoke(method: string, params: any): Promise<unknown> {
     throw configuration('会话身份不匹配')
 
   if (method === 'session/cancel') {
-    cancelled = true
-    cancelLatched = true
+    cancelled = turnActive
+    cancelLatched = turnActive && !resolveTurn
     // A pending approval would otherwise keep the turn open forever.
     for (const release of asks.values()) release(undefined)
     asks.clear()
@@ -840,6 +903,7 @@ async function invoke(method: string, params: any): Promise<unknown> {
       throw error
     }
     turnOutcome.reset()
+    turnUsage.reset()
     const done = new Promise<unknown>((resolve, reject) => {
       resolveTurn = resolve
       rejectTurn = reject
@@ -848,13 +912,28 @@ async function invoke(method: string, params: any): Promise<unknown> {
     // Adopt any cancel that arrived while this turn was being dispatched.
     if (cancelLatched) cancelled = true
     cancelLatched = false
-    await stepCommand('prompt', { message: text })
     try {
-      return await done
+      await stepCommand('prompt', { message: text })
+      const settled = (await done) as { stopReason: string }
+      return {
+        ...settled,
+        _meta: await turnMetadata(settled.stopReason === 'cancelled'),
+      }
+    } catch (error) {
+      if (error instanceof StepBridgeError && error.data?.oplTurnSettled === true)
+        throw new StepBridgeError(error.message, error.code, {
+          oplTurnSettled: true,
+          _meta: await turnMetadata(true),
+        })
+      throw error
     } finally {
       turnActive = false
       cancelled = false
+      cancelLatched = false
       turnOutcome.reset()
+      turnUsage.reset()
+      resolveTurn = undefined
+      rejectTurn = undefined
     }
   }
 
@@ -895,6 +974,7 @@ const handleAcpLine = (line: string) => {
           error: {
             code,
             message: redact(error instanceof Error ? error.message : '官方 StepCode 调用未完成'),
+            ...(error instanceof StepBridgeError && error.data ? { data: error.data } : {}),
           },
         })
       if (process.env.OPL_STEP_DIAGNOSTICS === '1') {

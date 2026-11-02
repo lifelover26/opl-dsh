@@ -10,6 +10,8 @@ export interface ExternalModelRoute {
   model: string
   apiKey: string
   protocol: ExternalWireProtocol
+  /** Source-owned configured context budget; it is not a provider-side capacity probe. */
+  contextWindow?: number
 }
 /** One source explicitly declares supported model/Harness pairs and owns route resolution. */
 export interface ExternalModelSource {
@@ -120,6 +122,11 @@ export class ExternalModelSources {
       route.protocol !== protocol
     )
       throw Error('模型来源未提供兼容的执行参数')
+    if (
+      route.contextWindow !== undefined &&
+      (!Number.isSafeInteger(route.contextWindow) || route.contextWindow <= 0)
+    )
+      throw Error('模型来源提供了无效的上下文容量')
     return route
   }
 }
