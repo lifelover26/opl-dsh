@@ -253,6 +253,59 @@ it('does not reopen an automatic combination after the user disables it', async 
   ).toHaveLength(1)
 })
 
+it('distinguishes removed OFM references from a failed directory read and preserves saved choices', async () => {
+  const ref = { provider: 'our-free-model', model: 'moonshotai/kimi-k3' }
+  const store = new ExecutionCatalogStore(await workspace())
+  const saved = defaultExecutionCatalog()
+  saved.combinations.push({
+    id: 'saved-kimi',
+    name: 'My Kimi',
+    modelRef: ref,
+    harnessRef: 'kimi-code',
+    enabled: true,
+    isDefault: true,
+    permissionPolicy: 'full-access',
+  })
+  await store.set(saved)
+  let fail = false
+  const ctx = {
+    get: () => undefined,
+    llm: { listProviders: () => [], listConfigurableProviders: () => [] },
+  }
+  const resolver = new ExecutionModelResolver(ctx as never, store, undefined, async () => {
+    if (fail) throw Error('unavailable')
+    return { catalog: [], settings: { enabled: true, forward: { enabled: true, running: true } } }
+  })
+  try {
+    const missing = await resolver.resolve()
+    expect(missing.models.find((item) => item.ref.model === ref.model)).toMatchObject({
+      available: false,
+      source: 'Our Free Model',
+      unavailableKind: 'catalog-missing',
+      reason: 'OFM 当前目录已移除此模型，保留原组合配置',
+    })
+    expect(missing.recommendations?.some((item) => item.modelRef.model === ref.model)).toBe(false)
+    fail = true
+    const unknown = await resolver.resolve()
+    expect(unknown.models.find((item) => item.ref.model === ref.model)).toMatchObject({
+      available: false,
+      unavailableKind: 'unconfirmed',
+    })
+    expect((await store.get()).combinations.find((item) => item.id === 'saved-kimi')).toEqual(
+      saved.combinations.at(-1),
+    )
+  } finally {
+    await store.dispose()
+  }
+})
+
+it('does not interpret an incomplete OFM response as model removal', () => {
+  expect(ofmModelReadiness({ settings: { enabled: true } }, BIG_PICKLE)).toMatchObject({
+    available: false,
+    unavailableKind: 'unconfirmed',
+  })
+})
+
 it('pins MiniMax Flash free to OpenCode without folding its Kilo lane into the direct route', () => {
   const direct = 'minimax-m3.1-flash-free'
   const kilo = 'minimax/minimax-m3.1-flash:free'
@@ -883,4 +936,74 @@ it('removes generated OFM combinations only after a successful catalog omits the
   ).resolve()
   expect(resolved.combinations.some((item) => item.modelRef.model === stale.model)).toBe(false)
   expect(resolved.combinations.some((item) => item.modelRef.model === kept.model)).toBe(true)
+})
+
+it('retains live model projections and automatic ownership when pruning persisted OFM routes', async () => {
+  const store = new ExecutionCatalogStore(await workspace())
+  const catalog = defaultExecutionCatalog()
+  const stale = { provider: 'our-free-model', model: 'moonshotai/kimi-k3' }
+  const kept = { provider: 'our-free-model', model: 'moonshotai/kimi-k2.6' }
+  const keptId = 'auto:' + JSON.stringify([kept.provider, kept.model])
+  catalog.combinations.push(
+    {
+      id: 'auto:' + JSON.stringify([stale.provider, stale.model]),
+      name: 'Removed Kimi',
+      modelRef: stale,
+      harnessRef: 'kimi-code',
+      permissionPolicy: 'read-only',
+      isDefault: true,
+      enabled: true,
+    },
+    {
+      id: keptId,
+      name: 'Kimi K2.6 + Kimi Code',
+      modelRef: kept,
+      harnessRef: 'kimi-code',
+      permissionPolicy: 'read-only',
+      isDefault: true,
+      enabled: true,
+    },
+  )
+  await store.set(catalog)
+  const ctx = {
+    get: () => undefined,
+    llm: {
+      listProviders: () => [
+        { id: 'our-free-model', name: 'OFM' },
+        { id: 'custom-provider', name: 'Custom' },
+      ],
+      listConfigurableProviders: () => [],
+      listModels: async (provider: string) =>
+        provider === 'custom-provider' ? [{ id: 'custom-model' }] : [],
+    },
+  }
+  try {
+    const resolved = await new ExecutionModelResolver(ctx as never, store, undefined, async () => ({
+      catalog: [
+        { id: stale.model, route: 'our-free-model' },
+        { id: kept.model, route: 'our-free-model' },
+      ],
+      membership: { 'our-free-model': [kept.model] },
+      settings: { enabled: true, forward: { enabled: true, running: true } },
+    })).resolve()
+    expect(resolved.models).toContainEqual(
+      expect.objectContaining({
+        ref: { provider: 'custom-provider', model: 'custom-model' },
+        available: true,
+      }),
+    )
+    expect(resolved.models.find((item) => item.ref.model === kept.model)).toMatchObject({
+      available: true,
+      source: 'Our Free Model',
+    })
+    expect(resolved.combinations.find((item) => item.id === keptId)).toMatchObject({
+      enabled: true,
+      generated: true,
+    })
+    expect(
+      (await store.get()).combinations.some((item) => item.modelRef.model === stale.model),
+    ).toBe(false)
+  } finally {
+    await store.dispose()
+  }
 })

@@ -57,6 +57,21 @@
 .failure {
   color: var(--dsw-alias-state-error-primary);
 }
+.remove {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+.remove:hover:not(:disabled) {
+  color: var(--dsw-alias-state-error-primary);
+}
+.remove:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .discoveryList {
   display: flex;
   flex-direction: column;

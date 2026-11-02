@@ -86,14 +86,6 @@ export class ExecutionModelResolver {
       })
     }
     catalog.combinations = catalog.combinations.filter((item) => !staleAutomatic(item))
-    for (const item of catalog.combinations) {
-      if (!item.id.startsWith('auto:')) continue
-      item.generated = !userEdited(item)
-      if (!item.enabled) item.autoEnabledDisabled = true
-    }
-    catalog.combinations = catalog.combinations.filter(
-      (item) => !isHiddenOfmSelection(item.modelRef),
-    )
     const providers = this.ctx.llm?.listProviders() ?? []
     const configurable = this.ctx.llm?.listConfigurableProviders() ?? []
     const settings = this.ctx.get('settings')
@@ -108,18 +100,22 @@ export class ExecutionModelResolver {
       externalAvailability.set(model, pending)
       return pending
     }
-    let ofmSummary: Promise<unknown> | undefined
+    const ofmSummary = this.readOfm?.().catch(() => undefined)
     const ofmAvailability = new Map<string, Promise<OfmModelReadiness>>()
     const probeOfm = (ref: ModelRef) => {
       const model = modelRefKey(ref)
       const existing = ofmAvailability.get(model)
       if (existing) return existing
       const pending: Promise<OfmModelReadiness> =
-        this.readOfm === undefined
+        ofmSummary === undefined
           ? Promise.resolve({ available: true })
-          : (ofmSummary ??= this.readOfm().catch(() => undefined)).then((summary) =>
+          : ofmSummary.then((summary) =>
               summary === undefined
-                ? { available: false, reason: 'OFM 状态读取失败，对应模型尚未确认启用' }
+                ? {
+                    available: false,
+                    reason: 'OFM 状态读取失败，对应模型尚未确认启用',
+                    unavailableKind: 'unconfirmed' as const,
+                  }
                 : ofmModelReadiness(summary, ref, defaultHarness(ref) !== 'dsh'),
             )
       ofmAvailability.set(model, pending)
@@ -187,19 +183,29 @@ export class ExecutionModelResolver {
                     ? 'OPL Gateway'
                     : provider.name
               return [
-                Promise.resolve(external ?? ofm).then((availability) => ({
-                  ref,
-                  name: displayModelName(ref, model.name),
-                  source: officialOpenCodeModel(ref) ? 'OpenCode 官方免费通道' : source,
-                  available: availability?.available ?? configured,
-                  ...(availability
-                    ? availability.available
-                      ? {}
-                      : { reason: availability.reason ?? '外部 Harness 未就绪' }
-                    : !configured
-                      ? { reason: '凭据未配置' }
-                      : {}),
-                })),
+                Promise.resolve<OfmModelReadiness | undefined>(external ?? ofm).then(
+                  (availability) => ({
+                    ref,
+                    name: displayModelName(ref, model.name),
+                    source: displayModelSource(
+                      ref,
+                      officialOpenCodeModel(ref) ? 'OpenCode 官方免费通道' : source,
+                    ),
+                    available: availability?.available ?? configured,
+                    ...(availability
+                      ? availability.available
+                        ? {}
+                        : {
+                            reason: availability.reason ?? '外部 Harness 未就绪',
+                            ...(availability.unavailableKind
+                              ? { unavailableKind: availability.unavailableKind }
+                              : {}),
+                          }
+                      : !configured
+                        ? { reason: '凭据未配置' }
+                        : {}),
+                  }),
+                ),
               ]
             }),
           )
@@ -209,7 +215,6 @@ export class ExecutionModelResolver {
         }
       }),
     )
-    for (const models of providerModels) catalog.models.push(...models)
     const rawSummary = ofmSummary ? await ofmSummary : undefined
     const rawCatalog =
       rawSummary !== null && typeof rawSummary === 'object' && rawSummary !== undefined
@@ -260,6 +265,16 @@ export class ExecutionModelResolver {
         catalog = await this.store.cleanLegacyCombinations(staleOfmAutomatic)
       }
     }
+    catalog.combinations = catalog.combinations.filter(
+      (item) => !isHiddenOfmSelection(item.modelRef),
+    )
+    for (const item of catalog.combinations) {
+      if (!item.id.startsWith('auto:')) continue
+      item.generated = !userEdited(item)
+      if (!item.enabled) item.autoEnabledDisabled = true
+    }
+    // Cleanup reloads persisted references; attach the live projection afterwards.
+    for (const models of providerModels) catalog.models.push(...models)
     if (Array.isArray(rawCatalog))
       for (const entry of rawCatalog) {
         if (entry === null || typeof entry !== 'object' || !('id' in entry)) continue
@@ -274,15 +289,27 @@ export class ExecutionModelResolver {
         if (existing) {
           existing.name = name
           existing.available = readiness.available
+          if (readiness.unavailableKind) existing.unavailableKind = readiness.unavailableKind
+          else delete existing.unavailableKind
           if (readiness.available) delete existing.reason
           else existing.reason = readiness.reason ?? 'OFM 模型尚未就绪'
         } else {
           catalog.models.push({
             ref,
             name,
-            source: 'Our Free Model',
+            source: displayModelSource(
+              ref,
+              officialOpenCodeModel(ref) ? 'OpenCode 官方免费通道' : 'Our Free Model',
+            ),
             available: readiness.available,
-            ...(readiness.available ? {} : { reason: readiness.reason ?? 'OFM 模型尚未就绪' }),
+            ...(readiness.available
+              ? {}
+              : {
+                  reason: readiness.reason ?? 'OFM 模型尚未就绪',
+                  ...(readiness.unavailableKind
+                    ? { unavailableKind: readiness.unavailableKind }
+                    : {}),
+                }),
           })
         }
       }
@@ -359,14 +386,27 @@ export class ExecutionModelResolver {
         !catalog.models.some(
           (model) => modelRefKey(model.ref) === modelRefKey(combination.modelRef),
         )
-      )
+      ) {
+        const ofm = OFM_PROVIDERS.includes(combination.modelRef.provider)
+          ? await probeOfm(combination.modelRef)
+          : undefined
         catalog.models.push({
           ref: combination.modelRef,
           name: displayModelName(combination.modelRef),
-          source: combination.modelRef.provider,
+          source: displayModelSource(combination.modelRef),
           available: false,
-          reason: '模型未配置或分组未授权',
+          reason: ofm
+            ? ofm.available
+              ? 'OFM 目录包含此模型，但模型服务尚未加载'
+              : (ofm.reason ?? 'OFM 模型状态尚未确认')
+            : '模型未配置或分组未授权',
+          ...(ofm?.available
+            ? { unavailableKind: 'unconfirmed' as const }
+            : ofm?.unavailableKind
+              ? { unavailableKind: ofm.unavailableKind }
+              : {}),
         })
+      }
     for (const model of catalog.models) {
       const hasDefault = catalog.combinations.some(
         (item) =>

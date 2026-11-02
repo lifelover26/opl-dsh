@@ -3,6 +3,12 @@ import type { CombinationDefinition, ExecutionCatalog } from '../contracts/catal
 
 type Pairing = Pick<CombinationDefinition, 'modelRef' | 'harnessRef'>
 
+/** Visible choices and saved ids explicitly cleared by a bulk action. */
+export interface CombinationSelection {
+  selected: ReadonlySet<string>
+  disabledIds: ReadonlySet<string>
+}
+
 /** Exact source/model and Harness identity for a suggested pairing. */
 export const pairingKey = (item: Pairing): string =>
   JSON.stringify([modelRefKey(item.modelRef), item.harnessRef])
@@ -14,29 +20,30 @@ export const savedChoiceKey = (id: string): string => JSON.stringify(['saved', i
 export const recommendationChoiceKey = (item: Pairing): string =>
   JSON.stringify(['recommended', pairingKey(item)])
 
-/** All saved configurations plus recommendations without a saved pairing. */
+/** Available saved configurations plus recommendations without a saved pairing. */
 export function combinationChoices(catalog: ExecutionCatalog) {
-  const availableSaved = catalog.combinations.filter((item) => {
-    const model = catalog.models.find(
-      (candidate) => modelRefKey(candidate.ref) === modelRefKey(item.modelRef),
-    )
-    return model?.available !== false
-  })
-  const existing = new Set(availableSaved.map(pairingKey))
+  const available = new Set(
+    catalog.models.filter((item) => item.available).map((item) => modelRefKey(item.ref)),
+  )
+  const existing = new Set(catalog.combinations.map(pairingKey))
   const recommendations = new Map(
     (catalog.recommendations ?? [])
       .filter((item) => !existing.has(pairingKey(item)))
       .map((item) => [pairingKey(item), item]),
   )
   return [
-    ...availableSaved.map((item) => ({
-      ...item,
-      key: savedChoiceKey(item.id),
-    })),
-    ...[...recommendations.values()].map((item) => ({
-      ...item,
-      key: recommendationChoiceKey(item),
-      enabled: false,
-    })),
+    ...catalog.combinations
+      .filter((item) => available.has(modelRefKey(item.modelRef)))
+      .map((item) => ({
+        ...item,
+        key: savedChoiceKey(item.id),
+      })),
+    ...[...recommendations.values()]
+      .filter((item) => available.has(modelRefKey(item.modelRef)))
+      .map((item) => ({
+        ...item,
+        key: recommendationChoiceKey(item),
+        enabled: false,
+      })),
   ]
 }

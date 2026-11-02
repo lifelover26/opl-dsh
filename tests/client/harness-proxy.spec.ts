@@ -396,6 +396,15 @@ describe('每个外部 Harness 独立的代理设置', () => {
     const initial = catalog()
     const data = {
       ...initial,
+      models: [
+        ...initial.models,
+        ...['big-pickle', 'beam', 'other'].map((model) => ({
+          ref: { provider: 'our-free-model', model },
+          name: model,
+          source: 'Our Free Model',
+          available: true,
+        })),
+      ],
       recommendations: [
         {
           modelRef: { provider: 'our-free-model', model: 'big-pickle' },
@@ -458,6 +467,15 @@ describe('每个外部 Harness 独立的代理设置', () => {
     }
     const data = {
       ...initial,
+      models: [
+        ...initial.models,
+        ...['big-pickle', 'beam'].map((model) => ({
+          ref: { provider: 'our-free-model', model },
+          name: model,
+          source: 'Our Free Model',
+          available: true,
+        })),
+      ],
       recommendations: [
         recommendation,
         recommendation,
@@ -797,7 +815,7 @@ describe('每个外部 Harness 独立的代理设置', () => {
     ).toBeUndefined()
   })
 
-  it('组合明确不可用时显示未就绪并在悬停保留原因', async () => {
+  it('组合明确不可用时标红不可用并在悬停保留原因', async () => {
     const initial = fixture(catalog())
     const call = (async (method: string, args?: unknown) =>
       method === 'combinations'
@@ -808,9 +826,208 @@ describe('每个外部 Harness 独立的代理设置', () => {
       (node) => node.getAttribute?.('data-opl-combination') === 'codex/one',
     )!
     const summary = walk(row).find((node) => node.nodeName === 'SUMMARY')!
-    expect(text(summary)).toContain('未就绪')
+    expect(text(summary)).toContain('不可用')
     expect(walk(summary).some((node) => node.getAttribute?.('title') === 'CLI 尚未安装')).toBe(true)
     expect(text(summary)).not.toContain('可执行')
+  })
+
+  it('普通保存保留未操作的隐藏组合和目录移除状态', async () => {
+    const data = catalog()
+    const ref = { provider: 'our-free-model', model: 'moonshotai/kimi-k3' }
+    data.models.push({
+      ref,
+      name: 'EAC Kimi K3',
+      source: 'our-free-model',
+      available: false,
+      reason: 'OFM 当前目录已移除此模型，保留原组合配置',
+      unavailableKind: 'catalog-missing',
+    })
+    data.combinations.push({
+      ...data.combinations[0],
+      id: 'missing-kimi',
+      name: 'EAC Kimi K3 + Kimi Code',
+      modelRef: ref,
+      harnessRef: 'kimi-code',
+    })
+    const { call, stored } = fixture(data)
+    const view = await open(call, ExecutionCatalogSection)
+    const row = walk(view).find(
+      (node) => node.getAttribute?.('data-opl-combination') === 'missing-kimi',
+    )!
+    const summary = walk(row).find((node) => node.nodeName === 'SUMMARY')!
+    expect(text(summary)).toContain('目录已移除')
+    expect(text(summary)).toContain('Our Free Model')
+    expect(text(summary)).not.toContain('our-free-model')
+    const picker = walk(view).find(
+      (node) => node.getAttribute?.('data-opl-panel') === 'recommended-combinations',
+    )!
+    expect(text(picker)).not.toContain('EAC Kimi K3')
+    await act(async () => {
+      const input = walk(picker).find((node) =>
+        node.getAttribute?.('data-opl-recommendation-item')?.includes('codex/one'),
+      )!
+      input.checked = false
+      input.click()
+    })
+    await press(
+      walk(picker).find((node) => node.nodeName === 'BUTTON' && text(node).includes('保存选择'))!,
+    )
+    expect(stored().combinations.find((item) => item.id === 'missing-kimi')?.enabled).toBe(true)
+    expect(stored().combinations.find((item) => item.id === 'codex/one')?.enabled).toBe(false)
+  })
+
+  function unavailableCatalog() {
+    const data = catalog()
+    for (const [id, harnessRef, provider] of [
+      ['missing-codex', 'codex', 'our-free-model'],
+      ['missing-kimi', 'kimi-code', 'our-free-model'],
+      ['removed-provider', 'zcode', 'huawei-maas'],
+    ]) {
+      const modelRef = { provider, model: id }
+      data.models.push({ ref: modelRef, name: id, source: provider, available: false })
+      data.combinations.push({
+        ...data.combinations[0],
+        id,
+        name: id,
+        modelRef,
+        harnessRef,
+        generated: true,
+        autoEnabled: true,
+      })
+    }
+    return data
+  }
+
+  const saveSelection = (view: Node) =>
+    press(
+      walk(view).find((node) => node.nodeName === 'BUTTON' && text(node).startsWith('保存选择'))!,
+    )
+  const clearSelection = (view: Node) =>
+    press(walk(view).find((node) => node.nodeName === 'BUTTON' && text(node) === '取消全选')!)
+
+  it('取消全选也停用隐藏的目录移除和旧供应商组合，保存后重开仍不显示', async () => {
+    const data = unavailableCatalog()
+    const { call, stored } = fixture(data)
+    const view = await open(call, ExecutionCatalogSection)
+    await clearSelection(view)
+    expect(stored().combinations.some((item) => item.enabled)).toBe(true)
+    await saveSelection(view)
+    expect(stored().combinations.every((item) => !item.enabled)).toBe(true)
+    for (const item of stored().combinations.filter((item) => item.id !== 'inactive/one')) {
+      expect(item).toMatchObject({
+        generated: false,
+        autoEnabled: false,
+        autoEnabledDisabled: true,
+      })
+      expect(item.permissionPolicy).toBe('full-access')
+    }
+    expect(stored().combinations).toHaveLength(data.combinations.length)
+    const reopened = await open(call, ExecutionCatalogSection)
+    expect(
+      walk(reopened).filter((node) => node.getAttribute?.('data-opl-combination')),
+    ).toHaveLength(0)
+  })
+
+  it('取消全选后重新勾选可用项，不会重新启用隐藏项', async () => {
+    const { call, stored } = fixture(unavailableCatalog())
+    const view = await open(call, ExecutionCatalogSection)
+    await clearSelection(view)
+    await act(async () => {
+      const input = walk(view).find((node) =>
+        node.getAttribute?.('data-opl-recommendation-item')?.includes('codex/one'),
+      )!
+      input.checked = true
+      input.click()
+    })
+    await saveSelection(view)
+    expect(
+      stored()
+        .combinations.filter((item) => item.enabled)
+        .map((item) => item.id),
+    ).toEqual(['codex/one'])
+  })
+
+  it('取消 Harness 组同时停用本组的隐藏项，其他组保持启用', async () => {
+    const { call, stored } = fixture(unavailableCatalog())
+    const view = await open(call, ExecutionCatalogSection)
+    await act(async () => {
+      const input = walk(view).find(
+        (node) => node.getAttribute?.('data-opl-recommendation-group') === 'codex',
+      )!
+      input.checked = false
+      input.click()
+    })
+    await saveSelection(view)
+    expect(
+      stored()
+        .combinations.filter((item) => item.harnessRef === 'codex')
+        .every((item) => !item.enabled),
+    ).toBe(true)
+    expect(stored().combinations.find((item) => item.id === 'missing-kimi')?.enabled).toBe(true)
+    expect(stored().combinations.find((item) => item.id === 'removed-provider')?.enabled).toBe(true)
+  })
+
+  it('只有不可用模型时普通保存不改配置，明确取消全选仍可停用全部', async () => {
+    const data = unavailableCatalog()
+    data.models = data.models.map((item) => ({ ...item, available: false }))
+    const { call, calls, stored } = fixture(data)
+    const view = await open(call, ExecutionCatalogSection)
+    expect(
+      walk(view).filter((node) => node.getAttribute?.('data-opl-recommendation-item')),
+    ).toHaveLength(0)
+    await saveSelection(view)
+    expect(calls.some((item) => item.method === 'save-catalog')).toBe(false)
+    await clearSelection(view)
+    await saveSelection(view)
+    expect(stored().combinations.every((item) => !item.enabled)).toBe(true)
+  })
+
+  it('不可用组合可逐项移除，保留配置且不改变其他项', async () => {
+    const data = unavailableCatalog()
+    const { call, stored } = fixture(data)
+    const view = await open(call, ExecutionCatalogSection)
+    expect(walk(view).some((node) => node.getAttribute?.('aria-label') === '移除 Codex 组合')).toBe(
+      false,
+    )
+    await press(
+      walk(view).find((node) => node.getAttribute?.('aria-label') === '移除 missing-kimi')!,
+    )
+    const removed = stored().combinations.find((item) => item.id === 'missing-kimi')
+    expect(removed).toMatchObject({
+      enabled: false,
+      generated: false,
+      autoEnabled: false,
+      autoEnabledDisabled: true,
+    })
+    expect(
+      walk(view).some((node) => node.getAttribute?.('data-opl-combination') === 'missing-kimi'),
+    ).toBe(false)
+    expect(stored().combinations.filter((item) => item.id !== 'missing-kimi')).toEqual(
+      data.combinations.filter((item) => item.id !== 'missing-kimi'),
+    )
+    const reopened = await open(call, ExecutionCatalogSection)
+    expect(
+      walk(reopened).some((node) => node.getAttribute?.('data-opl-combination') === 'missing-kimi'),
+    ).toBe(false)
+  })
+
+  it('保存失败保留取消全选草稿，重试保存仍停用隐藏项', async () => {
+    const initial = fixture(unavailableCatalog())
+    let rejected = false
+    const call = (async (method: string, args?: unknown) => {
+      if (method === 'save-catalog' && !rejected) {
+        rejected = true
+        throw new Error('保存失败')
+      }
+      return initial.call(method as never, args as never)
+    }) as ExecutionCall
+    const view = await open(call, ExecutionCatalogSection)
+    await clearSelection(view)
+    await saveSelection(view)
+    expect(initial.stored().combinations.some((item) => item.enabled)).toBe(true)
+    expect(text(view)).toContain('保存失败')
+    await saveSelection(view)
+    expect(initial.stored().combinations.every((item) => !item.enabled)).toBe(true)
   })
 
   it('为每个外部 Harness 提供三种方式，内置 DSH 不可设置并说明原因', async () => {

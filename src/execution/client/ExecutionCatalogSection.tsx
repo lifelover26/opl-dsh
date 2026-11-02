@@ -1,7 +1,12 @@
 import { RecommendationPicker } from './RecommendationPicker.tsx'
 import { useExecutionCatalog } from './use-execution-catalog.ts'
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
-import { displayModelSource, selectableModels, modelRefKey } from '../contracts/catalog.ts'
+import {
+  displayModelSource,
+  selectableModels,
+  modelRefKey,
+  unavailableModelLabel,
+} from '../contracts/catalog.ts'
 import { isOfficialPairing } from '../contracts/official-harnesses.ts'
 import type { CombinationDefinition, ExecutionCatalog } from '../contracts/catalog.ts'
 import type { HarnessCatalog } from '../../contracts/types.ts'
@@ -46,7 +51,7 @@ export function ExecutionCatalogSection({
       {embedded ? null : (
         <p className={css.intro}>
           保存模型、渠道、Harness
-          与权限的搭配。已启用的组合显示在官方会话输入框中，未就绪项显示原因；委派任务和交付由后台保存。模型在“模型供应商”页管理，账号与凭据在“网关账户”中管理。
+          与权限的搭配。可用组合显示在官方会话输入框中，不可用项显示原因；委派任务和交付由后台保存。模型在“模型供应商”页管理，账号与凭据在“网关账户”中管理。
         </p>
       )}
       {!catalog && !notice && (
@@ -107,7 +112,6 @@ export function ExecutionCatalogSection({
                 {selectableModels(catalog.models).map((model) => (
                   <option key={modelRefKey(model.ref)} value={modelRefKey(model.ref)}>
                     {displayModelSource(model.ref, model.source)} · {model.name}
-                    {model.available ? '' : ' · 未就绪'}
                   </option>
                 ))}
               </select>
@@ -210,11 +214,13 @@ function CombinationRow({
     harness = catalog.harnesses.find((x) => x.id === item.harnessRef)
   const status = availability.find((c) => c.id === item.id)
   const failure =
-    status && !status.available
-      ? (status.reason ?? '尚未就绪')
-      : !status && model?.available !== true
-        ? (model?.reason ?? '尚未验证')
-        : undefined
+    model?.available === false
+      ? (model.reason ?? '模型不可用')
+      : status && !status.available
+        ? (status.reason ?? '尚未就绪')
+        : !status && model?.available !== true
+          ? (model?.reason ?? '尚未验证')
+          : undefined
   const hasAlternatives =
     catalog.combinations.filter(
       (candidate) =>
@@ -239,13 +245,31 @@ function CombinationRow({
         <span className={listCss.metadata}>
           {failure && (
             <span className={listCss.failure} title={failure}>
-              未就绪
+              {unavailableModelLabel(
+                model?.available === false ? model.unavailableKind : undefined,
+              )}
             </span>
           )}
           <span className={listCss.source} title={source}>
             {source}
           </span>
           {hasAlternatives && <span>{item.isDefault ? '默认' : '非默认'}</span>}
+          {failure && (
+            <button
+              type="button"
+              className={listCss.remove}
+              disabled={busy}
+              aria-label={`移除 ${item.name}`}
+              title="从已启用的组合中移除"
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                update(item.id, { enabled: false })
+              }}
+            >
+              移除
+            </button>
+          )}
         </span>
       </summary>
       <div className={`${css.detailsBody} ${listCss.editor}`}>

@@ -9,6 +9,8 @@ export interface ModelDefinition {
   source: string
   available: boolean
   reason?: string
+  /** Current source state; omitted when only the execution route is unavailable. */
+  unavailableKind?: 'catalog-missing' | 'disabled' | 'unconfirmed'
 }
 export const modelRefKey = (ref: ModelRef) => JSON.stringify([ref.provider, ref.model])
 
@@ -70,9 +72,20 @@ export function displayModelName(ref: ModelRef, name?: string): string {
 export function displayModelSource(ref: ModelRef, source?: string): string {
   if (ref.provider === 'opl-gateway') return 'OPL Gateway'
   if (ref.provider === 'minimax-official') return 'MiniMax 官方账号（mcode）'
+  if (ref.provider === 'our-free-model')
+    return source === 'OpenCode 官方免费通道' ? source : 'Our Free Model'
+  if (ref.provider === 'our-free-model-region') return 'Our Free Model · region-limited'
   if (ref.provider === 'deepseek-account' || ref.provider === 'deepseek-official')
     return 'DeepSeek 官方'
   return source?.trim() || ref.provider
+}
+
+/** Compact source status; the full reason remains available on hover. */
+export function unavailableModelLabel(kind: ModelDefinition['unavailableKind']): string {
+  if (kind === 'catalog-missing') return '目录已移除'
+  if (kind === 'disabled') return '未启用'
+  if (kind === 'unconfirmed') return '状态未确认'
+  return '不可用'
 }
 
 /** User-facing choices: credential-ready models, with one preferred route per Gateway model.

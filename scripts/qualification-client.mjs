@@ -384,6 +384,55 @@ export async function verifyDesktopClient(
         disabledRowHidden: true,
         savedIdRestored: true,
       }
+      const baselineChoices = await pipe.evaluate(
+        session,
+        `Array.from(document.querySelectorAll('[data-opl-recommendation-item]')).filter(x=>x.checked).map(x=>x.dataset.oplRecommendationItem)`,
+      )
+      const unavailableId = await pipe.evaluate(
+        session,
+        `document.querySelector('[data-opl-combination] button[aria-label^="移除 "]')?.closest('[data-opl-combination]').dataset.oplCombination`,
+      )
+      if (!unavailableId) throw new Error('隔离目录缺少可移除的不可用组合')
+      const unavailableRow = `Array.from(document.querySelectorAll('[data-opl-combination]')).find(x=>x.dataset.oplCombination===${JSON.stringify(unavailableId)})`
+      await pipe.evaluate(
+        session,
+        `${unavailableRow}.querySelector('button[aria-label^="移除 "]').click()`,
+      )
+      await waitFor(
+        `!(${unavailableRow}) && !${saveChoices}.disabled`,
+        '不可用组合未从已启用列表移除',
+      )
+      await pipe.evaluate(
+        session,
+        `Array.from(document.querySelector('[data-opl-panel="recommended-combinations"]').querySelectorAll('button')).find(x=>x.textContent==='取消全选').click()`,
+      )
+      await waitFor(`${saveChoices}.textContent==='保存选择（0）'`, '取消全选的草稿未更新')
+      await pipe.evaluate(session, `${saveChoices}.click()`)
+      await waitFor(
+        `!document.querySelector('[data-opl-combination]') && !${saveChoices}.disabled`,
+        '取消全选后仍有已启用组合，包括隐藏的不可用项',
+      )
+      await pipe.evaluate(session, clickLabel(['通用设置', 'General'], settingsNav))
+      await pipe.evaluate(session, clickLabel(['执行与组合', 'Execution'], settingsNav))
+      await waitFor(
+        `Boolean(document.querySelector('[data-opl-panel="catalog"]')) && !document.querySelector('[data-opl-panel="catalog"]').getAttribute('aria-busy')?.includes('true')`,
+        '重开执行组合页未完成',
+      )
+      if (await pipe.evaluate(session, `Boolean(document.querySelector('[data-opl-combination]'))`))
+        throw new Error('重开设置后已停用组合重新出现')
+      await pipe.evaluate(
+        session,
+        `document.querySelector('[data-opl-panel="recommended-combinations"]').open=true; for(const input of document.querySelectorAll('[data-opl-recommendation-item]')) if(${JSON.stringify(baselineChoices)}.includes(input.dataset.oplRecommendationItem)&&!input.checked)input.click()`,
+      )
+      await waitFor(
+        `${saveChoices}.textContent==='保存选择（${baselineChoices.length}）'`,
+        '隔离验收未恢复原勾选草稿',
+      )
+      await pipe.evaluate(session, `${saveChoices}.click()`)
+      await waitFor(`Boolean(${row}) && !${saveChoices}.disabled`, '隔离验收未恢复原可用组合')
+      result.combinationSelection.unavailableRemoved = true
+      result.combinationSelection.clearAllIncludesUnavailable = true
+      result.combinationSelection.disabledAfterReopen = true
       await pipe.evaluate(
         session,
         `document.querySelector('[data-opl-panel="recommended-combinations"]').open=false; document.querySelector('[data-opl-panel="combination-list"]').scrollIntoView({block:'center'})`,

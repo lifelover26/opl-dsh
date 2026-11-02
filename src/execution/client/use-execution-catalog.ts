@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { TypertRemoteNamespace } from '@deepseek-ai/dsh-typert-protocol'
 import { modelRefKey } from '../contracts/catalog.ts'
 import { pairingKey, savedChoiceKey, recommendationChoiceKey } from './combination-choices.ts'
+import type { CombinationSelection } from './combination-choices.ts'
 import { safeFailureMessage } from './proxy-draft.ts'
 import type {
   ExecutionCatalog,
@@ -151,7 +152,7 @@ export function useExecutionCatalog(call: RemoteCallInput<TypertRemoteNamespace<
     })
     if (result.status === 'saved' && mounted.current) setDraft({ model: '', harness: 'dsh' })
   }
-  const addRecommendations = async (selected: ReadonlySet<string>) => {
+  const addRecommendations = async ({ selected, disabledIds }: CombinationSelection) => {
     if (!catalog) return
     const existing = new Set(catalog.combinations.map(pairingKey))
     const additions: CombinationDefinition[] = []
@@ -169,12 +170,18 @@ export function useExecutionCatalog(call: RemoteCallInput<TypertRemoteNamespace<
         autoEnabledDisabled: true,
       })
     }
+    const availableModels = new Set(
+      catalog.models.filter((model) => model.available).map((model) => modelRefKey(model.ref)),
+    )
     const combinations = catalog.combinations.map((item) => {
+      const available = availableModels.has(modelRefKey(item.modelRef))
+      if (!available && !disabledIds.has(item.id)) return item
       const key = savedChoiceKey(item.id)
-      return item.enabled !== selected.has(key)
+      const enabled = available && selected.has(key)
+      return item.enabled !== enabled
         ? {
             ...item,
-            enabled: selected.has(key),
+            enabled,
             generated: false,
             autoEnabled: false,
             autoEnabledDisabled: true,
