@@ -8,10 +8,9 @@
  * transport the host already drives. The official agent loop is never reimplemented:
  * `step` owns prompting, tool execution, context and session persistence.
  *
- * **The two ids below are adaptation intent, not availability evidence.** They are two
- * distinct entries in the `our-free-model` catalog and they stay distinct here: the
- * anonymous lane publishes `step-5-preview-free` and the Kilo channel publishes
- * `stepfun/step-5-preview-free`. They are never merged, never de-prefixed into one
+ * These ids name distinct entries in the `our-free-model` catalog: the anonymous lane
+ * publishes `step-5-preview-free`, Kilo publishes `stepfun/step-5-preview-free`, and EAC
+ * publishes `stepfun-ai/step-5-preview`. They are never merged or de-prefixed into one
  * another, and each keeps its own provider key in the generated provider config, so a
  * lane can be withdrawn or moved to another protocol without touching the other one.
  *
@@ -31,6 +30,8 @@ export const STEP_PROVIDER = 'our-free-model'
 export const STEP_MODEL_FREE = 'step-5-preview-free'
 /** Kilo-channel catalog id. A different lane, not a spelling of {@link STEP_MODEL_FREE}. */
 export const STEP_MODEL_KILO = 'stepfun/step-5-preview-free'
+/** EAC relay lane; distinct from both free-channel entries. */
+export const STEP_MODEL_EAC = 'stepfun-ai/step-5-preview'
 
 /**
  * Every catalog id this adapter is prepared to pin, in catalog order.
@@ -39,7 +40,11 @@ export const STEP_MODEL_KILO = 'stepfun/step-5-preview-free'
  * lane a reference belongs to, so two ids that share a family name can never be
  * resolved through one another's configuration.
  */
-export const STEP_CODE_MODELS: readonly string[] = [STEP_MODEL_FREE, STEP_MODEL_KILO]
+export const STEP_CODE_MODELS: readonly string[] = [
+  STEP_MODEL_FREE,
+  STEP_MODEL_KILO,
+  STEP_MODEL_EAC,
+]
 
 /** One publishable lane, with the identity the generated config carries for it. */
 export interface StepLane {
@@ -64,6 +69,7 @@ export interface StepLane {
 const LANE_PROTOCOLS: Readonly<Record<string, StepProtocol>> = {
   [STEP_MODEL_FREE]: 'chat',
   [STEP_MODEL_KILO]: 'chat',
+  [STEP_MODEL_EAC]: 'chat',
 }
 
 /** The protocol this harness pins for one lane, or `undefined` for an unknown id. */
@@ -84,6 +90,7 @@ export const stepLaneProtocol = (ref: ModelRef): StepProtocol | undefined => {
 const LANE_REASONING: Readonly<Record<string, boolean>> = {
   [STEP_MODEL_FREE]: true,
   [STEP_MODEL_KILO]: true,
+  [STEP_MODEL_EAC]: false,
 }
 
 /** Whether the lane exposes a reasoning tier, or `undefined` for an unknown id. */
@@ -92,10 +99,11 @@ export const stepLaneReasoning = (ref: ModelRef): boolean | undefined => {
   return lane ? LANE_REASONING[lane.model] : undefined
 }
 
-/** Lane table. Two entries on purpose: the ids are not interchangeable. */
+/** Lane identities remain distinct in generated provider configuration. */
 const LANES: readonly StepLane[] = [
   { model: STEP_MODEL_FREE, provider: 'opl-step-free-lane' },
   { model: STEP_MODEL_KILO, provider: 'opl-step-kilo-lane' },
+  { model: STEP_MODEL_EAC, provider: 'opl-step-eac-lane' },
 ]
 
 /**
@@ -145,7 +153,7 @@ export function stepApiForProtocol(protocol: string): string {
  * The catalog exposes a channel-qualified form for lane-scoped models
  * (`<channel>::<id>`), matching how the host addresses Gateway channels elsewhere, so
  * the trailing segment is compared against the exact lane id. The `::` split is
- * positional only: it does not normalise, alias or merge the two ids.
+ * positional only: it does not normalise, alias or merge lane ids.
  *
  * @param ref - the model reference carried by the session record.
  * @returns the matching lane, or `undefined` for an id this adapter does not pin.

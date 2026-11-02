@@ -75,6 +75,7 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
     officialModels: [
       { provider: 'our-free-model', model: 'step-5-preview-free' },
       { provider: 'our-free-model', model: 'stepfun/step-5-preview-free' },
+      { provider: 'our-free-model', model: 'stepfun-ai/step-5-preview' },
     ],
   },
   {
@@ -86,6 +87,10 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
   },
   { id: 'opencode', officialModels: [] },
   { id: 'pi', officialModels: [] },
+  {
+    id: 'vibe',
+    officialModels: [{ provider: 'our-free-model', model: 'mistralai/mistral-large-4-1t-a52b' }],
+  },
   { id: 'kilo', officialModels: [] },
 ]
 

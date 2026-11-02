@@ -9,6 +9,7 @@ import {
   STEP_HARNESS,
   STEP_MODEL_FREE,
   STEP_MODEL_KILO,
+  STEP_MODEL_EAC,
   STEP_PROVIDER,
   isStepCodeModel,
   stepApiForProtocol,
@@ -98,10 +99,11 @@ describe('StepCode model lanes', () => {
     expect(stepLaneProtocol({ provider: STEP_PROVIDER, model: 'step-9' })).toBeUndefined()
   })
 
-  it('publishes both declared ids to the catalog without renaming either', () => {
+  it('publishes the channel IDs without renaming or merging them', () => {
     expect(stepCodeModels()).toEqual([
       { provider: STEP_PROVIDER, model: STEP_MODEL_FREE },
       { provider: STEP_PROVIDER, model: STEP_MODEL_KILO },
+      { provider: STEP_PROVIDER, model: STEP_MODEL_EAC },
     ])
   })
 

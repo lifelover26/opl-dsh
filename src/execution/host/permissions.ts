@@ -32,6 +32,7 @@ const FULL_ACCESS_HARNESSES: ReadonlySet<string> = new Set([
   'opencode',
   'pi',
   'kilo',
+  'vibe',
 ])
 
 /**

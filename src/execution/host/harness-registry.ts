@@ -78,6 +78,11 @@ const info: Record<
     instructions: '可使用 OpenCode 官方 npm 包安装 opencode；模型连接由模型供应商管理。',
     installable: true,
   },
+  vibe: {
+    command: 'vibe-acp',
+    website: 'https://github.com/mistralai/mistral-vibe/releases/tag/v3.0.4',
+    instructions: '安装官方 Mistral Vibe 3.0.4，并登记 vibe-acp 的绝对路径；模型连接由 OFM 管理。',
+  },
   pi: {
     command: 'pi',
     website: 'https://github.com/badlogic/pi-mono',

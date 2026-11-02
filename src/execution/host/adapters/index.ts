@@ -14,6 +14,7 @@ import { museCodeAdapter } from './muse/index.ts'
 import { openCodeAdapter } from './opencode/index.ts'
 import { piAdapter } from './pi/index.ts'
 import { kiloAdapter } from './kilo/index.ts'
+import { vibeAdapter } from './vibe.ts'
 import type { HarnessAdapter } from './types.ts'
 import type { ExternalModelSources } from '../model-sources.ts'
 import { officialHarnessFor } from '../../contracts/official-harnesses.ts'
@@ -32,6 +33,7 @@ export const harnessAdapters: readonly HarnessAdapter[] = [
   museCodeAdapter,
   piAdapter,
   kiloAdapter,
+  vibeAdapter,
   grokAdapter,
   dshAdapter,
 ]

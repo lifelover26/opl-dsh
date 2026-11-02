@@ -28,9 +28,13 @@ OFM 来源统一使用 `Our Free Model` 写法，区域渠道保留 `region-limi
 | GLM 5.3、5.3 Flash（z-ai 原始 ID）                                         | ZCode                  | Chat      |
 | EAC GLM 5.3 Flash Free（opencode/glm-5.3-flash-free）                      | OpenCode，经 OFM 转发  | Chat      |
 | EAC DeepSeek V4.1 Flash Free（opencode/deepseek-v4.1-flash-free）          | OpenCode，经 OFM 转发  | Chat      |
+| EAC MiniMax M3.1 Flash（minimaxai/minimax-m3.1-flash）                    | OpenCode，经 OFM 转发  | Chat      |
+| EAC Step 5 Preview（stepfun-ai/step-5-preview）                          | StepCode，经 OFM 转发  | Chat      |
+| EAC Mistral Large 4（mistralai/mistral-large-4-1t-a52b）                 | Mistral Vibe 3.0.4，经 OFM 转发 | Chat      |
 | Big Pickle（big-pickle）                                                   | OpenCode，官方免费通道 | Chat      |
 | Nemotron 3 Super 120B（nvidia/nemotron-3-super-120b-a12b:free）            | Kilo Code，经 OFM 转发 | Chat      |
 | Flint v1.0 Free（recursive/flint-v1.0:free）                               | Kilo Code，经 OFM 转发 | Chat      |
+| Kilo Ling 3.1 Flash 1019（inclusionai/ling-3.1-flash-1019-free）           | Kilo Code，经 OFM 转发 | Chat      |
 | Flint 40B Free（flint-40b-free）                                           | OpenCode，经 OFM 转发  | Chat      |
 | GPT-OSS 20B                                                                | Codex CLI              | Responses |
 | Kilo Step 5 Preview（stepfun/step-5-preview-free）                         | StepCode               | Chat      |
@@ -47,7 +51,9 @@ OFM 来源统一使用 `Our Free Model` 写法，区域渠道保留 `region-limi
 
 OPL Gateway 的 Gemini 模型列表使用 `Gemini 4 Argon`、`Gemini 3.8 Flash` 和 `Gemini 3.1 Pro`；在添加组合时推荐 OpenCode，请求仍保留原始模型 ID，不自动加入列表。
 
-MiniMax M3.1 Flash Free 使用正式 ID `minimax-m3.1-flash-free` 与 OpenCode 官方免费通道；Kilo 的 `minimax/minimax-m3.1-flash:free` 是独立的 OFM 转发车道，也使用 OpenCode，不与前者互换。旧 Space Bunny 会话保留原模型身份，不自动替换历史路由。
+MiniMax M3.1 Flash 的三条车道分别保留原始 ID：`minimax-m3.1-flash-free` 使用 OpenCode 官方免费通道，Kilo 的 `minimax/minimax-m3.1-flash:free` 和 EAC 的 `minimaxai/minimax-m3.1-flash` 使用 OpenCode 经 OFM 转发。EAC 车道不使用 MiniMax Code 账号。StepCode 的 `stepfun-ai/step-5-preview` 使用独立 EAC 配置，不与 `stepfun/step-5-preview-free` 的 Kilo 车道合并。旧 Space Bunny 会话保留原模型身份，不自动替换历史路由。
+
+Mistral Vibe 使用官方 3.0.4 ACP 发行包并保留随附文件，在“执行与组合 → 执行引擎与网络代理”登记 `vibe-acp`（Windows 为 `vibe-acp.exe`）的绝对路径；当前不提供一键安装。套件使用独立的 `VIBE_HOME`，OFM Key 仅传给子进程环境，新建、恢复与发送前核对模型和 `auto-approve` 模式。该组合仅支持显式完全访问；未确认推理档位，模型菜单不显示推理设置。
 
 手动会话的初始标题取真实用户输入，不取交给外部 Harness 的历史上下文说明；CLI 原样回传内部历史说明时不覆盖标题。后续正常标题更新保持生效。
 

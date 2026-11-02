@@ -39,6 +39,10 @@ export function isRetiredModel(ref: ModelRef): boolean {
 export function displayModelName(ref: ModelRef, name?: string): string {
   const id = ref.model.includes('::') ? ref.model.slice(ref.model.lastIndexOf('::') + 2) : ref.model
   if (ref.provider === 'our-free-model') {
+    if (id === 'minimaxai/minimax-m3.1-flash') return 'EAC MiniMax M3.1 Flash'
+    if (id === 'stepfun-ai/step-5-preview') return 'EAC Step 5 Preview'
+    if (id === 'mistralai/mistral-large-4-1t-a52b') return 'EAC Mistral Large 4'
+    if (id === 'inclusionai/ling-3.1-flash-1019-free') return 'Kilo Ling 3.1 Flash 1019'
     if (id === 'minimax-m3.1-flash-free') return 'MiniMax M3.1 Flash Free'
     if (id === 'minimax/minimax-m3.1-flash:free') return 'Kilo MiniMax M3.1 Flash'
     if (id === 'nvidia/nemotron-3-super-120b-a12b:free') return 'Kilo Nemotron 3 Super'

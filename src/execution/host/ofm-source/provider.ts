@@ -37,6 +37,7 @@ export const OFM_HARNESS_PROTOCOLS: Readonly<Record<string, OfmWireProtocol>> = 
   opencode: 'chat',
   pi: 'chat',
   kilo: 'chat',
+  vibe: 'chat',
 }
 
 /** Harness alias so a CLI id and its adapter id resolve to one protocol. */
@@ -70,11 +71,12 @@ export const OFM_EXCLUDED_MODELS: readonly string[] = [
 export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[]>> = {
   codex: ['openai/gpt-oss-20b'],
   claude: [],
+  vibe: ['mistralai/mistral-large-4-1t-a52b'],
   kimi: ['moonshotai/kimi-k2.6', 'moonshotai/kimi-k3'],
   mimo: ['mimo-v2.6-flash-free'],
   pool: ['poolside/laguna-s-2.1:free', 'poolside/laguna-xs-2.1:free'],
   zcode: ['z-ai/glm-5.3', 'z-ai/glm-5.3-flash'],
-  'step-code': ['step-5-preview-free', 'stepfun/step-5-preview-free'],
+  'step-code': ['step-5-preview-free', 'stepfun/step-5-preview-free', 'stepfun-ai/step-5-preview'],
   'muse-code': ['muse-spark-1.2-contributor-free', 'muse-spark-1.3-contributor-free'],
   opencode: [
     'cat-jam-free',
@@ -97,6 +99,7 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'space-bunny-free',
     'minimax-m3.1-flash-free',
     'minimax/minimax-m3.1-flash:free',
+    'minimaxai/minimax-m3.1-flash',
     'openrouter/free',
     'big-pickle',
     'flint-40b-free',
@@ -107,6 +110,7 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'thinkingmachines/inkling-small:free',
   ],
   kilo: [
+    'inclusionai/ling-3.1-flash-1019-free',
     'dots-studio/dots-3-note-preview:free',
     'stealth/glyph-cluster',
     'kilo-auto/free',

@@ -76,6 +76,7 @@ export const KILO_EFFORT_OPTION = 'effort'
  * from the owning plugin's catalog.
  */
 export const KILO_OFM_MODELS: readonly string[] = [
+  'inclusionai/ling-3.1-flash-1019-free',
   'dots-studio/dots-3-note-preview:free',
   'stealth/glyph-cluster',
   'kilo-auto/free',
