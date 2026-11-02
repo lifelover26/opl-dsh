@@ -35,7 +35,7 @@ type ResidentComposerProps = ComposerBarProps & {
 
 /**
  * Decorate the existing bar's projection reader while retaining its editor and meter.
- * Only the official Mistral Vibe and StepCode model routes replace native pressure.
+ * Official Vibe, StepCode, and MiniMax routes replace native pressure.
  * @param options - Public slot inspection, context RPC, and Session lifecycle subscriptions.
  * @returns Disposer restoring the component owned by the official registration.
  */
@@ -55,7 +55,7 @@ export function installHarnessContextMeter(options: HarnessContextMeterOptions):
       const selection = props.useProjection('modelSelection')
       const selected = selection?.next ?? selection?.lastUsed
       const harness = selected ? officialHarnessFor(selected) : undefined
-      const external = harness === 'vibe' || harness === 'step-code'
+      const external = harness === 'vibe' || harness === 'step-code' || harness === 'minimax-code'
       const sessionId = props.sessionId
       const running = props.useSession((session) => session?.running === true)
       const route =

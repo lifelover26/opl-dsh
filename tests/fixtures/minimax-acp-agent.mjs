@@ -1,5 +1,5 @@
 /**
- * Executable ACP fixture reproducing the official MiniMax Code CLI (`mcode` 0.6.3)
+ * Executable ACP fixture reproducing the official MiniMax Code CLI (`mcode` 0.7.4)
  * exactly as it behaves on the wire, so the adapter is exercised over the real stdio
  * transport instead of against its own constants.
  *
@@ -49,7 +49,7 @@ const EFFORT_VALUES = ['default', 'low', 'medium', 'high', 'xhigh', 'max']
 /**
  * Capability modes let a test reproduce an older or narrower official CLI without
  * inventing a second transport:
- *  - `full` (default): the installed 0.6.3 surface.
+ *  - `full` (default): the installed 0.7.4 surface.
  *  - `no-model-option`: no `model` config option at all.
  *  - `no-effort`: the model is selectable but `thinkingEffort` is never advertised.
  *  - `legacy-models`: only MiniMax-M3 is offered, so the Flash combination is refused.
@@ -135,7 +135,7 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
       protocolVersion: 1,
       fixturePid: process.pid,
       agentCapabilities: { loadSession: true },
-      agentInfo: { name: 'minimax-code', title: 'MiniMax Code', version: '0.6.3' },
+      agentInfo: { name: 'minimax-code', title: 'MiniMax Code', version: '0.7.4' },
       ...(process.env.MCODE_SHELL_PATH && capability !== 'no-shell'
         ? {
             _meta: {
@@ -210,6 +210,43 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
     running = message.id
     await appendFile(callsFile, message.params.prompt[0].text + '\n').catch(() => {})
     const text = message.params.prompt[0].text
+    if (text.includes('USAGE_FIXTURE')) {
+      const operationId = message.params._meta['opl/clientRequestId']
+      const turnId = 'native-' + operationId
+      send({
+        method: 'opl/session/history/boundary',
+        params: {
+          sessionId,
+          clientRequestId: operationId,
+          userMessageId: 'user-' + operationId,
+          turnId,
+        },
+      })
+      const row = {
+        id: 1,
+        turnId,
+        model: 'minimax/' + model.split(':')[2],
+        inputTokens: 10,
+        outputTokens: 3,
+        cacheReadTokens: 20,
+        cacheWriteTokens: 0,
+        reasoningTokens: 1,
+      }
+      const params = { version: 1, sessionId, operationId, turnId, rows: [row] }
+      for (const change of [
+        { sessionId: 'unrelated' },
+        { operationId: 'old-operation' },
+        { turnId: 'old-turn' },
+        { rows: [{ ...row, model: 'minimax/other' }] },
+        { version: 99 },
+      ])
+        send({ method: 'opl/session/usage', params: { ...params, ...change } })
+      if (!text.includes('NO_USAGE')) {
+        const complete = { ...params, rows: [row, { ...row, id: 2, inputTokens: 5 }] }
+        send({ method: 'opl/session/usage', params: complete })
+        send({ method: 'opl/session/usage', params: complete })
+      }
+    }
     if (text.includes('TRANSCRIPT_FIXTURE')) {
       const update = (value) =>
         send({ method: 'session/update', params: { sessionId, update: value } })

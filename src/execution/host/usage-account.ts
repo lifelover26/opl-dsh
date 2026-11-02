@@ -184,13 +184,71 @@ export function parsePoolContextUsage(value: unknown): ExternalUsageAccount {
 }
 
 /**
- * Parse MiniMax's verified ACP context update; the installed runtime does not publish
- * billing buckets in its prompt result or context update.
+ * Parse MiniMax's ACP context occupancy independently of its per-turn token counters.
  * @param value - ACP context update or its enclosing update event.
  * @returns Valid context occupancy fields, or an empty account.
  */
 export function parseMiniMaxContextUsage(value: unknown): ExternalUsageAccount {
   return parseContextAccount(value)
+}
+
+/**
+ * Aggregate official MiniMax usage rows belonging to one native turn and model.
+ * @param value - Token-only rows from the official local session usage service.
+ * @param turnId - Native turn already bound to the current DSH operation.
+ * @param model - Selected official MiniMax model id, without its provider prefix.
+ * @returns Disjoint token buckets, or undefined for missing or inconsistent records.
+ */
+export function parseMiniMaxTurnUsage(
+  value: unknown,
+  turnId: string,
+  model: string,
+): TokenUsage | undefined {
+  if (!turnId || !model || !Array.isArray(value)) return undefined
+  const rows = value.filter((row) => isObject(row) && row.turnId === turnId)
+  if (!rows.length) return undefined
+  const ids = new Set<number>()
+  const fields = [
+    'inputTokens',
+    'outputTokens',
+    'cacheReadTokens',
+    'cacheWriteTokens',
+    'reasoningTokens',
+  ] as const
+  const totals = new Map<(typeof fields)[number], number>()
+  for (const row of rows) {
+    if (
+      !isObject(row) ||
+      integer(row.id) === undefined ||
+      Number(row.id) === 0 ||
+      ids.has(Number(row.id)) ||
+      row.model !== `minimax/${model}`
+    )
+      return undefined
+    ids.add(Number(row.id))
+    for (const key of fields) {
+      const count = row[key]
+      if (count === undefined && key === 'reasoningTokens') continue
+      const n = integer(count)
+      if (n === undefined) return undefined
+      const total = sum(totals.get(key) ?? 0, n)
+      if (total === undefined) return undefined
+      totals.set(key, total)
+    }
+    if (row.reasoningTokens !== undefined && Number(row.reasoningTokens) > Number(row.outputTokens))
+      return undefined
+  }
+  for (const key of fields.slice(2)) {
+    if (totals.has(key) && rows.some((row) => !isObject(row) || row[key] === undefined))
+      return undefined
+  }
+  return usageFromBuckets({
+    input: totals.get('inputTokens')!,
+    output: totals.get('outputTokens')!,
+    cacheRead: totals.get('cacheReadTokens')!,
+    cacheWrite: totals.get('cacheWriteTokens')!,
+    ...(totals.has('reasoningTokens') ? { reasoning: totals.get('reasoningTokens')! } : {}),
+  })
 }
 
 function parseContextAccount(value: unknown): ExternalUsageAccount {

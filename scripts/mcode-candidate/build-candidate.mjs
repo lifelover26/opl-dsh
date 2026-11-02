@@ -79,6 +79,12 @@ if (values.offline && !values['tools-archive'])
 if (values['tools-archive'] && !existsSync(resolve(values['tools-archive'])))
   throw new Error(`--tools-archive 不存在：${values['tools-archive']}`)
 const version = assertCandidateVersion(values.version || plan.candidateVersion)
+if (!version.startsWith(plan.official.version + '-opl-bash.'))
+  throw Error(
+    'This source builder only supports ' +
+      plan.official.version +
+      '; use build-distribution.mjs for the npm overlay.',
+  )
 
 const extraRoots = (values.protect ?? []).map((value) => resolve(value))
 const { root: outDir, replaced } = prepareOutputRoot(values.out, {

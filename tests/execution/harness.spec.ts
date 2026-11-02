@@ -2553,6 +2553,40 @@ it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
       ...(rejected ? ['user: final'] : []),
     ])
     expect((await f.service.messageEditState({ sessionId: real.id })).pending).toBe(false)
+    if (mode === false) {
+      const callsBefore = await readFile(join(f.root, 'calls.txt'), 'utf8')
+      for (const restart of [false, true]) {
+        if (restart) {
+          await f.service.dispose()
+          f.service = new HarnessService(f.ctx, f.options)
+          cleanups.push(() => f.service.dispose())
+        }
+        number++
+        const user = createUserMessage({
+          source: { kind: 'user', rpcId: `after-edit-${restart}` },
+          content: [{ type: 'text', text: `followup-${restart}` }],
+        })
+        real.append('turn/start', { turn: number })
+        real.append('step/start', { turn: number, step: 1 })
+        real.append('user/message', user, { surfaceOp: 'append' })
+        await stream(user)
+        real.append('step/end', { turn: number, step: 1 })
+        real.append('turn/end', { turn: number, reason: { kind: 'completed' } })
+        const record = (await f.service.list()).sessions.find(
+          (item) => item.nativeSessionId === real.id,
+        )!
+        expect(record.turns.at(-1)).toMatchObject({
+          state: 'completed',
+          stopReason: 'end_turn',
+          prompt: `user: followup-${restart}`,
+        })
+        expect(record.turns.at(-1)?.error).toBeUndefined()
+        expect((await f.service.messageEditState({ sessionId: real.id })).pending).toBe(false)
+      }
+      expect(await readFile(join(f.root, 'calls.txt'), 'utf8')).toBe(
+        callsBefore + 'user: followup-false\nuser: followup-true\n',
+      )
+    }
   },
   20_000,
 )

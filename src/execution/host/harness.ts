@@ -83,6 +83,7 @@ import {
   parsePoolContextUsage,
   parsePoolTurnUsage,
   parseMiniMaxContextUsage,
+  parseMiniMaxTurnUsage,
 } from './usage-account.ts'
 import type { HarnessContextReading } from '../contracts/usage.ts'
 export type { HarnessStartRequest } from '../../contracts/types.ts'
@@ -1559,12 +1560,14 @@ export class HarnessService {
         void active.bridgeStop?.()
       },
       launch.windowsVerbatimArguments,
-      // 扩展通知只能由 Runtime 自己发出；这里只消费已识别的那一个，其余一律忽略。
+      // Only recognized runtime extensions can update the owned operation.
       (method, params) => {
-        if (method !== HISTORY_BOUNDARY || active.provisional) return
-        void this.recordNativeBoundary(this.records.get(record.id) ?? record, params).catch(
-          () => {},
-        )
+        if (active.provisional) return
+        const current = this.records.get(record.id) ?? record
+        if (method === 'opl/session/usage')
+          void this.recordMiniMaxUsage(current, active, params).catch(() => {})
+        else if (method === HISTORY_BOUNDARY)
+          void this.recordNativeBoundary(current, params).catch(() => {})
       },
       launch.clientRequests,
     )
@@ -2282,7 +2285,11 @@ export class HarnessService {
         if (!usage) usage = account.usage
         if (usage) turn.usage = usage
         if (account.contextUsage) turn.contextUsage = account.contextUsage
-        if (edit && ['end_turn', 'cancelled', 'refusal'].includes(String(result.stopReason)))
+        if (
+          edit?.phase === 'admitting' &&
+          turn.operationId === 'message-edit:' + edit.requestId &&
+          ['end_turn', 'cancelled', 'refusal'].includes(String(result.stopReason))
+        )
           await this.externalMessageEdits.settle(record.nativeSessionId!, edit.requestId)
         turn.stopReason = String(result.stopReason ?? 'unknown')
         turn.state = active.cancelled
@@ -2400,7 +2407,10 @@ export class HarnessService {
         turn.stopReason = 'error_response'
       if (error instanceof HarnessRequestError && error.promptSettled && record.nativeSessionId) {
         const intent = this.externalMessageEdits.intent(record.nativeSessionId)
-        if (intent?.phase === 'prompting')
+        if (
+          intent?.phase === 'prompting' &&
+          turn.operationId === 'message-edit:' + intent.requestId
+        )
           await this.externalMessageEdits
             .settle(record.nativeSessionId, intent.requestId)
             .catch(() => {})
@@ -3399,6 +3409,29 @@ export class HarnessService {
       ...(facts.project ? { project: facts.project } : {}),
       title,
     }
+  }
+
+  /** Persist token counters only for the current MiniMax process, operation and native turn. */
+  private async recordMiniMaxUsage(record: HarnessSession, active: Active, params: unknown) {
+    const data = object(params)
+    const turn = active.turn
+    if (
+      record.harnessRef !== MINIMAX_CODE_HARNESS ||
+      this.active.get(record.id) !== active ||
+      !turn ||
+      active.cancelled ||
+      data.version !== 1 ||
+      data.sessionId !== record.acpSessionId ||
+      data.operationId !== turn.operationId ||
+      typeof data.turnId !== 'string' ||
+      data.turnId !== turn.native?.turnId
+    )
+      return
+    const usage = parseMiniMaxTurnUsage(data.rows, data.turnId, record.modelRef.model)
+    if (!usage) return
+    turn.usage = usage
+    this.changed(record)
+    await this.save(record)
   }
 
   /** 记录 Runtime 回报的原生边界身份；通知可能先于 prompt 响应到达。 */

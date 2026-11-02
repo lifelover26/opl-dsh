@@ -31,6 +31,49 @@ import {
   scanForCredentials,
   verifyExternalModuleClosure,
 } from './pipeline.mjs'
+import { verifyImportCandidate } from './lifecycle.mjs'
+
+/** Apply the import gate to npm-based candidates before executing an isolated entry smoke. */
+function verifyDistribution(candidateDir, outDir, options) {
+  const verification = verifyImportCandidate(candidateDir, { manifestPath: options.manifestPath })
+  const priorFailures = [...verification.failed]
+  const smoke =
+    priorFailures.length || options.smoke === false
+      ? {
+          ran: false,
+          skipped: true,
+          reason: priorFailures.length
+            ? 'Static candidate validation failed.'
+            : 'Entry smoke explicitly skipped.',
+        }
+      : isolatedEntrySmoke(candidateDir, assertWritableTarget(outDir, { label: '验证报告目录' }))
+  const checks = [...verification.checks]
+  if (!smoke.skipped)
+    checks.push({
+      name: 'isolated-entry-smoke',
+      ok: smoke.ran && smoke.version === verification.version,
+      detail: smoke.version ?? smoke.reason,
+    })
+  const report = {
+    ...verification,
+    manifest: undefined,
+    checks,
+    passed: checks.filter((item) => item.ok).length,
+    failed: checks.filter((item) => !item.ok).map((item) => item.name),
+    executionGate: {
+      priorCheckFailures: priorFailures,
+      candidateCodeExecuted: smoke.attempted === true,
+      skippedReason: smoke.skipped ? smoke.reason : null,
+    },
+    isolatedEntrySmoke: smoke,
+  }
+  const reportPath = join(
+    mkdirp(assertWritableTarget(outDir, { label: '验证报告目录' })),
+    'candidate-verification.json',
+  )
+  writeJson(reportPath, report)
+  return { ...report, reportPath }
+}
 
 /**
  * 候选目录内的启动器 smoke：在隔离数据目录下运行 `--version`，不读真实账号目录。
@@ -78,6 +121,8 @@ export function verifyCandidate(candidateDir, outDir = join(candidateDir, '..'),
   const manifest = existsSync(manifestPath)
     ? JSON.parse(readFileSync(manifestPath, 'utf8'))
     : undefined
+  if (manifest?.distribution === 'official-npm-overlay')
+    return verifyDistribution(candidateDir, outDir, { ...options, manifestPath })
 
   check('manifest-present', manifest, manifest ? manifestPath : `缺少清单：${manifestPath}`)
   const version = manifest?.version

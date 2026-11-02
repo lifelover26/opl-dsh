@@ -155,6 +155,43 @@ const configureCalls = (entries: Journal[]) =>
     .map((entry) => `${entry.params?.configId}=${entry.params?.value}`)
 
 describe('official MiniMax Code ACP combination', () => {
+  it('streams and persists exact native-turn token usage without carrying it into the next turn', async () => {
+    const { service, root, prompts } = await setup({ nativeModel: 'MiniMax-M3.1-Flash' })
+    const ask = async (text: string) => {
+      const options = {
+        sessionId: 'native-session',
+        provider: MINIMAX_CODE_PROVIDER,
+        model: 'MiniMax-M3.1-Flash',
+        messages: [
+          createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text }] }),
+        ],
+      } as GenerateOptions
+      return Array.fromAsync(service.conversationStream(options, async function* () {}))
+    }
+    const expected = {
+      inputTokens: 15,
+      outputTokens: 6,
+      cacheReadTokens: 40,
+      cacheWriteTokens: 0,
+      reasoningTokens: 2,
+      totalTokens: 61,
+    }
+    const first = await ask('USAGE_FIXTURE')
+    expect(first.filter((chunk) => chunk.type === 'usage')).toEqual([
+      { type: 'usage', usage: expected },
+    ])
+    const second = await ask('USAGE_FIXTURE_NO_USAGE')
+    expect(second.some((chunk) => chunk.type === 'usage')).toBe(false)
+    expect(await prompts()).toHaveLength(2)
+    await service.dispose()
+    const saved = (await new HarnessSessionStore(join(root, 'state')).load()).find(
+      (record) => record.origin.sessionId === 'native-session',
+    )!
+    expect(saved.turns[0]!.usage).toEqual(expected)
+    expect(saved.turns[1]!.usage).toBeUndefined()
+    expect(saved.turns.every((turn) => turn.state === 'completed')).toBe(true)
+  })
+
   it('streams CLI reasoning separately, retains alternating blocks and title, and never replays an operation', async () => {
     const { service, root, prompts } = await setup({ nativeModel: 'MiniMax-M3.1-Flash' })
     const options = {
@@ -541,7 +578,7 @@ describe('official MiniMax Code ACP combination', () => {
 
   it('fails without sending a prompt when the CLI advertises no model option', async () => {
     const { start, prompts } = await setup({ capability: 'no-model-option' })
-    await expect(start(M3_FLASH_COMBINATION)).rejects.toThrow(/mcode 0\.6\.3/)
+    await expect(start(M3_FLASH_COMBINATION)).rejects.toThrow(/mcode 0\.7\.4/)
     expect(await prompts()).toEqual([])
   })
 
@@ -821,7 +858,7 @@ describe('Windows script launch', () => {
         clientInfo: { name: 'test', version: '0' },
       })) as Record<string, any>
       expect(init.protocolVersion).toBe(1)
-      expect(init.agentInfo?.version).toBe('0.6.3')
+      expect(init.agentInfo?.version).toBe('0.7.4')
       const cliPid = init.fixturePid
       expect(typeof cliPid).toBe('number')
       expect(() => process.kill(cliPid, 0)).not.toThrow()

@@ -35,6 +35,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { randomUUID } from 'node:crypto'
+import { distribution, verifyOfficialDistribution } from './distribution.mjs'
 import {
   assertCandidateVersion,
   assertRelativeInside,
@@ -313,17 +314,18 @@ function collectSymlinks(directory, found = [], current = directory) {
 
 /** 扫描 bundle 里声明的标记串：bundle 缺失或标记缺失都按失败暴露。 */
 function scanBundleMarkers(candidateDir, markers) {
-  const root = join(candidateDir, 'chunks')
-  if (!existsSync(root)) return { scanned: false, missing: [...markers] }
   const files = []
   const walk = (current) => {
     for (const item of readdirSync(current, { withFileTypes: true })) {
       const path = join(current, item.name)
       if (item.isDirectory()) walk(path)
-      else if (item.isFile() && item.name.endsWith('.js')) files.push(path)
+      else if (item.isFile() && /\.m?js$/.test(item.name)) files.push(path)
     }
   }
-  walk(root)
+  for (const name of ['chunks', 'overlay']) {
+    const root = join(candidateDir, name)
+    if (existsSync(root)) walk(root)
+  }
   const haystack = files.map((file) => readFileSync(file, 'utf8')).join('\n')
   return {
     scanned: files.length > 0,
@@ -498,12 +500,14 @@ export function verifyImportCandidate(
   )
 
   const declaredVersion = manifest.version
+  const npmOverlay = manifest.distribution === 'official-npm-overlay'
+  const officialBase = npmOverlay ? distribution.official.version : plan.official.version
   const shapeOk = VERSION_PATTERN.test(declaredVersion)
   check('version-declared', shapeOk, declaredVersion)
   check(
     'version-matches-official-base',
-    shapeOk && declaredVersion.startsWith(`${plan.official.version}-opl-bash.`),
-    `官方基线 ${plan.official.version}`,
+    shapeOk && declaredVersion.startsWith(`${officialBase}-opl-bash.`),
+    `官方基线 ${officialBase}`,
   )
   check(
     'version-requested-matches',
@@ -512,7 +516,7 @@ export function verifyImportCandidate(
   )
   let versionAccepted = false
   let versionRejection = '版本号格式或官方基线不符'
-  if (shapeOk && declaredVersion.startsWith(`${plan.official.version}-opl-bash.`)) {
+  if (shapeOk && declaredVersion.startsWith(`${officialBase}-opl-bash.`)) {
     try {
       assertCandidateVersion(declaredVersion)
       versionAccepted = true
@@ -529,6 +533,14 @@ export function verifyImportCandidate(
 
   const stubbed = manifest.toolchainStubbed === true
   check('toolchain-not-stubbed', !stubbed, stubbed ? '替身工具链产物，不可导入' : '真实工具链')
+  if (npmOverlay) {
+    try {
+      const result = verifyOfficialDistribution(join(base, 'official'))
+      check('official-npm-unchanged', true, `${result.version}: ${result.files} files`)
+    } catch (error) {
+      check('official-npm-unchanged', false, error.message)
+    }
+  }
 
   for (const requiredFile of ['cli.js', plan.launcher.windows, 'package.json', 'CANDIDATE.md'])
     check(
@@ -585,7 +597,9 @@ export function verifyImportCandidate(
   )
 
   // 清单里的文件键统一是正斜杠，比较前先归一化，避免 Windows 反斜杠造成假失败。
-  const licenses = licenseTargets().map((file) => file.split(sep).join('/'))
+  const licenses = (npmOverlay ? distribution.license.files : licenseTargets()).map((file) =>
+    file.split(sep).join('/'),
+  )
   const missingLicenses = licenses.filter((file) => !existsSync(join(base, file)))
   check(
     'licenses-present',
@@ -599,6 +613,12 @@ export function verifyImportCandidate(
     return existsSync(path) && readFileSync(path).length === 0
   })
   check('licenses-non-empty', emptyLicenses.length === 0, emptyLicenses.join(', ') || '非空')
+  if (npmOverlay)
+    check(
+      'official-license-digest',
+      existsSync(join(base, 'LICENSE')) &&
+        sha256File(join(base, 'LICENSE')) === distribution.license.sha256,
+    )
 
   try {
     scanForCredentials(base)
@@ -692,15 +712,15 @@ export function verifyImportCandidate(
   )
 
   const declaredExternal = manifest.externalModules
+  const requiredExternal = npmOverlay ? distribution.externalModules : plan.build.externalModules
   const externalDeclared =
     Array.isArray(declaredExternal?.copied) &&
-    plan.build.externalModules.every((name) => declaredExternal.copied.includes(name))
-  check(
-    'external-modules-declared',
-    externalDeclared,
-    `需要 ${plan.build.externalModules.join(', ')}`,
+    requiredExternal.every((name) => declaredExternal.copied.includes(name))
+  check('external-modules-declared', externalDeclared, `需要 ${requiredExternal.join(', ')}`)
+  const closure = verifyExternalModuleClosure(
+    npmOverlay ? join(base, 'official') : base,
+    requiredExternal,
   )
-  const closure = verifyExternalModuleClosure(base, plan.build.externalModules)
   check(
     'external-modules-closure-inside-candidate',
     closure.ok,
@@ -1078,7 +1098,7 @@ export function importCandidate(options = {}) {
           launcher,
           launcherSha256: sha256File(launcher),
           manifestSha256: finalVerification.manifestSha256,
-          officialBase: plan.official.version,
+          officialBase: version.split('-opl-bash.')[0],
           verifiedAt: new Date().toISOString(),
         },
         official: previous?.official ?? {
@@ -1201,7 +1221,7 @@ export function selectCandidate(options = {}) {
     launcher,
     launcherSha256: sha256File(launcher),
     manifestSha256: verification.manifestSha256,
-    officialBase: plan.official.version,
+    officialBase: version.split('-opl-bash.')[0],
     verifiedAt: new Date().toISOString(),
   }
   const plan_ = {

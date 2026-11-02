@@ -1,0 +1,24 @@
+{
+  "candidateVersion": "0.7.4-opl-bash.20261102.3",
+  "official": {
+    "version": "0.7.4",
+    "packageName": "@minimax-ai/code",
+    "archiveUrl": "https://registry.npmjs.org/@minimax-ai/code/-/code-0.7.4.tgz",
+    "archiveSha512": "/28qahkVtcF+kfendT8CSWJHigvCzdH+UYMFTfJ7Sk1AUAGFdQ94nmp9JbkiKiT49hBq0TNfYC46QVjpY4N7sQ==",
+    "archiveBytes": 100293035,
+    "filesSha256": "f443aaf6ba6e65176d4deca2b38f6cdfcf8d3c1b136115f15b8759bcd316fc09"
+  },
+  "license": {
+    "url": "https://raw.githubusercontent.com/MiniMax-AI/minimax-code/c6c7f28e73921d7295b9c060dee478ced75cf438/LICENSE",
+    "sha256": "28bb5c2948742f9f8d27ed84882844d09dff07cb5df64f20729875e8582a18ea",
+    "files": ["LICENSE", "official/THIRD_PARTY_NOTICES.md"]
+  },
+  "externalModules": [
+    "better-sqlite3",
+    "@trycua/cua-driver",
+    "@ubjs/node",
+    "@mariozechner/clipboard",
+    "@vscode/ripgrep"
+  ],
+  "note": "官方 npm 0.7.4 原文件保持不变；overlay 只包裹导出的 ACP/runtime/login 函数。公开源码最新 tag 为 0.7.2，不能称作 0.7.4 源码重构建。"
+}

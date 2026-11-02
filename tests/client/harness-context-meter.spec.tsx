@@ -15,6 +15,8 @@ const vibe: ModelRef = {
   model: 'mistralai/mistral-large-4-1t-a52b',
 }
 const step: ModelRef = { provider: 'our-free-model', model: 'step-5-preview-free' }
+const flash: ModelRef = { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash' }
+const m3: ModelRef = { provider: 'minimax-official', model: 'MiniMax-M3' }
 const deepseek: ModelRef = { provider: 'deepseek', model: 'deepseek-chat' }
 const nativePressure = { pressureTokens: 910_000, projectedTokens: 920_000, contextWindow: 131_072 }
 const nativeBreakdown = { messages: 910_000 }
@@ -43,7 +45,12 @@ function reading(
 ): HarnessContextReading {
   return {
     ...model,
-    harness: model.model === vibe.model ? 'vibe' : 'step-code',
+    harness:
+      model.model === vibe.model
+        ? 'vibe'
+        : model.model === step.model
+          ? 'step-code'
+          : 'minimax-code',
     operationId: 'completed-operation',
     contextUsage,
   }
@@ -226,7 +233,7 @@ describe('official Harness context meter projection', () => {
     }
   })
 
-  it.each([vibe, step])(
+  it.each([vibe, step, flash, m3])(
     'uses $model occupancy in the resident official composer',
     async (model) => {
       const f = await mount(model)

@@ -277,10 +277,12 @@ export function scanForCredentials(directory) {
 export function detectCapabilities(candidateDir, { scanBundle = true } = {}) {
   const markers = {}
   if (scanBundle) {
-    const bundleRoot = join(candidateDir, 'chunks')
-    const files = existsSync(bundleRoot) ? walkFiles(bundleRoot) : []
+    const files = ['chunks', 'overlay'].flatMap((name) => {
+      const root = join(candidateDir, name)
+      return existsSync(root) ? walkFiles(root) : []
+    })
     const haystack = files
-      .filter((file) => file.endsWith('.js'))
+      .filter((file) => /\.m?js$/.test(file))
       .map((file) => readFileSync(file, 'utf8'))
       .join('\n')
     for (const marker of plan.capability.bundleMarkers) markers[marker] = haystack.includes(marker)

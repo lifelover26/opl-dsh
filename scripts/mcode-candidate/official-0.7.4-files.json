@@ -1,0 +1,4172 @@
+[
+  {
+    "file": "CHANGELOG.md",
+    "bytes": 83479,
+    "sha256": "129688f41812c00a96eddf20d7a5f2c1ae6d2e2fabef47646014c550a2a99fb2"
+  },
+  {
+    "file": "CHANGELOG.zh-CN.md",
+    "bytes": 75042,
+    "sha256": "b6c1dc7409915b62e54dd899d4d58c1b0e2f98cfb2e4e65eb64aa54cfe1cedbd"
+  },
+  {
+    "file": "README.md",
+    "bytes": 44386,
+    "sha256": "89d6881d88f62a9dfc694fdb7d62f467ed6266eaf0c389d9d535dbd0d1079d10"
+  },
+  {
+    "file": "README.zh-CN.md",
+    "bytes": 57772,
+    "sha256": "70f10126376865d25e2df659a42383ff60f77890326bcff31709b93dd1f9ed6c"
+  },
+  {
+    "file": "THIRD_PARTY_NOTICES.md",
+    "bytes": 5250,
+    "sha256": "cb2a01f840aa13d1df4313125be9f918a2893b0528013803e58ffe2a9ed64d0e"
+  },
+  {
+    "file": "assets/agents/_default/prompt-base-all.md",
+    "bytes": 7251,
+    "sha256": "e2fc09ddea49eae2d4132dbc13e76562d24d0290141ef2fc4b7feeff8fa028da"
+  },
+  {
+    "file": "assets/agents/_default/prompt-base-all.md.hbs",
+    "bytes": 12001,
+    "sha256": "c748825bb45cc4ff06ea702463d4f70ff6f2e4976aab99834a327e755f8c0eee"
+  },
+  {
+    "file": "assets/agents/_default/prompt-base-windows.md",
+    "bytes": 549,
+    "sha256": "342aeaff6185819cc5c71522cb5a05bab82fc5a3b66684e83bb0ab62e89550e0"
+  },
+  {
+    "file": "assets/agents/_default/prompt-base-windows.md.hbs",
+    "bytes": 549,
+    "sha256": "342aeaff6185819cc5c71522cb5a05bab82fc5a3b66684e83bb0ab62e89550e0"
+  },
+  {
+    "file": "assets/agents/_default/prompt-base-worker.md",
+    "bytes": 2180,
+    "sha256": "6e2f1354624bf86d4d0a0c2052fc8731eafe4545f8550ede2ae4ea72cbcb5e35"
+  },
+  {
+    "file": "assets/agents/_default/prompt-base-worker.md.hbs",
+    "bytes": 3220,
+    "sha256": "e52cb89d41ecd7899e64bc23e27a992ede93b92f3234d8596c84eba20d4b5bc8"
+  },
+  {
+    "file": "assets/agents/_default/prompt-session-branch.md",
+    "bytes": 226,
+    "sha256": "af22b968d562cf449c2ce0b71b8479f263b8a00b8da739533dd01fe3f828702c"
+  },
+  {
+    "file": "assets/agents/_default/prompt-session-branch.md.hbs",
+    "bytes": 1558,
+    "sha256": "3a209223c78dd78d4b990cae696233c876e95dea612228cabe063c63e39bd7ad"
+  },
+  {
+    "file": "assets/agents/_default/prompt-session-root.md",
+    "bytes": 284,
+    "sha256": "4557631cb1aa06baa6c620c77f407a950bfbcae502256c349ae015c6c5c9a75b"
+  },
+  {
+    "file": "assets/agents/_default/prompt-session-root.md.hbs",
+    "bytes": 1562,
+    "sha256": "ac98d29663cde23c3d205007e5336b36aa6d96548b2361ac17fa0820afd393fa"
+  },
+  {
+    "file": "assets/agents/_migration/README.md",
+    "bytes": 976,
+    "sha256": "7e2034b4cb6105636b01e58aee315904625a0a770a2915392ff7e155a87a2cd4"
+  },
+  {
+    "file": "assets/agents/_migration/coder/PERSONA-zh.md",
+    "bytes": 479,
+    "sha256": "cf0b543cc8077ed6081651e22841a9b2b91b99b00eb0ed5de87b798eb2259200"
+  },
+  {
+    "file": "assets/agents/_migration/coder/PERSONA.md",
+    "bytes": 521,
+    "sha256": "e6f09d190bf22ae91a410420fd348550d7e8e5af5ba3c78b069d93a51a3149d9"
+  },
+  {
+    "file": "assets/agents/_migration/coder/system-prompt.md.hbs",
+    "bytes": 2107,
+    "sha256": "020ff6c33395d0c0f2f62c2081f60736c9e1b4ddf8fc85c26e0e6a55ee31cea4"
+  },
+  {
+    "file": "assets/agents/_migration/general/PERSONA-zh.md",
+    "bytes": 501,
+    "sha256": "8a5270ba28b62c57f5c8a28ef8d81c8e0246d20aca645127b935b24900c0c06d"
+  },
+  {
+    "file": "assets/agents/_migration/general/PERSONA.md",
+    "bytes": 518,
+    "sha256": "ee9e9a9c6e8274f664c3e501581e361d954a0dc94cadf1373f174c87909d6bcd"
+  },
+  {
+    "file": "assets/agents/_migration/general/system-prompt.md.hbs",
+    "bytes": 2303,
+    "sha256": "974dafad9e0bf13e930518aa4320876eeef2f562849b3d17edb60a30566ba6b5"
+  },
+  {
+    "file": "assets/agents/_v2/AGENT_CONTEXT.md.hbs",
+    "bytes": 14696,
+    "sha256": "c2abe5c36a30f1962c27f8f0a2709c609b94b98eca30687cd0f6c2aa15b1a24d"
+  },
+  {
+    "file": "assets/agents/_v2/PTC_TOOL_CALLS.md.hbs",
+    "bytes": 2905,
+    "sha256": "09d925e5038009431dd4d6d18705db27b752812d1179154ccf111ce4ba9806cd"
+  },
+  {
+    "file": "assets/agents/_v2/coding/SYSTEM.md.hbs",
+    "bytes": 12806,
+    "sha256": "dd7ae314f375743278d9150d99caf26379f63163e951e194fd44d6f9d778267f"
+  },
+  {
+    "file": "assets/agents/_v2/explore.md.hbs",
+    "bytes": 2000,
+    "sha256": "438fcbfb8b98e00b3c81aa47affaaeedb85f804d693e6c5221e096a4c1756ddd"
+  },
+  {
+    "file": "assets/agents/_v2/tui/SYSTEM.md.hbs",
+    "bytes": 14904,
+    "sha256": "225129ca29f27c8d33979a2ea09b67ec026be52867250de0857376b7160dd0d2"
+  },
+  {
+    "file": "assets/agents/_v2/verifier.md.hbs",
+    "bytes": 1768,
+    "sha256": "e6fc48f9a19324204b7c71fcae38c26c79a3e3b21e3a1f454bdf610ccc17bfbb"
+  },
+  {
+    "file": "assets/agents/_v2/work/SYSTEM.md.hbs",
+    "bytes": 14599,
+    "sha256": "dfb229580f006f82d9b28b0c2dcd85b48f9b6135bc86e93906ed59de4152bd01"
+  },
+  {
+    "file": "assets/agents/_v2/worker.md.hbs",
+    "bytes": 1191,
+    "sha256": "a43bdc3a4f31329d1a3ba79344a144962f8de1748b1ac090824565cd0597e45f"
+  },
+  {
+    "file": "assets/agents/builtin-agents.json",
+    "bytes": 43,
+    "sha256": "95ca8f980f197ab29741f82ca552cf731603dbf52c025639f29e7b9a5178c2c0"
+  },
+  {
+    "file": "assets/agents/desktop-task/archive-title/system-en.md",
+    "bytes": 186,
+    "sha256": "b9ca2c0a6bcf61dffc52958005eecc712fbae0b0eec308dd93fe0306dc60901e"
+  },
+  {
+    "file": "assets/agents/desktop-task/archive-title/system-zh.md",
+    "bytes": 201,
+    "sha256": "b9d4523b3d376b68d98921be532146f99bd359bbcf0d63b4a7408459888df609"
+  },
+  {
+    "file": "assets/agents/desktop-task/checkpoint/system.md",
+    "bytes": 2311,
+    "sha256": "0a0d007f251bc37558745b5595ba886b7aa0899211684d66203927696582a485"
+  },
+  {
+    "file": "assets/agents/desktop-task/output-revision/system.md",
+    "bytes": 382,
+    "sha256": "394f7dd9c988f20deea70762c24629f7e820ff78e3613c6fef2e2202aa55898b"
+  },
+  {
+    "file": "assets/agents/desktop-task/retry/continuation.md",
+    "bytes": 336,
+    "sha256": "470e94c1f1c3111f4568b1c374a782f10687e6ee54183ad162282195212090f6"
+  },
+  {
+    "file": "assets/agents/desktop-task/session-title/system.md",
+    "bytes": 2702,
+    "sha256": "62790ad06a7824e641cf4574bd207b65c642ee91c74e9bde3e46dfd97d3d06cd"
+  },
+  {
+    "file": "assets/agents/explore/PERSONA-zh.md",
+    "bytes": 351,
+    "sha256": "396f122c7d9ad0102245cbe0acb7d470fb475c34d9f4f354e6b3e9f694360193"
+  },
+  {
+    "file": "assets/agents/explore/PERSONA.md",
+    "bytes": 371,
+    "sha256": "d747166bfe000e6c2b94f172aa175ff3a6e78558bc002c7b33b7efefe939cc48"
+  },
+  {
+    "file": "assets/agents/explore/agent.md",
+    "bytes": 156,
+    "sha256": "afdcaef36843a42e709ad53740f589ba822eb646ed70f8edde15c4dbb60a2278"
+  },
+  {
+    "file": "assets/agents/explore/system-prompt.md.hbs",
+    "bytes": 1833,
+    "sha256": "127a07757e6ca96d4f8ef4e9c793a6eb4ade09bb12a95b85223f59101e7981fe"
+  },
+  {
+    "file": "assets/agents/greeting-zh.md",
+    "bytes": 3021,
+    "sha256": "563f9bfea6bb4b3bb44d9ebeb4ba2e3a16cd40ce3a81fb98ef55c0a79a341140"
+  },
+  {
+    "file": "assets/agents/greeting.md",
+    "bytes": 3065,
+    "sha256": "4460334d5b536ca89cdd99b5ff32dedc5fe93d5a9fa48cc88ffc26f3455a5a7a"
+  },
+  {
+    "file": "assets/agents/managed-prompts.json",
+    "bytes": 1980,
+    "sha256": "e144dbaf236cd301954c0198c919d32c677b7f9a897f0d91e30720ada96bf743"
+  },
+  {
+    "file": "assets/agents/mavis/PERSONA-zh.md",
+    "bytes": 491,
+    "sha256": "fddcf84bc77b3c4c3697ec814dc3ecd87f12922c5daa55c0f2dfdfb33f1385bd"
+  },
+  {
+    "file": "assets/agents/mavis/PERSONA.md",
+    "bytes": 505,
+    "sha256": "cb420ff3f964163f2f0ce73ffa7057015e2ceb49ba44a8440a4e11185ac3e1a1"
+  },
+  {
+    "file": "assets/agents/mavis/features/cron.md.hbs",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "assets/agents/mavis/features/delegation.md.hbs",
+    "bytes": 2001,
+    "sha256": "8f1170599a66e64c8dfddfe1c1be6fdc5485080006df3af9cb4d52674929b0a6"
+  },
+  {
+    "file": "assets/agents/mavis/features/memory.md.hbs",
+    "bytes": 3426,
+    "sha256": "23151abdf7a30cb293c6b51dca711855a45d16f56e2870e13822a0d581159503"
+  },
+  {
+    "file": "assets/agents/mavis/features/task-management.md.hbs",
+    "bytes": 487,
+    "sha256": "1a777bd71fb7704f10286a37647b137e640d645ff0fd6ed9cec40b29146b95e4"
+  },
+  {
+    "file": "assets/agents/mavis/features/web-search.md.hbs",
+    "bytes": 1253,
+    "sha256": "e31cf23cceb73abc1ed3b28e8803a16f19bb2f4ed01438b5c507ba49727a641c"
+  },
+  {
+    "file": "assets/agents/mavis/modes/coding/online/PERSONA-zh.md.hbs",
+    "bytes": 1377,
+    "sha256": "9de92db9b096805b84c2778f1f34f8c5baebb5451c866b75f383d649a6e4933c"
+  },
+  {
+    "file": "assets/agents/mavis/modes/coding/online/PERSONA.md.hbs",
+    "bytes": 1570,
+    "sha256": "ced6741a06d5c9c5e9ddb58453a410d94a581d882a7b1a07a8ed3da465e9bd82"
+  },
+  {
+    "file": "assets/agents/mavis/modes/coding/online/SYSTEM.md.hbs",
+    "bytes": 10249,
+    "sha256": "186323b786b99b6439e02eb646f01c53df454e31c1efe51c9614a5fadbf7b6e7"
+  },
+  {
+    "file": "assets/agents/mavis/modes/work/online/PERSONA-zh.md.hbs",
+    "bytes": 1377,
+    "sha256": "9de92db9b096805b84c2778f1f34f8c5baebb5451c866b75f383d649a6e4933c"
+  },
+  {
+    "file": "assets/agents/mavis/modes/work/online/PERSONA.md.hbs",
+    "bytes": 1570,
+    "sha256": "ced6741a06d5c9c5e9ddb58453a410d94a581d882a7b1a07a8ed3da465e9bd82"
+  },
+  {
+    "file": "assets/agents/mavis/modes/work/online/SYSTEM.md.hbs",
+    "bytes": 10342,
+    "sha256": "66f6929be15b7b19b98f1e21bc6a6c21986c469ed0b2d887c16391e3153afd09"
+  },
+  {
+    "file": "assets/agents/mavis/prompt-session-root.md",
+    "bytes": 284,
+    "sha256": "4557631cb1aa06baa6c620c77f407a950bfbcae502256c349ae015c6c5c9a75b"
+  },
+  {
+    "file": "assets/agents/mavis/prompt-session-root.md.hbs",
+    "bytes": 284,
+    "sha256": "4557631cb1aa06baa6c620c77f407a950bfbcae502256c349ae015c6c5c9a75b"
+  },
+  {
+    "file": "assets/agents/mavis/skills/control-in-app-browser/SKILL.md",
+    "bytes": 39865,
+    "sha256": "832b99f501a75ccc5949085a375aef279345d0b6831a511486ffbc540519c017"
+  },
+  {
+    "file": "assets/agents/mavis/skills/minimax-code-product/SKILL.md",
+    "bytes": 8853,
+    "sha256": "cfc69bf793eecb30c19fc45bab868fe1de7dedd1246984b8c1cbb8eb2784cf9b"
+  },
+  {
+    "file": "assets/agents/mavis/skills/minimax-code-product/references/account-models.md",
+    "bytes": 5557,
+    "sha256": "ca734d0ab7be06cfc0be8576fdd16608d7550208be56089372098eade2061345"
+  },
+  {
+    "file": "assets/agents/mavis/skills/minimax-code-product/references/agents.md",
+    "bytes": 1708,
+    "sha256": "7efce32401c58fae9dec050f1f594c215d6246f002fe3c474aaf76403388875f"
+  },
+  {
+    "file": "assets/agents/mavis/skills/minimax-code-product/references/extensions.md",
+    "bytes": 4097,
+    "sha256": "763b4d5ccf452875e95c0f6991f2c2998d2502235b0fef9c10067f8b0824e73a"
+  },
+  {
+    "file": "assets/agents/mavis/skills/minimax-code-product/references/hooks.md",
+    "bytes": 9192,
+    "sha256": "3b2de13659b9ab2298254fb787ce987adadf11071344382ca9ebdd2532012c63"
+  },
+  {
+    "file": "assets/agents/mavis/skills/minimax-code-product/references/miniapps.md",
+    "bytes": 3797,
+    "sha256": "00e99dbfb8410df08057884fd60e878b23045bb74b7b5e54ead9a42edaf7c9aa"
+  },
+  {
+    "file": "assets/agents/mavis/skills/minimax-code-product/references/workflows.md",
+    "bytes": 2264,
+    "sha256": "0ca6bd9e1352dc584093c4b5421a37c08515b711b35fc10e6a5edfa964dc2f56"
+  },
+  {
+    "file": "assets/agents/mavis/system-prompt.md.hbs",
+    "bytes": 5252,
+    "sha256": "718107c3f984e1d585a4fff4c34d52aeddcb113895c26989847fa91e93634cf7"
+  },
+  {
+    "file": "assets/agents/memory-v2-consolidation.md",
+    "bytes": 10587,
+    "sha256": "8b8ff70b2220e992e80866af0dc53243a8ed5366a75cbe5208a68258723fdb85"
+  },
+  {
+    "file": "assets/agents/memory-v2-extraction.md",
+    "bytes": 6578,
+    "sha256": "dc0de91b8bf4423773d899476a7cd081219fa7db28fd7ec463ec66fcad9d76b3"
+  },
+  {
+    "file": "assets/agents/memory-v2-migration.md",
+    "bytes": 1869,
+    "sha256": "2cebc16ffd957ca83dae5c569b3d61da8e7d831947a69faa08df2c0630bd9073"
+  },
+  {
+    "file": "assets/agents/prompt-exemptions.json",
+    "bytes": 3850,
+    "sha256": "cf2ef3a1045b0ccc319eead6bb005afdcb6a91897c1e7609b44993785d465413"
+  },
+  {
+    "file": "assets/agents/verifier/PERSONA-zh.md",
+    "bytes": 340,
+    "sha256": "6b6a4e79d0f063e2185d5967e1276f058b6798d3a84a41c7d778f9e5b5ed047c"
+  },
+  {
+    "file": "assets/agents/verifier/PERSONA.md",
+    "bytes": 360,
+    "sha256": "01c690a27634ee2e824c8bf456581b6079dd65d40526c38e385db09e19b75710"
+  },
+  {
+    "file": "assets/agents/verifier/agent.md",
+    "bytes": 201,
+    "sha256": "fef012a4920cc22ed2532c106eb836b42772db448c659152e45ba5ddb281f1fa"
+  },
+  {
+    "file": "assets/agents/verifier/system-prompt.md.hbs",
+    "bytes": 1592,
+    "sha256": "ecd11d9e56b48ec2dc348b0be794a441f87a8f47e9aaa104608aef5e9a4f9d7b"
+  },
+  {
+    "file": "assets/agents/worker/PERSONA-zh.md",
+    "bytes": 299,
+    "sha256": "8920d75f54b5ec2b71a92a21140391dc9f76745b4ca27baf2f6fe03ee8c9abc7"
+  },
+  {
+    "file": "assets/agents/worker/PERSONA.md",
+    "bytes": 319,
+    "sha256": "6bb4ae55abb3425a97f4565459524f2a16fc082a108643d41920717a6fe87162"
+  },
+  {
+    "file": "assets/agents/worker/agent.md",
+    "bytes": 210,
+    "sha256": "f688b5172b419f83a5a63a2e8e44d81a3c8aa235ea249a8e747e121f052ef21b"
+  },
+  {
+    "file": "assets/agents/worker/system-prompt.md.hbs",
+    "bytes": 1030,
+    "sha256": "6ffabd312129cda664443ed5008a2067bf45d9dee4e6b3519580a867c4e7865e"
+  },
+  {
+    "file": "assets/agents/workflow/code-review/review-candidates.md",
+    "bytes": 6026,
+    "sha256": "2a16380726fe7e758b7d428ca60016d6583adefed4832a3fb7a37ef2589f2c5f"
+  },
+  {
+    "file": "assets/agents/workflow/code-review/reviewer-system.md",
+    "bytes": 4361,
+    "sha256": "f80c7811e3b7197da5f262064090a49581bb2114b89640c12545e4097e39c798"
+  },
+  {
+    "file": "assets/agents/workflow/goal/budget-limit.md",
+    "bytes": 879,
+    "sha256": "046a2b77e9d4696dcd7e122dd623629de20cc1bfd39b6dfe16d24265eb956992"
+  },
+  {
+    "file": "assets/agents/workflow/goal/continuation.md",
+    "bytes": 10525,
+    "sha256": "ecd4598fcb8ade89153828b94ad040cafc15c89197c71435d7aaa237ea3a0c0e"
+  },
+  {
+    "file": "assets/agents/workflow/goal/objective-updated.md",
+    "bytes": 2231,
+    "sha256": "6ed8efb37876299f4eec9aa08ec0e401984a77c97b18a4b6d4613e14d7b3b5b3"
+  },
+  {
+    "file": "assets/agents/workflow/goal/recovery-terminal-audit.md",
+    "bytes": 898,
+    "sha256": "a5d999d6d57de9a354a9f1bd5b858e1240950fc2dd46c64acc6e04e60be9311b"
+  },
+  {
+    "file": "assets/agents/workflow/goal/recovery.md",
+    "bytes": 743,
+    "sha256": "164199ce120cba36592779c55ec6bb31eb4ed54797cba5ee5596b4e91c7c40bc"
+  },
+  {
+    "file": "assets/agents/workflow/goal/terminal-audit.md",
+    "bytes": 610,
+    "sha256": "a1e0d218dbe07de3447b0329c15a3137251377e8b13fd65d2b390ecea6f11abb"
+  },
+  {
+    "file": "assets/agents/workflow/plan-mode/agent-entry.md",
+    "bytes": 4413,
+    "sha256": "d205529bd3f077d22092f946d9b5216ff7544a734b1a2c95442f23a7d8d7c1e0"
+  },
+  {
+    "file": "assets/agents/workflow/prompt-hook/system.md",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "assets/models-dev-catalog.json.gz",
+    "bytes": 430528,
+    "sha256": "c6eab86fb5d0d2d9e73d425b01ab29cda7e71b6108e677dc04ac8aa9118ab678"
+  },
+  {
+    "file": "assets/prompts/code-review/review-candidates.md",
+    "bytes": 6026,
+    "sha256": "2a16380726fe7e758b7d428ca60016d6583adefed4832a3fb7a37ef2589f2c5f"
+  },
+  {
+    "file": "assets/prompts/code-review/reviewer-system.md",
+    "bytes": 4361,
+    "sha256": "f80c7811e3b7197da5f262064090a49581bb2114b89640c12545e4097e39c798"
+  },
+  {
+    "file": "assets/prompts/llm-gate-classifier.md",
+    "bytes": 15667,
+    "sha256": "c73dddc72163e35f05a87003ad14d271c714a2eb4802d07716fd2538d6554b85"
+  },
+  {
+    "file": "assets/skills/.seed-fingerprints.json",
+    "bytes": 1970,
+    "sha256": "4dbaf24c5969c6e616e851f2cc672ed4bd07ed65801e5673a67e6ce05dff9fa6"
+  },
+  {
+    "file": "assets/skills/code-review/SKILL.md",
+    "bytes": 2764,
+    "sha256": "79950e1856d53a7af729a54b847dc20919d5169f0bc3176876280489d5e68901"
+  },
+  {
+    "file": "assets/skills/deep-research/SKILL.md",
+    "bytes": 6946,
+    "sha256": "abec46c13ace539bd5d2ecbf422e835930c4fd532348a6af53bec1a2edcedc73"
+  },
+  {
+    "file": "assets/skills/deploy-website/SKILL.md",
+    "bytes": 4062,
+    "sha256": "0c5a3828b748d567acc944f8aa76bc539a5d660d51ff244bdde2bf36f0ad45e7"
+  },
+  {
+    "file": "assets/skills/docx/LICENSE",
+    "bytes": 1066,
+    "sha256": "8288840186d6d3d6a0b74395e17448c06160b38e796963c7745f579631b47b01"
+  },
+  {
+    "file": "assets/skills/docx/SKILL.md",
+    "bytes": 11536,
+    "sha256": "c9407f69ad99919bf9ecf79d306a86578c86c326ffc897f34ad28f143cf860af"
+  },
+  {
+    "file": "assets/skills/docx/assets/styles/academic_styles.xml",
+    "bytes": 7408,
+    "sha256": "367341503b9ff77c8f8809f4a1eb3e351b654cbaea2209b4fe305d734f714d9b"
+  },
+  {
+    "file": "assets/skills/docx/assets/styles/corporate_styles.xml",
+    "bytes": 8524,
+    "sha256": "d6216dce62323e626049172ea9c77447dfca2eb518fdf17c64d4f2239f1ef2b5"
+  },
+  {
+    "file": "assets/skills/docx/assets/styles/default_styles.xml",
+    "bytes": 12324,
+    "sha256": "f77d90d5c9a255a4adc351e655d2248da76c1bc01e1af6b7323e3d0e37fcddfc"
+  },
+  {
+    "file": "assets/skills/docx/assets/xsd/aesthetic-rules.xsd",
+    "bytes": 25203,
+    "sha256": "8b27c5be75dd35242ceb695f1cacae4bc3a3e3da5d14bac1f4d269f1f5fe99bc"
+  },
+  {
+    "file": "assets/skills/docx/assets/xsd/business-rules.xsd",
+    "bytes": 5577,
+    "sha256": "b8ae8f3e9392e425a1222564a1fdbecaea7efd3a38017380f04e466ce97d762a"
+  },
+  {
+    "file": "assets/skills/docx/assets/xsd/common-types.xsd",
+    "bytes": 5167,
+    "sha256": "c176786f8f99b7ad3aaeead3c49bdd8b5b493a3b9de0076421a496a78abbf59a"
+  },
+  {
+    "file": "assets/skills/docx/assets/xsd/wml-subset.xsd",
+    "bytes": 25735,
+    "sha256": "a4e968521906a0c1109d651bccf46a2551cc84debe7543f41f07e98bc23be69c"
+  },
+  {
+    "file": "assets/skills/docx/docs/acceptance-checklists/create.md",
+    "bytes": 212,
+    "sha256": "463db99a814927ff90d01317bc0aa11f2cc5091ef22a78edd1907cb80b373098"
+  },
+  {
+    "file": "assets/skills/docx/docs/acceptance-checklists/edit.md",
+    "bytes": 206,
+    "sha256": "b40fa121e7d5921c85ca80fce0e4cce9b99acdc9a3099740a40a791c7132e1fc"
+  },
+  {
+    "file": "assets/skills/docx/docs/acceptance-checklists/layout-repair.md",
+    "bytes": 212,
+    "sha256": "36bb904ef1820409569c6389f43fb797983d3d7dcb4000945378294ec2b7d8e0"
+  },
+  {
+    "file": "assets/skills/docx/docs/acceptance-checklists/template.md",
+    "bytes": 193,
+    "sha256": "9d992b0405799e8a0e708319aee1df87b12f26f8436d8d71a69ea156cd931131"
+  },
+  {
+    "file": "assets/skills/docx/docs/acceptance.md",
+    "bytes": 4523,
+    "sha256": "b4c3faa16333256c0fb8011630057f144335a6134c26b842a234ae5f7fa36845"
+  },
+  {
+    "file": "assets/skills/docx/docs/anti-patterns.md",
+    "bytes": 663,
+    "sha256": "21d3ae91b31db49d7b617624ae60bf4f1cd3389b52ac1e15a053c1f873a874c3"
+  },
+  {
+    "file": "assets/skills/docx/docs/backends.md",
+    "bytes": 4473,
+    "sha256": "3c3bf4187bbc8912227db0384e954dc7cdb17209c4cf1cb7a89855faff9ee2a3"
+  },
+  {
+    "file": "assets/skills/docx/docs/evidence.md",
+    "bytes": 2643,
+    "sha256": "481c5c894abf5da286cd53280a2f608139eda80749eb77d518504c80ff35beb9"
+  },
+  {
+    "file": "assets/skills/docx/docs/failure-taxonomy.md",
+    "bytes": 1682,
+    "sha256": "31767ce55b56581361f0becd8ba4e618d0ecfb8d2c1a59535112b622fbbe4acf"
+  },
+  {
+    "file": "assets/skills/docx/docs/index.md",
+    "bytes": 1620,
+    "sha256": "48cfc5aa4d7d8b5577c5cf7581ab01cc2169ed6ac442be276acc61a70d9fe01d"
+  },
+  {
+    "file": "assets/skills/docx/docs/rendered-delivery.md",
+    "bytes": 4788,
+    "sha256": "1cadc863de32810414161dada46b1b89343bfc93e766b617af1164944d8a5083"
+  },
+  {
+    "file": "assets/skills/docx/docs/router.md",
+    "bytes": 4338,
+    "sha256": "13399fe12685a66a1db7188e6d91bd963a3621cf98ffafb4f290eb93e916f01d"
+  },
+  {
+    "file": "assets/skills/docx/docs/tables-and-numbering.md",
+    "bytes": 866,
+    "sha256": "c4e6a878f4b31875e38380d4d3237110555579cdc499c7134e7944891e2e87f1"
+  },
+  {
+    "file": "assets/skills/docx/docs/task-apply-template.md",
+    "bytes": 5916,
+    "sha256": "258fb16e9a9679ef233a02ea3cae9b7e78b8ca18a0ca1c12a9d7b81b17dc42dd"
+  },
+  {
+    "file": "assets/skills/docx/docs/task-compare-two-docx.md",
+    "bytes": 1085,
+    "sha256": "9de3d91dcf6bf2560c8e9ae328ab75fdf32022ed58b42e8014415a598c33d6f8"
+  },
+  {
+    "file": "assets/skills/docx/docs/task-create.md",
+    "bytes": 5201,
+    "sha256": "99ee1e96b936c549cd1f90c443cf9cf9e7bca31d4d3bef18719df26ff3a16c1d"
+  },
+  {
+    "file": "assets/skills/docx/docs/task-edit-fill.md",
+    "bytes": 2135,
+    "sha256": "a4a385595c6961f26830948d3ff290e769bfeb6ac413caad447d08109f12e52a"
+  },
+  {
+    "file": "assets/skills/docx/docs/task-read-content.md",
+    "bytes": 6297,
+    "sha256": "1cf7b572160ee4518cbc0ed7e8c8e8298946ea24100f8460db3511b73df7cb6d"
+  },
+  {
+    "file": "assets/skills/docx/docs/task-read-rendered.md",
+    "bytes": 2829,
+    "sha256": "ac43496ffb96550daf808e0eef4f7d8a861519f39016493922a3fbd688a62de8"
+  },
+  {
+    "file": "assets/skills/docx/docs/task-read-structure.md",
+    "bytes": 5214,
+    "sha256": "f76efd0efa71c0724a9f8296806d87ec25432361cf105d42f16e4b6192d8128d"
+  },
+  {
+    "file": "assets/skills/docx/docs/task-repair-layout.md",
+    "bytes": 1859,
+    "sha256": "e534bcdfb829b5907c996fa1470da09386f405b257236c10e4e2eb42cf0f63d9"
+  },
+  {
+    "file": "assets/skills/docx/docs/template-dsl.md",
+    "bytes": 837,
+    "sha256": "49a0e349459ee24fc5eda9e297725330d2f8def644b1e7c785893d518213ef02"
+  },
+  {
+    "file": "assets/skills/docx/docs/track-changes.md",
+    "bytes": 525,
+    "sha256": "86e07c5fbb5fa6af9541dbafcab8d63f3d4a9011a201763b3970899dc375d58e"
+  },
+  {
+    "file": "assets/skills/docx/docs/xml-patch-dsl.md",
+    "bytes": 781,
+    "sha256": "e08037f0f952599eae15c28af7e13b91004a12463a4af8afc917aaa0a9b5bc3a"
+  },
+  {
+    "file": "assets/skills/docx/references/cjk_typography.md",
+    "bytes": 11927,
+    "sha256": "ddc0b9e0984d43101da24b67df3d0603236b67fe46c8d0ecbc3c6bea7983afcd"
+  },
+  {
+    "file": "assets/skills/docx/references/cjk_university_template_guide.md",
+    "bytes": 7901,
+    "sha256": "986e44f5cf3ea4aa69b436c73581dca2d31ad130965269a934caf3838c9ff27d"
+  },
+  {
+    "file": "assets/skills/docx/references/comments_guide.md",
+    "bytes": 6530,
+    "sha256": "fe9150b84734844f3010561927436f6bc787fe46c4cf4d621abb330835d1ba38"
+  },
+  {
+    "file": "assets/skills/docx/references/design_good_bad_examples.md",
+    "bytes": 30831,
+    "sha256": "e2c9331ed35b211f1239ed283abbac444c2a15347c710f01a97c33d0e952a079"
+  },
+  {
+    "file": "assets/skills/docx/references/design_principles.md",
+    "bytes": 27641,
+    "sha256": "e9fe196ad16fecce988671cf8a8fc9ec3403e792530ee4c665370ddbc266ed20"
+  },
+  {
+    "file": "assets/skills/docx/references/openxml_element_order.md",
+    "bytes": 10930,
+    "sha256": "d9ab673ca87ffb2fc0586b77702bf339cdb3283edc540c2f450732746afe8ca1"
+  },
+  {
+    "file": "assets/skills/docx/references/openxml_encyclopedia_part1.md",
+    "bytes": 140456,
+    "sha256": "598c5fbf357f536fd9f3bd1a1307be536f533495631981d9f7518751019490c9"
+  },
+  {
+    "file": "assets/skills/docx/references/openxml_encyclopedia_part2.md",
+    "bytes": 94465,
+    "sha256": "c4adc5480fedaeee85e8963d09fd27914f731ce298b323df9133b9745679ecea"
+  },
+  {
+    "file": "assets/skills/docx/references/openxml_encyclopedia_part3.md",
+    "bytes": 121826,
+    "sha256": "9e801e58c53b83f5988a23a533a0a5b0b3a80c6b3dea06b5a1ce902a685b2ba0"
+  },
+  {
+    "file": "assets/skills/docx/references/openxml_namespaces.md",
+    "bytes": 5561,
+    "sha256": "be2ecd2f84e02b2ba492d9c68fb4cf6cac3d016cc583425b73d4105c5464d02d"
+  },
+  {
+    "file": "assets/skills/docx/references/openxml_units.md",
+    "bytes": 2369,
+    "sha256": "ce480ab62cf78c045a04b0c8f9ef6400a5efaa33233ace8eb666f9cbe1f9acde"
+  },
+  {
+    "file": "assets/skills/docx/references/sample-patch-plans.json",
+    "bytes": 402,
+    "sha256": "f1935df1e4ed5f396dcb1797bae2533706cd1bde2122dcbc46bf728415062b05"
+  },
+  {
+    "file": "assets/skills/docx/references/sample-task-intents.json",
+    "bytes": 267,
+    "sha256": "f5d133b5d04ae8e1d23905258a3d6017a8a4ba4fc50f08c67ce9842d7d3e5e9a"
+  },
+  {
+    "file": "assets/skills/docx/references/sample-template-manifests.json",
+    "bytes": 616,
+    "sha256": "b607603c29eec539ae46c88177185725a079c105fcfacaf078a8d279089d4c9a"
+  },
+  {
+    "file": "assets/skills/docx/references/scenario_a_create.md",
+    "bytes": 7841,
+    "sha256": "4be8e1f88b2993a43b74854a78533233b385a84d5b3c1510be86bed2f6af567e"
+  },
+  {
+    "file": "assets/skills/docx/references/scenario_b_edit_content.md",
+    "bytes": 7947,
+    "sha256": "f04c35eec63b6e5df6b1b6d1a06a1feb26c920262686941ff705642c55e6cc4a"
+  },
+  {
+    "file": "assets/skills/docx/references/scenario_c_apply_template.md",
+    "bytes": 18408,
+    "sha256": "3602c5cad48ef0f3e2ed08113be2a7ce36e9b8cadb5987bc9a5a9f06e2f6d335"
+  },
+  {
+    "file": "assets/skills/docx/references/track_changes_guide.md",
+    "bytes": 5323,
+    "sha256": "57fa023f4a6db8b9225d56a7d5e17f3eb9fa05ddaac6f891033253f84f94b82f"
+  },
+  {
+    "file": "assets/skills/docx/references/troubleshooting.md",
+    "bytes": 18963,
+    "sha256": "70382108dcd419fd46b7c66cee4dfad7da82d378afe4f3bed74c60ffdb9d1caa"
+  },
+  {
+    "file": "assets/skills/docx/references/typography_guide.md",
+    "bytes": 10097,
+    "sha256": "835f3549972f24b94b89eb08a86df932e5f957f322337fcd75e24cb3b06c0738"
+  },
+  {
+    "file": "assets/skills/docx/references/xsd_validation_guide.md",
+    "bytes": 5044,
+    "sha256": "8701f40304b3344c333ecfc52a0a7dae4a019a3e648cedef8723673833c0dc1a"
+  },
+  {
+    "file": "assets/skills/docx/scripts/build_patch_plan.py",
+    "bytes": 1011,
+    "sha256": "f00aa4c7baccf85fcdcb9de811cf902c967000aef2665b3f988a746aac9a8781"
+  },
+  {
+    "file": "assets/skills/docx/scripts/diff_docx_structure.py",
+    "bytes": 2223,
+    "sha256": "7e47b96f2a05a5dd3383b0c11e245af52fad404e03afdc75bdc8328ec49d0543"
+  },
+  {
+    "file": "assets/skills/docx/scripts/doc_to_docx.ps1",
+    "bytes": 3251,
+    "sha256": "022567e26bf8f545821c3b3be4a94efa9e3ff7c76317e882657fbb3942064b51"
+  },
+  {
+    "file": "assets/skills/docx/scripts/doc_to_docx.sh",
+    "bytes": 872,
+    "sha256": "9966b21215c82094efdd07cbeb36975307ebc5e15170c4694e9fa2a0f3645e8f"
+  },
+  {
+    "file": "assets/skills/docx/scripts/docx_preview.ps1",
+    "bytes": 3237,
+    "sha256": "4be0505412626e5914040efbd7c3b089434ed17da79acc6ae7dccebb7a4652bc"
+  },
+  {
+    "file": "assets/skills/docx/scripts/docx_preview.sh",
+    "bytes": 836,
+    "sha256": "3960b1a02b73aad32efaca316f98239079caf7993307540ed4cf4b8039e70ccd"
+  },
+  {
+    "file": "assets/skills/docx/scripts/docx_to_pdf.py",
+    "bytes": 2851,
+    "sha256": "68410cb7d944237a820e7fbd446d91e1fcda6f3c37c5e766641b7de3a2336c34"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Cli/MiniMaxAIDocx.Cli.csproj",
+    "bytes": 497,
+    "sha256": "e197b05f263d6cc8e260b64cea52a7df5cbf011f9bc7b2a13700dd62269a0a46"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Cli/Program.cs",
+    "bytes": 583,
+    "sha256": "bea76cb9902984bd051d6292ea0a65d8cd57a29f76ea94e958766de1fd55275f"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Commands/AnalyzeCommand.cs",
+    "bytes": 6171,
+    "sha256": "b1d452ad764f4ea8ea106bb0e837adba53014e612c9166c71fb7aa9d72f0a019"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Commands/ApplyTemplateCommand.cs",
+    "bytes": 12991,
+    "sha256": "934bc17f239a9bf478596312447c048b001b459ddd2db70010ca0314aed23675"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Commands/CreateCommand.cs",
+    "bytes": 14530,
+    "sha256": "74382c607387fbf2036ee202696799f20b6bcf6a52a7670cc2fd0a01c4045449"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Commands/DiffCommand.cs",
+    "bytes": 6097,
+    "sha256": "218239b9325cde5b1955a6ce0237d1d6ac05ed6a006a340733767e59b575234f"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Commands/EditContentCommand.cs",
+    "bytes": 19780,
+    "sha256": "cc779ef7ddc364310ab942e231eb8cfc8c761beae8ae4e57b6134b8ce1702624"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Commands/FixOrderCommand.cs",
+    "bytes": 4495,
+    "sha256": "0bdfd163069211eb17594504f4b61f26773a96c00182cb84a028df0a096b73f0"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Commands/MergeRunsCommand.cs",
+    "bytes": 4794,
+    "sha256": "2dd5d519aa5e0cf9533448f63d89e6776b5b7019ffb34868a6c715741a389e66"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Commands/ValidateCommand.cs",
+    "bytes": 4214,
+    "sha256": "856697852a5254b977d97f301a759e42a03b893f690fe88ede2c46a30f336480"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/MiniMaxAIDocx.Core.csproj",
+    "bytes": 425,
+    "sha256": "4ddcd866526db666fde0a01a973a6448ededb435eb492a9baaad1f87fe5564c4"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/OpenXml/CommentSynchronizer.cs",
+    "bytes": 6476,
+    "sha256": "a4454a6a493f011857a5d634a918e9e9a398556644d6706e57ac8eb4078de7f0"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/OpenXml/ElementOrder.cs",
+    "bytes": 4155,
+    "sha256": "01620be46ba0dc6a7ae113c800181367b1da02070f661252d80187b051273c11"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/OpenXml/NamespaceConstants.cs",
+    "bytes": 3584,
+    "sha256": "8d8099f70cac3e8976b47ef34fec224b4bc92ee9ff8286483ef7315cfedeb467"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/OpenXml/RunMerger.cs",
+    "bytes": 2630,
+    "sha256": "6d90be5f4427c29eabd92a5709bbe7a0b0f6ab8177347575bc5e197a350e13c8"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/OpenXml/StyleAnalyzer.cs",
+    "bytes": 2999,
+    "sha256": "8d45627608eaef19b7844c1bd8e6d8c8796bc0cbf5f9c50a47d85b45b61f8985"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/OpenXml/TrackChangesHelper.cs",
+    "bytes": 3032,
+    "sha256": "a95da32c428f58d6fb76090de47679f0dc3ee0b9e9d1821cea7e778e0d3cccb3"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/OpenXml/UnitConverter.cs",
+    "bytes": 1057,
+    "sha256": "045038a1865d21cb11e32c74b7dc5152e03905e969ca892743c256840f2a1ee7"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/AestheticRecipeSamples.cs",
+    "bytes": 77371,
+    "sha256": "12e6921d53b8e4b7f71f499c7d06a9c169e16a80b9666bd6a17e27503bc9c651"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/AestheticRecipeSamples_Batch1.cs",
+    "bytes": 38797,
+    "sha256": "e5b478f71abe1892064b5baec9c5d3d91b8e9e14e21a5ee98bdca7f543510cb6"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/AestheticRecipeSamples_Batch2.cs",
+    "bytes": 43403,
+    "sha256": "f984ed0493762c12706e88295504fa2cced700d230a0de030d80e28cbc7e650f"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/AestheticRecipeSamples_Batch3.cs",
+    "bytes": 45319,
+    "sha256": "e2e4ff1ecefcd9e984af4ac2b82c6cfda2b01e842812eb420c377a4921fb6f92"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/AestheticRecipeSamples_Batch4.cs",
+    "bytes": 48195,
+    "sha256": "6c0c370a2dc5b06e6ceb4f09333d15f043bb4314673740bd150d2d34fb13454f"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/CharacterFormattingSamples.cs",
+    "bytes": 47171,
+    "sha256": "95458b9de60a381e14461a6224aa2d660266de4344800870bbc1530511818075"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/DocumentCreationSamples.cs",
+    "bytes": 53357,
+    "sha256": "f6d567f68f624c455549040629c3419fdc0591e5a45ba5b9abe79fb84c7ab425"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/FieldAndTocSamples.cs",
+    "bytes": 26933,
+    "sha256": "138652396d18836cc2252a82fcd2528a949ea32db1c3d74c47d14c3440ccdf8d"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/FootnoteAndCommentSamples.cs",
+    "bytes": 30838,
+    "sha256": "aace21251fd6a4aa5aa7b754d3eab3d291419641c1dad2350278ae64dc5e842c"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/HeaderFooterSamples.cs",
+    "bytes": 36271,
+    "sha256": "12f51f5a2befe41ff299c342eedfa5c0549cfe2fe53df69533009c2f7479cf92"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/ImageSamples.cs",
+    "bytes": 40191,
+    "sha256": "0fe5bbb7c810b6c99313c11829f72d01cc896d9c6e01909edcd1431b8e7c690e"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/ListAndNumberingSamples.cs",
+    "bytes": 35152,
+    "sha256": "2e696c491f4d95cdb1bef4e65898202a87385a76ab4793cd9422ee0452b89287"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/ParagraphFormattingSamples.cs",
+    "bytes": 56837,
+    "sha256": "2fe44aa4461eafdb6d20f8e6f5480c217bf0bc54284ea025914f315f394c0258"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/StyleSystemSamples.cs",
+    "bytes": 65581,
+    "sha256": "b8b4cb6ed9a0c67797cf8b0aab00b482c650173ad41d7cdd5d78af3a50b4cbea"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/TableSamples.cs",
+    "bytes": 51771,
+    "sha256": "9d8cb65afaef088d8c90ea438fd8155b91e1ca74c5b92a1049698565faa39052"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Samples/TrackChangesSamples.cs",
+    "bytes": 26780,
+    "sha256": "067ecbc69bf70bece3f26553ddfb2452e166a570d73942dcc60c996b8fc52d6a"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Typography/CjkHelper.cs",
+    "bytes": 1200,
+    "sha256": "eacdceed0103749ef34de8a32bdc1cc4df8c23dad360dce33e24ba626d733ebc"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Typography/FontDefaults.cs",
+    "bytes": 898,
+    "sha256": "91aa2368bad387763f60e4b2156012dc699ed78eaacccc3e1e32dca95e1fc0f4"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Typography/PageSizes.cs",
+    "bytes": 979,
+    "sha256": "6e95bb3f99d0b35e93ea55233e58cb1d6b4d947c0ca769ab01d983c9b78aef66"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Validation/BusinessRuleValidator.cs",
+    "bytes": 9229,
+    "sha256": "173b07e0c24f4f5b64e145a90a2630a640e22b2afb6e092f75f3a5ec42197791"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Validation/GateCheckValidator.cs",
+    "bytes": 5952,
+    "sha256": "6f07ee9a1631d868e119313131b8cfc75a605ac6ba4046ebbae17d164f94d9d7"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Validation/ValidationResult.cs",
+    "bytes": 651,
+    "sha256": "e992fec3bf1756869a523dfc22714f02f91639b5051f64567b76f89caa037d0f"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.Core/Validation/XsdValidator.cs",
+    "bytes": 2175,
+    "sha256": "d6ca121941dcb906047f2c591eaf80f1e69bd8cd5c687a238c5b6f80f89f6a6d"
+  },
+  {
+    "file": "assets/skills/docx/scripts/dotnet/MiniMaxAIDocx.slnx",
+    "bytes": 153,
+    "sha256": "145f185521c15cfc13a3cc1bd6ca5494132a88f5c242b1f0994c330faa9b2aeb"
+  },
+  {
+    "file": "assets/skills/docx/scripts/env_check.ps1",
+    "bytes": 14392,
+    "sha256": "3739be1bb87a2261342827533d96d9baf7220dee86e1ec0893cf43721e8556cf"
+  },
+  {
+    "file": "assets/skills/docx/scripts/env_check.sh",
+    "bytes": 12414,
+    "sha256": "1b55ee98786ac01a729459580242406ad26f439a2eba407a6cf76745b1ed6bc3"
+  },
+  {
+    "file": "assets/skills/docx/scripts/extract_docx_text.py",
+    "bytes": 40273,
+    "sha256": "2b6264fbff569aab1cd2455cb5440a7f922dd5adc940bd3d8b97122fdfd6472a"
+  },
+  {
+    "file": "assets/skills/docx/scripts/pack_docx.py",
+    "bytes": 966,
+    "sha256": "62101fe0756fb4fb9581c480940740407247f53d182c77cd4d86b94e54ac1c52"
+  },
+  {
+    "file": "assets/skills/docx/scripts/read_docx_structure.py",
+    "bytes": 43193,
+    "sha256": "2ebd5b74265577313249d97e0781a276549876b015add4a247ba075a19cb1977"
+  },
+  {
+    "file": "assets/skills/docx/scripts/render_docx_pages.py",
+    "bytes": 4795,
+    "sha256": "9f26155f105d61705f24b359acc1f261f8a21f85b206ea092577753e69023bb6"
+  },
+  {
+    "file": "assets/skills/docx/scripts/rendered_report.py",
+    "bytes": 26188,
+    "sha256": "b7828b6ff90c94169ef9b9d5b4ab7712df793144e92e92174bf567d9e76c4f5e"
+  },
+  {
+    "file": "assets/skills/docx/scripts/setup.ps1",
+    "bytes": 23089,
+    "sha256": "cf8cc43ba237cd070d39ffbdf5c641ea9aa54519271d4c65a9cbf250c3409d3b"
+  },
+  {
+    "file": "assets/skills/docx/scripts/setup.sh",
+    "bytes": 15706,
+    "sha256": "62fa4b498a1ece9860c2645cbd1bef8b02184b20fb13951e8f963e1b179446b0"
+  },
+  {
+    "file": "assets/skills/docx/scripts/unpack_docx.py",
+    "bytes": 816,
+    "sha256": "2c69bd5555b757ecd4784434cf0b5aff2dabe25e45f9c89440476e8bcaaf2ef3"
+  },
+  {
+    "file": "assets/skills/docx/scripts/validate_template_manifest.py",
+    "bytes": 1999,
+    "sha256": "544710a3ef82229b0f8413ee04246dcf7a28ed87e077f0aa6145f506c88ea8a9"
+  },
+  {
+    "file": "assets/skills/docx/scripts/verify_anchor_atomicity.py",
+    "bytes": 2691,
+    "sha256": "8f4301c46cc03053c162e478779536a4af864e3971f672921033de56cb93f28c"
+  },
+  {
+    "file": "assets/skills/edit-deployed-website/SKILL.md",
+    "bytes": 1683,
+    "sha256": "3de73f5903d28d2d10331ee180b029d441ec960bda09f403ecd13955df96a93a"
+  },
+  {
+    "file": "assets/skills/init/SKILL.md",
+    "bytes": 6839,
+    "sha256": "7b1464e4250eebabc202fe343db23fa55812cfe7debec87ab21b7daef32f45d9"
+  },
+  {
+    "file": "assets/skills/lark-tools/SKILL.md",
+    "bytes": 20747,
+    "sha256": "1a2cb903de35fd11d71015a6327c68eb8446e2e8b9c28424a6a3de73c11cf435"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-approval/SKILL.md",
+    "bytes": 1355,
+    "sha256": "e0047ca33b28e0398dea42c107723c45027937fdf237bb82893a0d2ec06c0e68"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-attendance/SKILL.md",
+    "bytes": 1620,
+    "sha256": "a0ea5f3fa176496dda31d912f7e55ad7cfed5243b30567d16e7f9dc96eebbe8b"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/SKILL.md",
+    "bytes": 54998,
+    "sha256": "739b905d6a6733db98f3cb6ba131bb3c76c30edde1d3f54381cee15b9840e659"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/dashboard-block-data-config.md",
+    "bytes": 12165,
+    "sha256": "b70177e3837256961ffa59ebad5e1afb9c33da00743da596837a897ce57984db"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/examples.md",
+    "bytes": 3656,
+    "sha256": "e2bf496c160d6ce1b75d87dd8854844b50309393c98c5aed78b4a08770a7284c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/formula-field-guide.md",
+    "bytes": 56980,
+    "sha256": "72b14241bbb55c7cf50481c689a45fcd4462c13bf651031b689f740bdaecbf7d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-advperm-disable.md",
+    "bytes": 2178,
+    "sha256": "05d36503ead10e0b49c420214bbbef4be7245a7d708a78a05aaf22865876ca4a"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-advperm-enable.md",
+    "bytes": 2002,
+    "sha256": "91fd193577751dc9865b266e691cdf3a186f808977346538648d0542a52df2da"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-base-copy.md",
+    "bytes": 2791,
+    "sha256": "71b3b25a03c52086c1d1faf229eb18b46dc61f17e3c875ea35d411d4eb27a037"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-base-create.md",
+    "bytes": 2483,
+    "sha256": "ce6d37da51996678002e68b9563739f6ebb888e49858e2cb54ef5800525270a2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-base-get.md",
+    "bytes": 975,
+    "sha256": "92603e480db34b350fcd4e5fecbe63860f949d4c5fe1ea65743e2ebcd4f75ff3"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-arrange.md",
+    "bytes": 2138,
+    "sha256": "d903af66287796c4389c563fb084791102874b5a92cf8045593805a26fdf281d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-block-create.md",
+    "bytes": 3659,
+    "sha256": "5ebd279891d2efa1f2571d38f6db9c75029b3ca20188308c4d80222295224e44"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-block-delete.md",
+    "bytes": 1008,
+    "sha256": "0391101bc3e2a5d6e169e69ece48a36f83ac2e2d01c1eb3484405fb00100cfdb"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-block-get.md",
+    "bytes": 1767,
+    "sha256": "42ad4e82b3b9293d3880f62d4f7ced2ed1128b679aba9fc02963a07c6c6a7d87"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-block-list.md",
+    "bytes": 1521,
+    "sha256": "823017601a9c36d8dfe11b073d57ce4ed12853d39db4f9ee3664219ebe8354a3"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-block-update.md",
+    "bytes": 3111,
+    "sha256": "3f17ec4e0826a53424d83dc55b6a77e89a6b629ae64a6df647a116372aa8cdf2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-create.md",
+    "bytes": 1782,
+    "sha256": "6e275de197377e861fd5935245ea9424b02da622b74086a6cfc0a4bbfe48cd5f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-delete.md",
+    "bytes": 1024,
+    "sha256": "2d1e753de77b0b667e5afd8cada503b10f57bec616a003616fafaefa5a96f435"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-get.md",
+    "bytes": 1674,
+    "sha256": "7abd66f68700643c440f591898239a50e19c6b56b20a251d93a66d27c09a2bbb"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-list.md",
+    "bytes": 1499,
+    "sha256": "b723924c7e45936377bfbaaf3352841a3872a252a6fcf51426b2676ab55fd77a"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard-update.md",
+    "bytes": 1559,
+    "sha256": "787f7e9c4d69606434166a87f1add10a01c0b9cefd481029a108bfabae41f042"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-dashboard.md",
+    "bytes": 11073,
+    "sha256": "79cea2a2953fa462144e58d14b06bd8c2653943a775d8f89c342e6ed59cd1880"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-data-query.md",
+    "bytes": 14658,
+    "sha256": "c79adcf3980ea88b8a405742c0b394f079fe08c7a6b0ac3b8fe6f7805d72ded8"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-field-create.md",
+    "bytes": 3475,
+    "sha256": "dacb2ea83832c6eeef7667fd4498ba1ef103b6263a699ec29fd0cdb1e14e0af3"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-field-delete.md",
+    "bytes": 1322,
+    "sha256": "a8c2ac0c07d9324d82b4f0ce222ee753c7da6635e6b1ec6c5161c2507f72a25d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-field-get.md",
+    "bytes": 904,
+    "sha256": "445cd8c2695151429e494a5e3646e42abce810f0624f9822daac18397fccd3fb"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-field-list.md",
+    "bytes": 992,
+    "sha256": "e255466b5d80b097a64f20fcb7bc3174e96a29368360125b23c848e6ab30a857"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-field-search-options.md",
+    "bytes": 1240,
+    "sha256": "051d81c714e055d127ffe3e8fd419e38fecb4e740b44b338feee3e50d4db2b28"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-field-update.md",
+    "bytes": 3356,
+    "sha256": "15d71cb53517567d2ffae25e490b63bddebbde0b122b5cd9a6dc4ce48f33ed2a"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-field.md",
+    "bytes": 1179,
+    "sha256": "e0356ce540766060b31c7bc56fa288beb0409f04e776326a9cf3ab5501779b2c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-create.md",
+    "bytes": 2520,
+    "sha256": "a9a48f9270da21d476280abdec06d04d4b522d96135b20339dbdfbadcfcc899d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-delete.md",
+    "bytes": 1593,
+    "sha256": "0d85837cb21df9035fb43c58041b79b03485dcea7088b6f608ace2ff4e965a3f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-get.md",
+    "bytes": 1645,
+    "sha256": "67179c15a2f581ea7f392a0763444e6c24aaaca07ae34ddcefd6454c93f1b7bf"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-list.md",
+    "bytes": 2001,
+    "sha256": "a020ddc730330cbdfcda287e9080fdcf98966f22e6b89f4c8247c217c5aec266"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-questions-create.md",
+    "bytes": 4665,
+    "sha256": "8bdef63642f8c534858d72416b6dfebc9fd0ee52455b639b660dc785aa825900"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-questions-delete.md",
+    "bytes": 1865,
+    "sha256": "0c7b1f378d33a203870bf223ed209263c3faffaf7d2393a1fbe0644971dbcf5f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-questions-list.md",
+    "bytes": 2020,
+    "sha256": "1c962cdf9fca91d7bf00c33bf8bafdce331ba37516f6c0bfada5e698a94618f9"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-questions-update.md",
+    "bytes": 2886,
+    "sha256": "baf49d0e213730937665c581d111e21fc89e84a231529d70d4a426c5db8a12d8"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-questions.md",
+    "bytes": 1056,
+    "sha256": "078b016000a0fd2c8cd4de118bdcbfc4bd2fc1aa21308d2769678a2a1875fa7b"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form-update.md",
+    "bytes": 2202,
+    "sha256": "5516cce7fa659cc61d20cf5cb48da3460b3e7b064b288eeb4978a18356dcf3c9"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-form.md",
+    "bytes": 1028,
+    "sha256": "d85662a4ebc57c2b97060530396db906cd102917c1fc3aae67825e712c2f4022"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-history.md",
+    "bytes": 630,
+    "sha256": "5eb5dee08ef909dc87611c1e6f7cddf15adcbb6e94e401a952ddd36c738bd546"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record-batch-create.md",
+    "bytes": 2701,
+    "sha256": "4b59bd3bab4b95e7e05a5f7b919bfe5eedfa3e6a179c3ee0d708826fab6394e7"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record-batch-update.md",
+    "bytes": 2373,
+    "sha256": "3cf997b0539b8e94ac7f5d31e632ef750f7ec77d9b22a8555746e9d78027be35"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record-delete.md",
+    "bytes": 1287,
+    "sha256": "ccdae3f082ee1911bdfa66977835f4f3dd0f6aa1a60a1d51a616c7bc84b0364a"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record-get.md",
+    "bytes": 823,
+    "sha256": "c6bbe6b22007814550ed08c80e437b84541afb2297f013a37cf9313a3132948d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record-history-list.md",
+    "bytes": 2914,
+    "sha256": "496672feedd1ffd201c164f303261c172fa23b07c9fd9d555f887b2f2813e6ea"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record-list.md",
+    "bytes": 3319,
+    "sha256": "9e02a00b5a7182246f028df6c72d0ba25f47daa009b7f26badeefc531888dbe3"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record-search.md",
+    "bytes": 3017,
+    "sha256": "d9b07cba01919dbdd46675cc53a531b4bd51774ead2af4d091963cb15279a972"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record-upload-attachment.md",
+    "bytes": 1710,
+    "sha256": "273263ecdf0f8cf1afec92642d3c4d0f42e4abd6d41a3ff706534fd61d6c8b83"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record-upsert.md",
+    "bytes": 2608,
+    "sha256": "e5b9b7e92fe256cdfc6d552bd431f1d04bc1e7fda3fd9385f0b14c38f3e269e2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-record.md",
+    "bytes": 2138,
+    "sha256": "54a4c42b119b134709062a661722d130870007a3cbbf0abeb22a15fe5a54b8cf"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-role-create.md",
+    "bytes": 3331,
+    "sha256": "fb10e0924a7ba1a8e2a0387bf694d0018eb013490a3bc73bb0c7253f578bbdb8"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-role-delete.md",
+    "bytes": 2162,
+    "sha256": "549c51bd252ed017d8a27c3ead85ff46628bc16894cd0fc0b08eb053841860b2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-role-get.md",
+    "bytes": 2729,
+    "sha256": "12f811421870ad85f584010ffaa4fba01ab386f051f1a1dc4483bd16ffd015b3"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-role-list.md",
+    "bytes": 2477,
+    "sha256": "11a5dcfe51256e0efce3834ca51e7842bb0532379e9c79858f6f98dad2e6ea47"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-role-update.md",
+    "bytes": 2872,
+    "sha256": "f0f0108ae9e00195600e7ccdf21b75ddbf883b9a7ab4e3ea7162680f4ac91986"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-shortcut-field-properties.md",
+    "bytes": 25254,
+    "sha256": "97bd5d86531de0ebce40c169d77c2ccb2c452eb567813c20a395110b7153ec3e"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-shortcut-record-value.md",
+    "bytes": 4578,
+    "sha256": "353e20ea121cc7e7d01d30affd6efc8dc38c3c3cecb60282e3d94fec4559266b"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-table-create.md",
+    "bytes": 1722,
+    "sha256": "23c4de0912e68be116a841ef7a381df8f55eb150dc0e1940b701371ebb660cca"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-table-delete.md",
+    "bytes": 1347,
+    "sha256": "e837c0911381afdcc9394c4144a9e0fbb8e7f9f905487b4953065faa58282000"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-table-get.md",
+    "bytes": 1338,
+    "sha256": "eac9ef07b5c157f284563190885ff9ab23318f82218696fa407a43d5912aee4f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-table-list.md",
+    "bytes": 948,
+    "sha256": "00eeb746d6620b12b2fca673ec0e912882246f8e1a5db02f63c2bc4bda95b893"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-table-update.md",
+    "bytes": 1004,
+    "sha256": "08bac24758306d002316ffdba2678db2eac7d03b406d6ca4a68f827afb1bd380"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-table.md",
+    "bytes": 1034,
+    "sha256": "a6f82974e4e4af616ab24f19f13a974b28b174ad01aea6a4d806fb2ee798029e"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-create.md",
+    "bytes": 2360,
+    "sha256": "24ead7c7c50b11581e3be4b1a89bb85027a017f7be7e7b3ff07f3de4635b09d7"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-delete.md",
+    "bytes": 976,
+    "sha256": "ff793bd36c8234684f72b25564744259e690da30d44e2f2ba244fe65186ec2b9"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-get-card.md",
+    "bytes": 791,
+    "sha256": "d841409fdf659af685a310766dbd24c80d16a2ec90210715aecfe9aa69dc8c61"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-get-filter.md",
+    "bytes": 797,
+    "sha256": "d0181e83b534b76f007ae9ab72dfe7b043efce8b305b16c962665f9859723e57"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-get-group.md",
+    "bytes": 794,
+    "sha256": "06ae779640a53c12da9b4ecd6d1d411ed67e0d19b684daf52182597c5443633c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-get-sort.md",
+    "bytes": 791,
+    "sha256": "78cba8dfa78f809a74df8b8544e1b4cf859e10ba0e12cb472e11f447ed240ee0"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-get-timebar.md",
+    "bytes": 806,
+    "sha256": "6fc13d1cea144713e95aa07f15671129d2b8f547ef9b8b8c776351faec4e450a"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-get-visible-fields.md",
+    "bytes": 836,
+    "sha256": "e4dea173a3d701f642b8e3413c6fead7c008736b8760aabd643fbf001a534c75"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-get.md",
+    "bytes": 794,
+    "sha256": "85269658f2930066a80f41672b4466a55ee24270f1984ec0a4176b951fd4cbd8"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-list.md",
+    "bytes": 985,
+    "sha256": "1ef8634ac8b92e12bdfa01c5f5cae6464c01724dc3d43b474039346280346f09"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-rename.md",
+    "bytes": 932,
+    "sha256": "106ddce503f5d9088a407c59ee3b5025b1f3289a6bc15514a32ddc26fe29e8b5"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-set-card.md",
+    "bytes": 2013,
+    "sha256": "6f9ebab8255786182310adfb30c97d6dd37550f74378363207319ba5d5514ddf"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-set-filter.md",
+    "bytes": 4396,
+    "sha256": "0023ad1c30034e0d4f965d5873e29ae443a6b6e1da38aec198b35a71447b5082"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-set-group.md",
+    "bytes": 2034,
+    "sha256": "2fe7d4a1ae06f474ac2daeb4c6dbbdc83b61733a84ee76408221013fd6184c51"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-set-sort.md",
+    "bytes": 2042,
+    "sha256": "1905bd43e1c86bbae7477743b580012e335739c6d46aa55028b2efe401aa9629"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-set-timebar.md",
+    "bytes": 2479,
+    "sha256": "c0bdf76f5222662935a2b1a7bb53597201c55e768e8ab9b947ab53af6fdfe187"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view-set-visible-fields.md",
+    "bytes": 1972,
+    "sha256": "751d654dd8295b5bd45a7087669f1cd720253c74c987b944ec588c0e0cac4264"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-view.md",
+    "bytes": 2607,
+    "sha256": "ca55b39258053d27e27d93eaa570e5a072f7f5dd26cf2666cec9182fcdaeced4"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workflow-create.md",
+    "bytes": 8005,
+    "sha256": "fddfd6a698e39055437863f9fe68a66bfb1bdf9158dd459e9fb027f3ad9331c0"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workflow-disable.md",
+    "bytes": 2877,
+    "sha256": "19b39a6e3a881614330d4bca6171a1c5dc4d623d7141d819b7d306bb7f7b4194"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workflow-enable.md",
+    "bytes": 2872,
+    "sha256": "0ebc8e39f32f5b664bb8cd5128ab6199050d09f47225857569c24de439aa2d20"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workflow-get.md",
+    "bytes": 5683,
+    "sha256": "52cd887a812c0ef1966f45f76cacf0f76914dfcc5b978276ef74be855e737122"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workflow-guide.md",
+    "bytes": 22854,
+    "sha256": "3198cea58cc735a9b838372329bff29f5505243843647f17785f94bb7421ce97"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workflow-list.md",
+    "bytes": 4355,
+    "sha256": "1fb7bb06c055795c25ad0c5ab89664f7fef159fe712566dc45fce5f53a4cad12"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workflow-schema.md",
+    "bytes": 33779,
+    "sha256": "0c443f95a9bc7171dd14b59c79b66d8ec1709a5e8e20834006f90e781c2abc92"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workflow-update.md",
+    "bytes": 6775,
+    "sha256": "8fe49981ce5bcdc3114e2ae298fb310992cb7d1fe8e0f0146795f57d631720c3"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workflow.md",
+    "bytes": 1734,
+    "sha256": "573360ed0dfcd8da0df819ec6e6e0ded12aa35d5e864f4aef1067807346b487f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lark-base-workspace.md",
+    "bytes": 684,
+    "sha256": "d8178f5db0f006feb774e0bf2e5147558cbcbfa5cdbae9a094275c444dd83cdc"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/lookup-field-guide.md",
+    "bytes": 18616,
+    "sha256": "2d8397d1917b27a7691dc3cc608f37fac8e82e1c1e15da457c33ba53a639c2d5"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-base/references/role-config.md",
+    "bytes": 19910,
+    "sha256": "6490e076679602747a02d8137929c3f8d8c3c189cb6d2fafa2562f4645cba7c8"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-calendar/SKILL.md",
+    "bytes": 11121,
+    "sha256": "f03745613de0bc32681ca31700a6b49450224a28814b9208125ca336b987570a"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-calendar/references/lark-calendar-agenda.md",
+    "bytes": 2313,
+    "sha256": "810713427524da397939ff95e3f5bcfd870fba1fcc8b2c7546f2253969d57d65"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-calendar/references/lark-calendar-create.md",
+    "bytes": 5155,
+    "sha256": "23433c243fc3bb1dcd6fc1cd6d31633f3740b126fb32ecb53587408368421b59"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-calendar/references/lark-calendar-freebusy.md",
+    "bytes": 3855,
+    "sha256": "ff3b79ae776e4fb7b37f58f41c1826056b717f0d57087c6fcd30833fc20bcbea"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-calendar/references/lark-calendar-room-find.md",
+    "bytes": 7652,
+    "sha256": "956435ef0a3eddb7394edd1aa15ac30d16a6830cfbc28f95a7ae4979d8124011"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-calendar/references/lark-calendar-rsvp.md",
+    "bytes": 1358,
+    "sha256": "1ec25ef0827c5a0f5823b42c86e3e2dc9dde55fadcfad73b8daf2e845a729369"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-calendar/references/lark-calendar-schedule-meeting.md",
+    "bytes": 11346,
+    "sha256": "93a1e788bbf626ae1f05d588d5a26259d75dfce1475a75c8afe58382b765dc46"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-calendar/references/lark-calendar-suggestion.md",
+    "bytes": 7196,
+    "sha256": "6398e2172951919e94e299f0d95ae41d9b0e70d91d106978e47646cdb35257c6"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-contact/SKILL.md",
+    "bytes": 1053,
+    "sha256": "807a24a43285836f4d3142d107fe90c61f495a7b402dd2d6ca38cc577a602f03"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-contact/references/lark-contact-get-user.md",
+    "bytes": 1599,
+    "sha256": "3210a922017740da494d9120e25abc2375f07dc01d15058d405d8bcce35b220f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-contact/references/lark-contact-search-user.md",
+    "bytes": 1342,
+    "sha256": "c094b05a7f07e59d63dc9158e2b842cd6cfc0e6cd1e4afe1e10278be9916d975"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-doc/SKILL.md",
+    "bytes": 11339,
+    "sha256": "2f233bdb504a59bcc1680f08c388b4471bc4f5cf8852ad042a8d785b4e24bfeb"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-doc/references/lark-doc-create.md",
+    "bytes": 20693,
+    "sha256": "3b26689932c6cbb9eb732d53eb104fc0028abddb6582e30b402731e2490f3c97"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-doc/references/lark-doc-fetch.md",
+    "bytes": 4194,
+    "sha256": "6b3f7f50d60e5afd69c2e090c1936da92f37c3a6112eee657763a3a950b25a25"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-doc/references/lark-doc-media-download.md",
+    "bytes": 2169,
+    "sha256": "d4c7f67d07b907106a037500e5809405ce74ee4b642767af3e417c5edd527277"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-doc/references/lark-doc-media-insert.md",
+    "bytes": 2265,
+    "sha256": "204ba2320611d79ed75a4124336a3788afd757e01218be18de28d2e3fa0520e6"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-doc/references/lark-doc-media-preview.md",
+    "bytes": 1647,
+    "sha256": "ebecf432d6ad0dbfa249cbf3dab91e7e20e25ee29e1c4874a039aa2bb8194200"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-doc/references/lark-doc-search.md",
+    "bytes": 14302,
+    "sha256": "ecdd1021115449d0268d14d1d6293f1a37112c55f239ac89374dcf1d421163d5"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-doc/references/lark-doc-update.md",
+    "bytes": 9677,
+    "sha256": "ce6fa7735e5779d2e4689b7f5117f9eecfa1935530d7f89fdf74f14164828c9d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-doc/references/lark-doc-whiteboard-update.md",
+    "bytes": 327,
+    "sha256": "1d0db1e4fd9b89c79add89456ef8dc9f10bf2470d178865c85bef90f66a8eb3e"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/SKILL.md",
+    "bytes": 16034,
+    "sha256": "e3d85422d9df9d0f798deb80eea55f6d0b61f571b24976d59026b48361427ba3"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-add-comment.md",
+    "bytes": 5471,
+    "sha256": "c7d702cd8a18f7b3a74297fd6b0816f8552d5a20e9cf311edda21798962d8076"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-create-folder.md",
+    "bytes": 3618,
+    "sha256": "2dcc2d29b4c9119395b9ca1b13aa6d04c4cbe2478985db15455430c511eb4c8f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-create-shortcut.md",
+    "bytes": 4332,
+    "sha256": "aca426b7dfbfb44c2fe17d1801bb2525ef770e7bc763fb2e0e6dbe3f13bb829d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-delete.md",
+    "bytes": 2655,
+    "sha256": "efd530e3d60eeca98fa1314a01be4d7f6905ff9693f26b9c79bce7ae53b05106"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-download.md",
+    "bytes": 755,
+    "sha256": "0ee64549dff3dc86eacd0f940784e2fa8b04cd91ad77be32a44f45920a572ded"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-export-download.md",
+    "bytes": 1515,
+    "sha256": "e02cb3e43a485371bc491f9ce214e4b620d45560bacff0999d223c2f911166e1"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-export.md",
+    "bytes": 2977,
+    "sha256": "e481e2518fcb4c207a09c652da91b46c3e9ea5b886bf1c840e43b05c8c9c4ebf"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-import.md",
+    "bytes": 7826,
+    "sha256": "485ba72aafbe40ae3ce32b3dbb0acc437fd0e0b3b83f1cf654f52f4fe3f6609a"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-move.md",
+    "bytes": 4647,
+    "sha256": "c4da1157d8994dc1ec4d94173f6f1e613fd04ec39eee0b5e9fd0af48f6db4c81"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-reactions.md",
+    "bytes": 6271,
+    "sha256": "7c6761ac97e2e65f1ddb9a368a916a2a2b17b2d7c8b3146f1cad531b394c720d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-task-result.md",
+    "bytes": 9387,
+    "sha256": "5be508f606d5cc5ac8f11486c3f1d94b30df262fb90db13d89289812ba71c298"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-drive/references/lark-drive-upload.md",
+    "bytes": 2700,
+    "sha256": "65f370ae7f26f0109f5a8f7d04b34fa84f78a86fb724ae22fbea79951e35aa1c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-event/SKILL.md",
+    "bytes": 995,
+    "sha256": "4f902739eaad942ffc6de8c1483620cc6f2eee05ea0ff62fe6c6e56d3a9f64e6"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-event/references/lark-event-subscribe.md",
+    "bytes": 10307,
+    "sha256": "53807b120574870ea5cf01e1a431fbde1b340311c1a0e5058583c9c3c7d508a1"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/SKILL.md",
+    "bytes": 9782,
+    "sha256": "51ce467c6b17999c1f8d6699a7bbb0fca44955c082723f8557728e81fd998f24"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-chat-create.md",
+    "bytes": 7150,
+    "sha256": "40e60efbefb34dc5222df562777e72326cdca5461542fbe4973b6d7575d06cf8"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-chat-identity.md",
+    "bytes": 3210,
+    "sha256": "449708ed9be8b3b4657c685509e9b587c4f728f51b00bdeb08db20941a4135b1"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-chat-messages-list.md",
+    "bytes": 7576,
+    "sha256": "0eebd45ca0724438e16b598799163566a0c1b3098e244fb8a34b4487148514df"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-chat-search.md",
+    "bytes": 5971,
+    "sha256": "12204b0bf13a82d8202ca76437dc79256d975d1f42afca645767fbac02454fb9"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-chat-update.md",
+    "bytes": 3425,
+    "sha256": "76de0405c5cd9dcd54eadd4edb53b925193d128ee1cfe6c0b52861340d5d1f2f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-messages-mget.md",
+    "bytes": 3449,
+    "sha256": "6ee4a509ebe37849fd7b70d0981a9ce5ecb32ee7ca2100561d27dd630402d85f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-messages-reply.md",
+    "bytes": 10933,
+    "sha256": "24a521c92f249dafba04a73da25a78a3c5483e1e39d0d92a3211e4d171e4d424"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-messages-resources-download.md",
+    "bytes": 4649,
+    "sha256": "7e77a6e6ca3f98d16cebbc6ac05d42adee4cf75fe26183678eb19b90cd88beb5"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-messages-search.md",
+    "bytes": 11110,
+    "sha256": "d00a8604eec0e255e2ebd84b5465cb0b19be1fd6733d4e5735333cb93533d6cc"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-messages-send.md",
+    "bytes": 12083,
+    "sha256": "f41bd266c0f79d1ff033096bf3f84ca1d527cd74ab735e536e35869a0b9adb73"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-reactions.md",
+    "bytes": 9941,
+    "sha256": "97f0cd3b0d3e672f150314fc7e41534b78244af78eeecd34b00949bb765e1945"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-im/references/lark-im-threads-messages-list.md",
+    "bytes": 4830,
+    "sha256": "820573d2a8e7ce447bdc4189eda6acc635019f50b79a06b61294055f3804a5cc"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/SKILL.md",
+    "bytes": 35550,
+    "sha256": "6d0012086d87cbb95f65180ac0c3c84d5d8ea14f255dc90b90776af6f68da9ec"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-draft-create.md",
+    "bytes": 5920,
+    "sha256": "5e356a834a4933dd27e8640852bd166e6c66a6c5ccd478199d6036106d21c8c7"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-draft-edit.md",
+    "bytes": 14348,
+    "sha256": "cbb2748112d50079c5d04d34ad386bce79139bee64246f3033b94aea4fb94a7f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-forward.md",
+    "bytes": 9556,
+    "sha256": "4f094d528a22d6328e8056a73d28a57c3ca7bf41287fc2b50999caa0e9f41ede"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-message.md",
+    "bytes": 8990,
+    "sha256": "ed2fe9a7f513eb0d367914513a66094cdb61305e240a6d33b4d83cab7ef5d3fa"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-messages.md",
+    "bytes": 4446,
+    "sha256": "908aea214f246a719bcca039bee11ad198796c59a8ee2e239effa09d4050227e"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-reply-all.md",
+    "bytes": 8678,
+    "sha256": "1080082fe0200de7dc38e73b047c6b3d7d098fd4b409f26b5e940fa85982dee7"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-reply.md",
+    "bytes": 10485,
+    "sha256": "fd8e162b6bfdf8e8752577f63c7d6908013e7efda31296c183e2b2ab44c26762"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-send.md",
+    "bytes": 8193,
+    "sha256": "839e33821d923e3d7d02b60a8ede8b557e2709088b48bcf9ed5c2161c5c1b1e5"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-signature.md",
+    "bytes": 2737,
+    "sha256": "fa759bf8b2ee70dcf3ab5403e6f31833d86eb1cf86812dd7c30dd909897416b2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-thread.md",
+    "bytes": 4348,
+    "sha256": "ef0f803f3dc95c4012e55c3da546a9835953e56cbfdbb5fc759a3d277cee4503"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-triage.md",
+    "bytes": 5302,
+    "sha256": "0b5ee4c76aa1fe7a1f6ed7fe246b6c7d83fefd05267fcddbb1e6077355da5833"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-mail/references/lark-mail-watch.md",
+    "bytes": 4938,
+    "sha256": "3e9bd88f9b73477165128c84433931734255c1a3d6c540a2e773d644a247be12"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-minutes/SKILL.md",
+    "bytes": 6845,
+    "sha256": "0d1ee5164d90c781db5350712f39717b50901d7c55a2c1a3068df645f38e98e6"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-minutes/references/lark-minutes-download.md",
+    "bytes": 4144,
+    "sha256": "ca4f9cf0db129326c3905c65d951eba52fe1194acf2e2d29c02e7f3e59708386"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-minutes/references/lark-minutes-search.md",
+    "bytes": 9612,
+    "sha256": "aa80cdd32d2f7c340c3aeaf3dfcb4c61a5f236dc08c24ba6142ebb3f7d8439b4"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-openapi-explorer/SKILL.md",
+    "bytes": 4927,
+    "sha256": "ae89debc3f807f9947831b4525e1c118bc14544877c14c14aaa47298b1e863b4"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-shared/SKILL.md",
+    "bytes": 6865,
+    "sha256": "e594c00163cdfdcc8ce8d3434ec7cbc445ead9af668f7cd509f7c342227d9373"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/SKILL.md",
+    "bytes": 13117,
+    "sha256": "d89539cad74354b8feb022866e23c13bbf5dca849b554b6a87b03e4793a887cf"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-add-dimension.md",
+    "bytes": 1743,
+    "sha256": "f7c0a08bbd4786c4c909050660932fcc00d15584c2a7b4e6ac6515188771ea67"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-append.md",
+    "bytes": 1966,
+    "sha256": "69cac2b4cc7043e10a5e2f93aeb9bd318e9f07c985f2f71a19f5cb2e2c5a72bd"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-batch-set-style.md",
+    "bytes": 2007,
+    "sha256": "df5f8b3017b549a7ba02afe21c8f902b34320cbea071463242de882f6706d647"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-create-filter-view-condition.md",
+    "bytes": 1580,
+    "sha256": "0448662c103fdb7275f348dc77691b51db813ceb1075973089da808f2febd049"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-create-filter-view.md",
+    "bytes": 1537,
+    "sha256": "fa68646a1f359f18f5c9fa148ad525cc7f8747fe4e0ea9b0a9f3e6e8255414f8"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-create.md",
+    "bytes": 2807,
+    "sha256": "f0e1eeecde4bcbc594f1b2a9221468ce68e4a3f7d04145eb6c5b0c3424026841"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-delete-dimension.md",
+    "bytes": 2019,
+    "sha256": "573d4872ad3ac46e4718a1e5e19bfec4df2ee77cc57466c9852d31f1585b2b75"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-delete-dropdown.md",
+    "bytes": 1587,
+    "sha256": "cd8fb28873ff44d25beeadcccb835b7c7884f0d43b13937dd8557cd32528e074"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-delete-filter-view-condition.md",
+    "bytes": 820,
+    "sha256": "64616c646838dc84350ef39b20bfd4a5932c3aef7798339782887a90fa270f5d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-delete-filter-view.md",
+    "bytes": 755,
+    "sha256": "a5e1a79220df3c76acdc04b5b51e90f7f380fde86b9163ba1e08e6b7febacfe7"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-export.md",
+    "bytes": 1868,
+    "sha256": "96cd6be7d04cca9794031951d70d2be39a82106f4d0ffb9685a2a66687d388ff"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-find.md",
+    "bytes": 2571,
+    "sha256": "a9bfac4d97ded37eda9d07510d018fa6dbad75468370635f84fd4a195195e75c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-formula.md",
+    "bytes": 3536,
+    "sha256": "f99fbf8b5d681f21e7f0750c1872eeb3de02143ee6fa0255befd5cc7551951d9"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-get-dropdown.md",
+    "bytes": 1498,
+    "sha256": "fb6e43662fdf22e1b4f5275bf2f48bffc500739efba7ae7c79ce50cdc9983ec1"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-get-filter-view-condition.md",
+    "bytes": 827,
+    "sha256": "eb699c3782185823a43f8b28d58a9e251283b1d8882e167b7f89cf8b841a1927"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-get-filter-view.md",
+    "bytes": 718,
+    "sha256": "44d28bb0cb3b4b5362ffb49852c28a35cc1a9e4c09bdc317a77b41b364afed56"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-info.md",
+    "bytes": 1323,
+    "sha256": "27936853b5f8aa8a3171a36860c1bef4ab796143a1c703511d45faabae9fa892"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-insert-dimension.md",
+    "bytes": 2128,
+    "sha256": "8081275801250323c6f0d5e2b540959ad8cd0b8324c7c52d51f1baa27a258b05"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-list-filter-view-conditions.md",
+    "bytes": 804,
+    "sha256": "8949b96d6aa4122b112b214a666516153d15f6720c754e59499d097c7ea25ac0"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-list-filter-views.md",
+    "bytes": 723,
+    "sha256": "3b2c946478735c5b2ca5328928a30ef9d7075b065fb32d017391934cbb14d371"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-merge-cells.md",
+    "bytes": 1724,
+    "sha256": "9b7242dbeb35e87a9c83053220de04dca740537e47dcfb934ad685652a4051b8"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-move-dimension.md",
+    "bytes": 1951,
+    "sha256": "96a99ea7787d250ab5af7c96556e4a7a693f7ab0acb5bc467cebfaf1956162dd"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-read.md",
+    "bytes": 2438,
+    "sha256": "1557941976ad8e380d5e495e9d4f78c1b6ff50f421a4a7eaf42e9b7cc903d405"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-replace.md",
+    "bytes": 2261,
+    "sha256": "f0f3bc3ec8b7c898c25cbbc5d0b47465f4cceac4630bafd70a6fd1e05310f4e6"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-set-dropdown.md",
+    "bytes": 2610,
+    "sha256": "77f1c7a6eeab95b4ebf8f64c27dca332fbe21adcff203b53d4fb2a8cee83fbd1"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-set-style.md",
+    "bytes": 2701,
+    "sha256": "964de0efa2de72dd37723b1d278211aadd765d9bd3ff95409151333abb184f4f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-unmerge-cells.md",
+    "bytes": 1483,
+    "sha256": "40d88e78ab6f59d924a2b5196b5ed1277b9799bd939052075233133422cb5181"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-update-dimension.md",
+    "bytes": 2342,
+    "sha256": "9a7215219cd58712373216243bad7fc57dd5ed7934c469d15fffc411b51e333c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-update-dropdown.md",
+    "bytes": 1983,
+    "sha256": "621ebf33caba009dc9165162075b2b723ae66524a7f014238f60387c8ebc7f16"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-update-filter-view-condition.md",
+    "bytes": 949,
+    "sha256": "27680410ae5dd929aed036da9af3f53b7d092974140581c87d9d6b2a8c724ac2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-update-filter-view.md",
+    "bytes": 759,
+    "sha256": "9be08f6ee4796deded400a01ff7d6109a35c0656c4523edd9b3c5bcb17f3be26"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-write-image.md",
+    "bytes": 2452,
+    "sha256": "ae1da1ac0aecda931302a5ab19bd8313789fa75c643556a56aafeb5229d8c82e"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-sheets/references/lark-sheets-write.md",
+    "bytes": 2265,
+    "sha256": "2a2480974976da97ba91b94565079e310ad62d8e34108bd9df427e46ee372448"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-skill-maker/SKILL.md",
+    "bytes": 2811,
+    "sha256": "a0f084bf27dc2f4788d552a5cbead4713e52f04ae1565e66a6a6f1fed9508b51"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/SKILL.md",
+    "bytes": 21212,
+    "sha256": "1f272dbf6e00ee41dbb1766856dc7eaea7837be17f014577afc4f4ffba98d3f9"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/examples.md",
+    "bytes": 5936,
+    "sha256": "1fb29da7b18a19575be36b788cdc2987c56ea67b8952a655b77f951da096d4d3"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/lark-slides-create.md",
+    "bytes": 7120,
+    "sha256": "6c28e8afb6e58e1ace2ebe63afb1943865953a04e9749a51c521a3ab36438045"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/lark-slides-media-upload.md",
+    "bytes": 6573,
+    "sha256": "1063eff6bf744c4272cda84172350431f07ed7b9c145d00bd5428161cf5fccf8"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/lark-slides-xml-presentation-slide-create.md",
+    "bytes": 8261,
+    "sha256": "bcde63c055eb14489bc4177c807da2ce71da4eafd11697388f7d7db0e649dcc4"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/lark-slides-xml-presentation-slide-delete.md",
+    "bytes": 3873,
+    "sha256": "1e981a0a61cb801387d104cf5f559c4fbb8d5b2d3b4c468a485c9b70f5093c0f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/lark-slides-xml-presentations-get.md",
+    "bytes": 2808,
+    "sha256": "ebc9e65240cefd024fa60ef1a996b6ab3c27fd264d3cf92ab6e52565e6450850"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/slide-templates.md",
+    "bytes": 8999,
+    "sha256": "c336b4969537480d38b53e6d12383f222d206c5d21023f48632da33fc2757483"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/slides_demo.xml",
+    "bytes": 12167,
+    "sha256": "331ab7a90fb19a4d27b57a6bf1335dfb73081299d23346ba2888f7b6efd74859"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/slides_xml_schema_definition.xml",
+    "bytes": 170136,
+    "sha256": "e457748005c83d1f636fc421982e8a142e3348c5d851b6472a8d6b4493073b83"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/xml-format-guide.md",
+    "bytes": 9097,
+    "sha256": "ad31703280fa4c51c341dd2970eacefc971fe5301f2012dd984473d40614e59d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-slides/references/xml-schema-quick-ref.md",
+    "bytes": 5991,
+    "sha256": "24ed1e837fafe121c90260dd55a0ecea96f3517cf42d974ac736afd7af90599e"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/SKILL.md",
+    "bytes": 9439,
+    "sha256": "b9b5fc624c19ff8432a8784325e19af71c14dc11703f960a71fe7c09713bad01"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-assign.md",
+    "bytes": 1217,
+    "sha256": "9a6b1940ee2148d45f621b48ceb6962c401cb57d4484953ce8849859d1565551"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-comment.md",
+    "bytes": 902,
+    "sha256": "a214797e0cda20b84e1c7b4fb74e16f09435372a0839a8e0fd4030951c6d975c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-complete.md",
+    "bytes": 740,
+    "sha256": "8d80f65403dbfb425bd53de2087d12a39d05dca029987b23cb13fc3197ac64da"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-create.md",
+    "bytes": 2513,
+    "sha256": "4549e5775dbbac013e0b11052a454ed97d92b82a4489c45564d98c51ba349e9f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-followers.md",
+    "bytes": 1082,
+    "sha256": "ed2a04029bd3992b3799ba35d990c24000ff57d2a3760d0fc0970bb654fe97ee"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-get-my-tasks.md",
+    "bytes": 2919,
+    "sha256": "7a2004a93530adb6a5a0cfe8dba996924a15fc43bb4aea19e5c0c048799c1446"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-get-related-tasks.md",
+    "bytes": 2953,
+    "sha256": "f5e8ba3221d29d452c017b38086cb68e52340b281e973077b95ac8a40c6f2d62"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-reminder.md",
+    "bytes": 1501,
+    "sha256": "299565d936ffccec2ef3e34dee1fae424d9ea469799d7fc8232a6290a5c1b7bd"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-reopen.md",
+    "bytes": 740,
+    "sha256": "393c52d0f801a992a59748baf28d8671f8ae63a2a674dbe8e55f99b603b038ac"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-search.md",
+    "bytes": 1571,
+    "sha256": "a666ba6a9c70dee6a06290ed74054a3d751dc0ae098d9d898b74e42e0467b0b6"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-set-ancestor.md",
+    "bytes": 966,
+    "sha256": "f07dd5a0706f6a95dd83417a4a215903f9dbad3f16c3a2a915d3bd0b850d4fcd"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-subscribe-event.md",
+    "bytes": 2812,
+    "sha256": "a519dea5a52616cb3f1b5f45a83b162d232aa2fa78272fd1707c08feb88946e0"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-tasklist-create.md",
+    "bytes": 1334,
+    "sha256": "011f4bf1902063f39ebbe18c94790e77dc621dd5d8a0a0318f361a2411d5c9ab"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-tasklist-members.md",
+    "bytes": 1202,
+    "sha256": "68c21892a5f4fb104fa0f455f4781f427b6766c999e7a8c242b642f1553d2e96"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-tasklist-search.md",
+    "bytes": 1419,
+    "sha256": "c9a70b4d017bef95f8f779343e3f01e49d2ec01e1af2263f13476d3b918124af"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-tasklist-task-add.md",
+    "bytes": 1514,
+    "sha256": "11dfb8d31bb7c5946e9cd7b881f593b82fc9592c319c0f3139b7b13433edb51b"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-task/references/lark-task-update.md",
+    "bytes": 1386,
+    "sha256": "5ff63ebbf0b5413bf3d4e1c9dab0dac8f1015258b58a315080dc31798eee6bc2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-vc/SKILL.md",
+    "bytes": 8670,
+    "sha256": "d0e548a68ac859974a2ed63e781585d02b1c522aef713d0fffa1055052af21b2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-vc/references/lark-vc-notes.md",
+    "bytes": 5634,
+    "sha256": "9e2b5163dcbd8bd934ce8bf5e21f37585004759fee242923562fcf7ac18b980c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-vc/references/lark-vc-recording.md",
+    "bytes": 4995,
+    "sha256": "c486b428751ae39d87c6659902b31cfbbb5e8164dcebe64aa4a2af45601015fc"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-vc/references/lark-vc-search.md",
+    "bytes": 6326,
+    "sha256": "405a978dccbce985c221e8f66a405ba06f0f754d0c843b1a4ae0b692aca43f49"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/SKILL.md",
+    "bytes": 13530,
+    "sha256": "081dfaacfa849f272a707522f944a74b41f5d75308c54c8e1d41e9838b69c445"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/references/connectors.md",
+    "bytes": 5589,
+    "sha256": "c4211b04f7decc0f63422d0f0bb6e47bdaa1fa85ce04ec508fe99d6e880b7db6"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/references/content.md",
+    "bytes": 1512,
+    "sha256": "8ed9a8b5552f63f7072e14957219eea369a06b4bb7d6ebe8f401df802a0eecf2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/references/layout.md",
+    "bytes": 19128,
+    "sha256": "c05fe3fa2e4ee0684d2f68156c80037f4887017adb2d39a1ad24a1b8630b7851"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/references/schema.md",
+    "bytes": 14276,
+    "sha256": "baa990e07a537e64b57879902b8ceedc962039bcb5348c0ea26fc3e891bdcfeb"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/references/style.md",
+    "bytes": 11095,
+    "sha256": "b596a86895b7d6858b14cb8d18e37a842cb0078d774654f50fcd6b37be146752"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/references/typography.md",
+    "bytes": 2151,
+    "sha256": "9df28a4ec089b7bfe894e2ac798d28f992c697b1a1012ce2a4561ca35fcee761"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/architecture.md",
+    "bytes": 22418,
+    "sha256": "12eed6cca334d58eb31d45c2eba9b8f9a5204597dc56d0dc52bd384f64cf2191"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/bar-chart.md",
+    "bytes": 7837,
+    "sha256": "0220eb0b49a24463c47d30f66ae5d14b786b2ee7b527790c025912e22b94a6e6"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/comparison.md",
+    "bytes": 7595,
+    "sha256": "8f93eb09b817f4c13f50acacae83b44b10d01996f6e586e610a7ef80d90665ca"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/fishbone.md",
+    "bytes": 9813,
+    "sha256": "cc2bba117e79143d6e54f1b983e0f6042ce5f11d8b30464daf99a9b05cd29bb9"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/flowchart.md",
+    "bytes": 10834,
+    "sha256": "00c586db0e4c22f10266d8a64866fb15ddbe5a90490ab2444967b9fc7fc74b2c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/flywheel.md",
+    "bytes": 8806,
+    "sha256": "b65edb33e808a731041aae6378f1c7fc1864d1e8ada8962c67754ac295bf17de"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/funnel.md",
+    "bytes": 4321,
+    "sha256": "7bde5f3c02c8f14676ae226e329aafa569d051bc99b340f06b70b6f1cb478ee6"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/line-chart.md",
+    "bytes": 9407,
+    "sha256": "979d3f237f734719c1eb61015a78ae3c2a377874fa6c5a9285019f3531943301"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/mermaid.md",
+    "bytes": 3648,
+    "sha256": "97710a7bc49ebb76382ef9bab16cbc81662d0e13fac1a160e62cef292088a684"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/milestone.md",
+    "bytes": 4098,
+    "sha256": "a047231f45e8a514a2b198606d1484fe845613d1700dafe0b8e8c02199559c43"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/organization.md",
+    "bytes": 8505,
+    "sha256": "979859935a0d0c4684ca38e7e6b7c67814bcb82b40b3d061549fcf48bdaf0fff"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/pyramid.md",
+    "bytes": 4010,
+    "sha256": "21a6bb4e36ead12ee95b7c18abbd179189e30eefa947e5a6ecde783791dd0559"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/swimlane.md",
+    "bytes": 20015,
+    "sha256": "df077013de553f03ae7fa8f65d0addf406cda51e01a081a87f9194c6ecc0b7d2"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard-cli/scenes/treemap.md",
+    "bytes": 6245,
+    "sha256": "8a9d363392229684bfe6bfff48896c54a7c73a5547de26db9fb2a20eba5a274b"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard/SKILL.md",
+    "bytes": 9034,
+    "sha256": "fa4ad6d3c8c63061422bd64c3d602320978ba3db7c559927875e967a2b6cbcb0"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard/references/lark-whiteboard-query.md",
+    "bytes": 2173,
+    "sha256": "e93d2516d8884e7fe6aee7a8427805512ad9e07aba1f1266a419f29a853d1dc3"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-whiteboard/references/lark-whiteboard-update.md",
+    "bytes": 3607,
+    "sha256": "19bb9b8542c467c6d277028c9d08529d8c34dad1f2db62d0551e8f248a77417f"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-wiki/SKILL.md",
+    "bytes": 5260,
+    "sha256": "46e39f62abf738f63db2e46f40e78c242623f35a3f8662597c55112ab8d08442"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-wiki/references/lark-wiki-move.md",
+    "bytes": 9652,
+    "sha256": "0e7ffcbc7992a2a168a0c1c0ba46dbc0a741db4cfbfa5638ed02132e1d88051d"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-wiki/references/lark-wiki-node-create.md",
+    "bytes": 6742,
+    "sha256": "e0fbb63b55798b200291b65f2295cb67eac89ed069e26fd881ea2e680b32a1d9"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-workflow-meeting-summary/SKILL.md",
+    "bytes": 4284,
+    "sha256": "cb315540123aa4f1309430e5819521249c1737fd8e17d5633e7d8838d6c3d65c"
+  },
+  {
+    "file": "assets/skills/lark-tools/cli-skills/lark-workflow-standup-report/SKILL.md",
+    "bytes": 4436,
+    "sha256": "21dd0425d499928d09b01f8dffcc45b853fd5ef893dcca3fa938ee8d3052a20b"
+  },
+  {
+    "file": "assets/skills/lark-tools/references/commands-macos-linux.md",
+    "bytes": 1029,
+    "sha256": "5bbf055a7359190b5f07bd50bb21281e0dc8d14c484c760ae72793ebb543a159"
+  },
+  {
+    "file": "assets/skills/lark-tools/references/commands-windows-powershell.md",
+    "bytes": 1942,
+    "sha256": "1f35b8145c48ebbec99abe1115daf64308c8a245079cd79846f25a3e2330a3c7"
+  },
+  {
+    "file": "assets/skills/lark-tools/references/storage-paths.md",
+    "bytes": 1720,
+    "sha256": "74da6a62372e7c382dbbbf32e6769995389de5f0dc0617dc60a1269a83b6d526"
+  },
+  {
+    "file": "assets/skills/llm-call/SKILL.md",
+    "bytes": 2412,
+    "sha256": "6d8d43fee84f4732d644a805925237e7162762ba240f4e3c1c1129d02b9bded3"
+  },
+  {
+    "file": "assets/skills/llm-call/scripts/llm_call.py",
+    "bytes": 16997,
+    "sha256": "d62e5bddd18928a7051d2031345fe984f38824a55f5ab5fade63a78c8e5cf4b5"
+  },
+  {
+    "file": "assets/skills/mcode-tools-master/SKILL.md",
+    "bytes": 10455,
+    "sha256": "79c287a086430c5979d2d29b05abdf02056cc82c5070c74e0c0e0f3e8a30b120"
+  },
+  {
+    "file": "assets/skills/pdf/SKILL.md",
+    "bytes": 28863,
+    "sha256": "3ce4de4609d405b1f8aeb3047359524319a0e6740bbd72f7810617259b8aeae1"
+  },
+  {
+    "file": "assets/skills/pdf/docs/advanced-reference.md",
+    "bytes": 22016,
+    "sha256": "79c7e20eabf41aebe31a64c8a032861d14b878a9a6224e7329e5676b001f3ce9"
+  },
+  {
+    "file": "assets/skills/pdf/docs/ai-voice-cloning-regulatory-report-case.md",
+    "bytes": 15398,
+    "sha256": "255df2c269df0f28a305bc517e412220f766f11332410c650f13a48ecd75ef24"
+  },
+  {
+    "file": "assets/skills/pdf/docs/annual-report-financial-digest-latex-case.md",
+    "bytes": 10674,
+    "sha256": "b2b6df8d179cdb9bc1caff3fc28d9abc034da23ca0b1b81696bce28c5ce82f4b"
+  },
+  {
+    "file": "assets/skills/pdf/docs/create-guide.md",
+    "bytes": 15903,
+    "sha256": "63d5815eba8aaa3f3566d6d5407ac93f04aeed9fc8a66ac8de49eaad03e68e07"
+  },
+  {
+    "file": "assets/skills/pdf/docs/design-guide.md",
+    "bytes": 9589,
+    "sha256": "9fede09ba61f9dc5529cdf51c4e199d5cbefd20da15a31c8e7fd99b418c1e48c"
+  },
+  {
+    "file": "assets/skills/pdf/docs/docx-contract-roundtrip-professional-case.md",
+    "bytes": 17206,
+    "sha256": "ea94d9c209ac4d92f4677a33b23725a4fe541dce616d48cc165131340c26fe32"
+  },
+  {
+    "file": "assets/skills/pdf/docs/email-translation-goldman-two-sessions-case.md",
+    "bytes": 14183,
+    "sha256": "c56c59c98fc1701cc086e0dfcd6d00ceedc112e676eedc705377b813eaff5325"
+  },
+  {
+    "file": "assets/skills/pdf/docs/forms-guide.md",
+    "bytes": 15880,
+    "sha256": "04bd05125333502fd117a2cdafb4ac45ea5acebc7b2381ae0935dfbfa64b1a65"
+  },
+  {
+    "file": "assets/skills/pdf/docs/html-pdf-spec.md",
+    "bytes": 23245,
+    "sha256": "533d2b46aaa2a40ee30cc742e44afc30a5229bfccc7cee823c58cb7ad1ea8187"
+  },
+  {
+    "file": "assets/skills/pdf/docs/italy-schengen-visa-acroform-case.md",
+    "bytes": 15327,
+    "sha256": "1e7e9b07e01df8df74fd1f47ade5d3797dce01e62b9c47bda6a95135215517ce"
+  },
+  {
+    "file": "assets/skills/pdf/docs/latex-academic-thesis-guide.md",
+    "bytes": 9408,
+    "sha256": "1baa3aebb913d3a9831cbfa3c895ddccebdf97a5918fcb8f5b6c9249cdba623b"
+  },
+  {
+    "file": "assets/skills/pdf/docs/latex-technical-book-guide.md",
+    "bytes": 4558,
+    "sha256": "db1cbad472258ea2a43935a24ae03785a0fc0a7a0cf93249a9ab8cd2e6b399e0"
+  },
+  {
+    "file": "assets/skills/pdf/docs/markdown-static-academic-data-viz-case.md",
+    "bytes": 12993,
+    "sha256": "a7cdcdb110b3fa6dab7217344e294fe312369ba686f441967885ea0861a63469"
+  },
+  {
+    "file": "assets/skills/pdf/docs/pitfalls-index.md",
+    "bytes": 34702,
+    "sha256": "facbdf70a5bcac02bcc38dc1d7494e562300097faae73e1b9b4291abf6097fad"
+  },
+  {
+    "file": "assets/skills/pdf/docs/read-guide.md",
+    "bytes": 26402,
+    "sha256": "621612d6849032ec8c1beb391df34f7e90495305336e775394b40d072a3a77f5"
+  },
+  {
+    "file": "assets/skills/pdf/docs/reformat-guide.md",
+    "bytes": 9197,
+    "sha256": "af2357e2ed79e466d6f8df21949d6b8ee4b146611861051c799c104d50437b2d"
+  },
+  {
+    "file": "assets/skills/pdf/docs/skill-readme-archive.md",
+    "bytes": 8420,
+    "sha256": "8ba7c75900b5a848bc2a18f45af53ed11bb715bc6dbd3d09265206ea6a1e522c"
+  },
+  {
+    "file": "assets/skills/pdf/docs/troubleshooting.md",
+    "bytes": 7769,
+    "sha256": "f8b72be22c2ceeb704f616b59b220a8f25f9ad58b418028ea66c9a9e7df5ac26"
+  },
+  {
+    "file": "assets/skills/pdf/docs/vision-guide.md",
+    "bytes": 10413,
+    "sha256": "ed697b9b0939cb915c7e4381b43f59bfb76aee7ed63e1b44a1d48ebedb88541d"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/_pdf_read_lib.py",
+    "bytes": 9163,
+    "sha256": "c1c447f3e7db8ac3df39577ec29d53dfe488da9cf18b399e2201c93ba835d311"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/fill/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/fill/acroform_apply.py",
+    "bytes": 4558,
+    "sha256": "30f347feac06af7e492a9d9af809b6ebcdaefb5d5f365255604c11f70cc80027"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/fill/overlay_apply.py",
+    "bytes": 3342,
+    "sha256": "f557315b2555352d2e65893f4d7ad9c0b6ded89fb0fb07af43207177272edc3f"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/lib/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/lib/acroform_io.py",
+    "bytes": 6376,
+    "sha256": "f5fe971d3d7a6ee0cf70910a5c54db25c0ba260c9840a42b8de518d54cfc1c44"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/lib/cli_utils.py",
+    "bytes": 1339,
+    "sha256": "3a8e4b4a548b6f1013836e544910dce3607fd891639faa4796c4c873f36f4648"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/lib/geometry.py",
+    "bytes": 2488,
+    "sha256": "0c7f815537aea3fc832598d5b77b75bb715343aa1cfec60fcdb197f80b32ce61"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/make.sh",
+    "bytes": 16066,
+    "sha256": "b35802d22d3497e9a80f1b56fc261a019d34071932a2e7956be68854ae48520a"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/merge.py",
+    "bytes": 3742,
+    "sha256": "fa9348007a40382e4e20d0864e702d25dc5671ba2d2716b10868b39a524de614"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/pdf_inspect/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/pdf_inspect/acroform_inspect.py",
+    "bytes": 1584,
+    "sha256": "0da0ec1189a4a27ffb9c5c639186ef2ccb3de72573a4942223cc7f42018742f4"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/pdf_inspect/acroform_probe.py",
+    "bytes": 1733,
+    "sha256": "2953eba80df8f08a6fc8a0bb64a0dc13004f41345d4ff6eaf737b2edc4cce961"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/pdf_inspect/layout_scan.py",
+    "bytes": 5690,
+    "sha256": "e8bde17719410769370944c15f7c26507d0a965b6557fac9763b501dbbdce086"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/read_pdf_vision.py",
+    "bytes": 16896,
+    "sha256": "2e4cc12952f345c7d73fa48d30707f81b2e4a66af7c720ea272c0c44080fa530"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/reformat_parse.py",
+    "bytes": 7127,
+    "sha256": "805c1452d7bc66f934512e63a0b30c683b59036485b2bfb8fa5e600e3112054d"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/render/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/render/overlay_preview.py",
+    "bytes": 2427,
+    "sha256": "320cd502203a846236a17d8a4508786dc7b387dc1f308988e569c1fda5e36dfb"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/render/page_rasterize.py",
+    "bytes": 2442,
+    "sha256": "ead468d88686b0d0220363f83026bd1cf3872882cdc894a43e822c60520520b6"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/render_html.cjs",
+    "bytes": 7220,
+    "sha256": "720c73bad28d3389f5ab879a62a81d1e45bcff0ff3c00a4694b8776bf547ad70"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/validate/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "assets/skills/pdf/scripts/validate/geometry_lint.py",
+    "bytes": 3989,
+    "sha256": "222654bc4dd9c637805febd6461d1b5a8d93c4bfe17e7bf7579bacad6ae55524"
+  },
+  {
+    "file": "assets/skills/pdf/templates/INDEX.md",
+    "bytes": 11195,
+    "sha256": "066151193ca4dc5b3becfd36a2bd5dd1a30278423326f1fed9036e56d6d8e4c0"
+  },
+  {
+    "file": "assets/skills/pdf/templates/bilingual-menu-premium/README.md",
+    "bytes": 8500,
+    "sha256": "aa7b624371aa3ad23c6338a52ba233fbff16dde2e228680bc97157ba23b2cbc2"
+  },
+  {
+    "file": "assets/skills/pdf/templates/bilingual-menu-premium/skeleton.html",
+    "bytes": 13229,
+    "sha256": "17635210ca5d69e351a34fc41ea29be0a7f07ae341ee1edc8e0066697bff0ba8"
+  },
+  {
+    "file": "assets/skills/pdf/templates/brand-guide-2page/README.md",
+    "bytes": 6736,
+    "sha256": "befcb3772b5be077689c5c00f105d113a1481948729f20a80bd09b028b30625c"
+  },
+  {
+    "file": "assets/skills/pdf/templates/brand-guide-2page/cases/minimax-web-brand-guide/README.md",
+    "bytes": 8345,
+    "sha256": "88dabcc5b07d787e8493ea9a4a2404446796556295b15c7aa2aeaef2713b3c72"
+  },
+  {
+    "file": "assets/skills/pdf/templates/brand-guide-2page/cases/minimax-web-brand-guide/source.html",
+    "bytes": 28076,
+    "sha256": "69b7597bbdcc19976b66c1b6b3a0730902c5ae281e168dfa1543f02ed0441f1f"
+  },
+  {
+    "file": "assets/skills/pdf/templates/brand-guide-2page/skeleton.html",
+    "bytes": 10586,
+    "sha256": "8c78e6224912ac0267c7bb0429a80d582259287280773ee7d6cfd9dfd2a1cb2d"
+  },
+  {
+    "file": "assets/skills/pdf/templates/data-viz-report/README.md",
+    "bytes": 11704,
+    "sha256": "fc8a68831789d9a4d76c61ab152172843f06f71b971b1dc440ad1c7378c9108f"
+  },
+  {
+    "file": "assets/skills/pdf/templates/data-viz-report/cases/annual-report-financial-digest-latex/README.md",
+    "bytes": 471,
+    "sha256": "aabc5c21c645a80de49c42b8e1fe535d9614cce904634047c7487724722b07d7"
+  },
+  {
+    "file": "assets/skills/pdf/templates/data-viz-report/cases/annual-report-financial-digest-latex/build_charts.py",
+    "bytes": 25070,
+    "sha256": "79dad17726085a46b47a30640e1f19c0d8f0ae3c433b0164478361aa4ab9cb36"
+  },
+  {
+    "file": "assets/skills/pdf/templates/data-viz-report/cases/annual-report-financial-digest-latex/source.tex",
+    "bytes": 8518,
+    "sha256": "6b8bb0a5d4005e1b5a1a523d41e2ae8782d92ef9381914800e0993ef8a51f131"
+  },
+  {
+    "file": "assets/skills/pdf/templates/data-viz-report/cases/apple-m-ai-static-academic/assets/fig_1_1_table_1_1_specs.png",
+    "bytes": 241196,
+    "sha256": "edd0e1f19fadd2872bf37cf306e27c9c97955956208f06063f17525532215c4f"
+  },
+  {
+    "file": "assets/skills/pdf/templates/data-viz-report/cases/apple-m-ai-static-academic/assets/fig_1_2_table_1_2_geekbench.png",
+    "bytes": 178044,
+    "sha256": "ea45c711e401d0be88d6c60a14c27a3404f91a058ab65cdb3b30d629425c49a3"
+  },
+  {
+    "file": "assets/skills/pdf/templates/data-viz-report/cases/apple-m-ai-static-academic/assets/fig_1_3_mmax_generation.png",
+    "bytes": 157777,
+    "sha256": "b723158e3580ca43eb45101926f5f1e8e03d1d8b2409c6beee9bcddbb1261567"
+  },
+  {
+    "file": "assets/skills/pdf/templates/data-viz-report/cases/apple-m-ai-static-academic/source.html",
+    "bytes": 39109,
+    "sha256": "4ed72226b8fca7cceb0747f5c5c3def4b960986d63354bac1ede80722eb24441"
+  },
+  {
+    "file": "assets/skills/pdf/templates/data-viz-report/skeleton.html",
+    "bytes": 39468,
+    "sha256": "a59a2d34330df75e9aac61d49afdf925d221bda80b420821d27ad6a03ec206c5"
+  },
+  {
+    "file": "assets/skills/pdf/templates/form-fill-acroform/README.md",
+    "bytes": 10413,
+    "sha256": "b949acda27b542978de997a48b4b144e7428c361c2cce5c80664fab9f752f172"
+  },
+  {
+    "file": "assets/skills/pdf/templates/form-fill-acroform/cases/italy-schengen-visa-zhangwei/USER-FINAL-SUMMARY.template.md",
+    "bytes": 2070,
+    "sha256": "06b53ddbfdabfea970c0a5a9f4eb8aaf0543eb0161df970105150d1231f68d51"
+  },
+  {
+    "file": "assets/skills/pdf/templates/form-fill-acroform/cases/italy-schengen-visa-zhangwei/extract_pdfs_key_info.py",
+    "bytes": 2987,
+    "sha256": "66573bb6c7f89cff52584340c3036d04f8596c2de0befdf1b2b4d3e123d35dac"
+  },
+  {
+    "file": "assets/skills/pdf/templates/form-fill-acroform/cases/italy-schengen-visa-zhangwei/field_values.case.json",
+    "bytes": 8304,
+    "sha256": "35241378caef53ec02986ba8226448085b8dca7ad05395c311ce113f3f9a6751"
+  },
+  {
+    "file": "assets/skills/pdf/templates/form-fill-acroform/field_values.template.json",
+    "bytes": 4417,
+    "sha256": "786bfe7cc3da1b78043a15186a9f40f8c7ddc373fdf132e54e4ef18022b5885d"
+  },
+  {
+    "file": "assets/skills/pdf/templates/latex-academic-thesis/README.md",
+    "bytes": 4853,
+    "sha256": "52f2a0d36dbaed4be6f22cf9d568dd48c6c7ccf10be522c68049c6fb4837bc1e"
+  },
+  {
+    "file": "assets/skills/pdf/templates/latex-academic-thesis/source.tex",
+    "bytes": 11207,
+    "sha256": "19b9cf6843a85a537fcf3de8734b7886e96bf480a536ed32aea5f1bec5a19522"
+  },
+  {
+    "file": "assets/skills/pdf/templates/latex-technical-book/README.md",
+    "bytes": 5241,
+    "sha256": "feb8d6e86c8342557a5d484fb1ebf21fdda2d7e7adf8073225d441a3d9879177"
+  },
+  {
+    "file": "assets/skills/pdf/templates/latex-technical-book/README.template-source.md",
+    "bytes": 2051,
+    "sha256": "f89e9756f3d420b620158f417b864559165e173bc3c3fb2e9ff8740df74600a1"
+  },
+  {
+    "file": "assets/skills/pdf/templates/latex-technical-book/source.tex",
+    "bytes": 17061,
+    "sha256": "551ee30bb37b97e62ae3bc69cf100567fc543dfbad25ca4ff6e05b240f8f790a"
+  },
+  {
+    "file": "assets/skills/pdf/templates/multi-article-aggregator/README.md",
+    "bytes": 6927,
+    "sha256": "8e8d2dbc3af0e59b2453736da7d90d99694b6ee5e25a80f9187846c40a477c6f"
+  },
+  {
+    "file": "assets/skills/pdf/templates/multi-article-aggregator/pipeline.md",
+    "bytes": 6687,
+    "sha256": "0bc5aa3adb4160c069a03934485f9fdeb4d9bb37d036dbb2551e01b53b0b0feb"
+  },
+  {
+    "file": "assets/skills/pdf/templates/multilang-research-report/README.md",
+    "bytes": 6749,
+    "sha256": "2f84b13e7e22eeb96d91b090677ce6ce0b7199ebc30c32556704ee25e1906433"
+  },
+  {
+    "file": "assets/skills/pdf/templates/multilang-research-report/cases/ai-voice-cloning-regulatory/source.html",
+    "bytes": 45786,
+    "sha256": "02bc18f9dd084b8d97b31bd12de11e727bd685d07dba2fab66fde1b1e5f977a1"
+  },
+  {
+    "file": "assets/skills/pdf/templates/multilang-research-report/skeleton.html",
+    "bytes": 7962,
+    "sha256": "81a48d79733255e829ccf55ace40982e6f97f6866486fafc124cec54c7822dc7"
+  },
+  {
+    "file": "assets/skills/pdf/templates/reformat-default/README.md",
+    "bytes": 5605,
+    "sha256": "c498d46a8962835fc08fa8a0ad5eb2cb8f2d72b3e029edfec470344e755a75e1"
+  },
+  {
+    "file": "assets/skills/pdf/templates/reformat-default/cases/pku-contract-roundtrip/docx_engine.py",
+    "bytes": 3727,
+    "sha256": "cb7d025ce169f5fe06489c57ef5f261928d5613ef1fbb29659ed209b2e37c3c5"
+  },
+  {
+    "file": "assets/skills/pdf/templates/reformat-default/cases/pku-contract-roundtrip/source.html",
+    "bytes": 17518,
+    "sha256": "cc305735e96ca19cf793b762038a36d23b5da5bcacf471bf646be6902249045f"
+  },
+  {
+    "file": "assets/skills/pdf/templates/reformat-default/cases/pku-contract-roundtrip/source.md",
+    "bytes": 14790,
+    "sha256": "080aba53e3ddc23b14f66366610db2887ce2dd078741e21c8316ff24ba504e40"
+  },
+  {
+    "file": "assets/skills/pdf/templates/reformat-default/skeleton.html",
+    "bytes": 7710,
+    "sha256": "1fa4725aa5bbb38a76b7ac7b03c9e7f4df4f5b48c6b1bec5236f9f8fbb6fe5be"
+  },
+  {
+    "file": "assets/skills/pdf/templates/translate-preserve-layout/README.md",
+    "bytes": 7757,
+    "sha256": "f44121a5db34a8ebd2c58eeb9c2f66d683780767a25bbd96a64bfecd080efe93"
+  },
+  {
+    "file": "assets/skills/pdf/templates/translate-preserve-layout/cases/goldman-china-two-sessions-cn.html",
+    "bytes": 85525,
+    "sha256": "dc2b5772302a86ffb76a7f8a53d4f1b367cd8f0a27345f634907698b225d6f98"
+  },
+  {
+    "file": "assets/skills/pdf/templates/translate-preserve-layout/skeleton.html",
+    "bytes": 4498,
+    "sha256": "38f4a92811b6baca2932f101993680341adc576797ee9b78ec7baa9d2a81ea1a"
+  },
+  {
+    "file": "assets/skills/pdf/templates/translate-preserve-layout/terminology.template.json",
+    "bytes": 2008,
+    "sha256": "71ec83e653cea9fcc65dbad396a886d61eb7a50f011a63d9b943bcaa78ce28e8"
+  },
+  {
+    "file": "assets/skills/pptx/SKILL.md",
+    "bytes": 13049,
+    "sha256": "75c4bbe0bf93cd94914e2bf0f1eb15ca2134c2da87b1374342d7646d70ae7eaa"
+  },
+  {
+    "file": "assets/skills/pptx/references/design-system.md",
+    "bytes": 17582,
+    "sha256": "3131bc4ab70720087e4f7c41c90a653ef041e29b4ef70ccc12f5ee6ea6dd47fc"
+  },
+  {
+    "file": "assets/skills/pptx/references/editing.md",
+    "bytes": 6864,
+    "sha256": "f8d6f724c4bd7e92f11ed8775ddd37b4a68fee5669209a529796d043039395ee"
+  },
+  {
+    "file": "assets/skills/pptx/references/element-map.md",
+    "bytes": 6754,
+    "sha256": "429b2b7e71b96dd7a81d9f72a06ca8ab5ea3fdb872db6e17b7cc58f1f6651189"
+  },
+  {
+    "file": "assets/skills/pptx/references/pitfalls.md",
+    "bytes": 8328,
+    "sha256": "aaf35900e97171e2c59d0864debcde28e144749e7a82ad26fbb58ee8ea7ee8e5"
+  },
+  {
+    "file": "assets/skills/pptx/references/pptxgenjs.md",
+    "bytes": 12752,
+    "sha256": "4b66df00dd581c2eeadb140fd9bbad71daea6fb48b424f97b993f8521e41d470"
+  },
+  {
+    "file": "assets/skills/pptx/references/preview-selection-writeback.md",
+    "bytes": 3639,
+    "sha256": "e89f2a69bb21c38620a885c4cd54fd723717ab885b33d25e38aeb4db4a4930fc"
+  },
+  {
+    "file": "assets/skills/pptx/references/python-pptx-recipes.md",
+    "bytes": 1401,
+    "sha256": "0d6693b661392186e9b4717a53a77173b198f4e2526c3426282fc56e66c98cc4"
+  },
+  {
+    "file": "assets/skills/pptx/references/slide-types.md",
+    "bytes": 15790,
+    "sha256": "fa2c0da76d420463990317dc5932e607cea5e126389ca391e3e5718629b0cb38"
+  },
+  {
+    "file": "assets/skills/pptx/scripts/audit_pptx.py",
+    "bytes": 26722,
+    "sha256": "5f354e9468b896f013496f049b5a17acdf672bbef0a40c327509e0f8d75e50b7"
+  },
+  {
+    "file": "assets/skills/pptx/scripts/extract_comments.py",
+    "bytes": 15382,
+    "sha256": "0af25aa907f691128dcbc61e344d3f488379027faa2a001885164b7379c95343"
+  },
+  {
+    "file": "assets/skills/pptx/scripts/extract_images.py",
+    "bytes": 6653,
+    "sha256": "af69a9395f4903a7e455623413394a9baff9d595ade9a39af534893eeef96456"
+  },
+  {
+    "file": "assets/skills/pptx/scripts/extract_pptx.py",
+    "bytes": 8535,
+    "sha256": "f142acd15d31f155c80205ae9c9361f92b4c9180bae97d7aebd96756cdef22da"
+  },
+  {
+    "file": "assets/skills/pptx/scripts/mavis-ppt-map.cjs",
+    "bytes": 7419,
+    "sha256": "0629aa435ec4af54b38568d56decb4d91921891b8ebe02d95fa1d97ca80d523f"
+  },
+  {
+    "file": "assets/skills/pptx/scripts/pdf2png.swift",
+    "bytes": 6055,
+    "sha256": "feb505d04494420880aabcc1d20c5d9827d431af4dba8a74a87b921a3b1099a3"
+  },
+  {
+    "file": "assets/skills/pptx/scripts/pptx-screenshot.sh",
+    "bytes": 2359,
+    "sha256": "08ff4197a74322deca802cca75b5a1e4570108b7d57fc7997b6a89f3e65cf360"
+  },
+  {
+    "file": "assets/skills/resume-codex/SKILL.md",
+    "bytes": 2379,
+    "sha256": "4764420c09350db6c9ff6182a70cb2b7e1bd9819c80d65725c13134c57da9a14"
+  },
+  {
+    "file": "assets/skills/resume-codex/scripts/session-reader.mjs",
+    "bytes": 14795,
+    "sha256": "c9e0a044d634a1f8f851ebdca45434109ef9c26c220521f31a37d65ca22dbe79"
+  },
+  {
+    "file": "assets/skills/skill-creator/SKILL.md",
+    "bytes": 9190,
+    "sha256": "f890cc54aa5a294c6a82d96dfd7e3d8c41102f18542fe695ada53ed5cd1d4782"
+  },
+  {
+    "file": "assets/skills/skill-creator/references/anti-patterns.md",
+    "bytes": 7249,
+    "sha256": "6d12fbc32f892c976092eaef9fc69c10fa75e74b36e78cfa17f64d2cc1bb8926"
+  },
+  {
+    "file": "assets/skills/skill-creator/references/commands-macos-linux.md",
+    "bytes": 1163,
+    "sha256": "14db7da31b82b2dda96a7767c69791bc135708b6890807c5c42eac7996046600"
+  },
+  {
+    "file": "assets/skills/skill-creator/references/commands-windows-powershell.md",
+    "bytes": 1843,
+    "sha256": "474ca3139a6ef67f779a4d294ecc315b0ba6b0fce45dcf42739adb86c6035ab5"
+  },
+  {
+    "file": "assets/skills/skill-creator/references/description-rubric.md",
+    "bytes": 4183,
+    "sha256": "7a3237704efa89b13e05c454fe3b5dd94eee0ad8db6fc62905c60c91f9f4fee7"
+  },
+  {
+    "file": "assets/skills/skill-creator/references/skill-template.md",
+    "bytes": 3812,
+    "sha256": "2809538861e93eb70819ce82d1b17c3c95cc4e99fc1407265afe6e8829780908"
+  },
+  {
+    "file": "assets/skills/skill-creator/references/when-to-bundle-scripts.md",
+    "bytes": 5089,
+    "sha256": "7186e9123b53bf82de10c67b348c0601f106d36d55e9387e70f990933fc4dd01"
+  },
+  {
+    "file": "assets/skills/skill-creator/scripts/lint-skill.js",
+    "bytes": 7808,
+    "sha256": "39629fa29a06fcc5a07da9c6473a7e6fffedd3fc43c800eb2a0ffcb24a24fb76"
+  },
+  {
+    "file": "assets/skills/skill-refiner/SKILL.md",
+    "bytes": 5175,
+    "sha256": "6c135d82de84fd651fa242d7e36a0f1c565183cd265578c47488321a64d0f391"
+  },
+  {
+    "file": "assets/skills/visual-page/SKILL.md",
+    "bytes": 10325,
+    "sha256": "da62a62fb18a06e717d3e29506aa31d60fa430a8bb74611f794cb86e16232f9d"
+  },
+  {
+    "file": "assets/skills/x-link-reader/SKILL.md",
+    "bytes": 3484,
+    "sha256": "3842f78f5554e198e994a9017aba6f60168b8c158e3c43a2265e404f29959365"
+  },
+  {
+    "file": "assets/skills/xlsx/SKILL.md",
+    "bytes": 26848,
+    "sha256": "a3f0d9a7afa6af3e24d35c690529f35369cf65e0b20fc330a0a5ac74a93c172d"
+  },
+  {
+    "file": "assets/skills/xlsx/docs/advanced-reference.md",
+    "bytes": 17420,
+    "sha256": "b4c01e2998d1296d87ee35899e48a61b820b86aa18e9b68bc4a6f90bab8cb949"
+  },
+  {
+    "file": "assets/skills/xlsx/docs/cases/superstore-multiformat/conversion_manifest.example.json",
+    "bytes": 1311,
+    "sha256": "177dc7110848b4ad1e6238780154ce39f88eba688eaa1e39614003ebdb66484f"
+  },
+  {
+    "file": "assets/skills/xlsx/docs/cases/superstore-multiformat/superstore_orders_print.html",
+    "bytes": 4783231,
+    "sha256": "8ce36f15f5749fbe65959e0d3655f5017e4f04b701e3bfadd71dddd3caf70d25"
+  },
+  {
+    "file": "assets/skills/xlsx/docs/conventions-guide.md",
+    "bytes": 11028,
+    "sha256": "db37052c599037a5bc483d184dc78b0b76a96a53973d68ba8b9ad7198037a553"
+  },
+  {
+    "file": "assets/skills/xlsx/docs/create-edit-guide.md",
+    "bytes": 15668,
+    "sha256": "f795b1a7cdac0d9733e7f6f805ddc3bb7414f0f7126e189ed82124a104c6ead8"
+  },
+  {
+    "file": "assets/skills/xlsx/docs/pitfalls-index.md",
+    "bytes": 32293,
+    "sha256": "2abe3cfaf86cb4e17657606972a0d0be47c92d9f61d3bbc399b11cc5e419c2a1"
+  },
+  {
+    "file": "assets/skills/xlsx/docs/raw-xml-escape-hatch.md",
+    "bytes": 11277,
+    "sha256": "4f2109328edd6433746f831314a17d1bf2bc437dacc5597cbb65cd0a7ad037f5"
+  },
+  {
+    "file": "assets/skills/xlsx/docs/recalc-guide.md",
+    "bytes": 12397,
+    "sha256": "415168fc9da3775a3db0bcf4a44f7caaf4f6ddd33789a08beaece0ca0e00137a"
+  },
+  {
+    "file": "assets/skills/xlsx/docs/superstore-multiformat-conversion-case.md",
+    "bytes": 18099,
+    "sha256": "b7606b3f540a46dfd5a605e5b09689a96c580f6caf5ce5faab05867883d9300a"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/helpers/__init__.py",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/helpers/merge_runs.py",
+    "bytes": 5567,
+    "sha256": "7c40ed838b88639c51f9ffdcfd564b568f26832b78fe44008c0e01b742669ca7"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/helpers/simplify_redlines.py",
+    "bytes": 5753,
+    "sha256": "601e6d89c27258b5280a56c0b87f6938a7f470e77afa06a90d0caa4e4d9f248f"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/pack.py",
+    "bytes": 4989,
+    "sha256": "7d4ca2835ab7fd200ecebe7d269a6319b7dacce434209ab59479a255ca490b21"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
+    "bytes": 76483,
+    "sha256": "4de4390a26e7e44e682ed98b39872cce2620f807f5b0de421567a43f74526388"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
+    "bytes": 6956,
+    "sha256": "3fd0586f2637b98bb9886f0e0b67d89e1cc987c2d158cc7deb5f5b9890ced412"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
+    "bytes": 52387,
+    "sha256": "809f77f658f71e10f5cfbf99e25c895a23a4e62c81210b59a2fe8c7fb24849d2"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
+    "bytes": 624,
+    "sha256": "5cb76dabd8b97d1e9308a1700b90c20139be4d50792d21a7f09789f5cccd6026"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
+    "bytes": 155120,
+    "sha256": "6978ba7e889070b0c3cb5b546b23e5a6c3516134afc53b87a21f482ca33f3858"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
+    "bytes": 1231,
+    "sha256": "5d389d42befbebd91945d620242347caecd3367f9a3a7cf8d97949507ae1f53c"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
+    "bytes": 8862,
+    "sha256": "b4532b6d258832953fbb3ee4c711f4fe25d3faf46a10644b2505f17010d01e88"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
+    "bytes": 15082,
+    "sha256": "2dbfd4719505bf39b568005994a433997cbeac59cebc9d4867d564c94e9ba03a"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd",
+    "bytes": 85288,
+    "sha256": "39c6396b7b1f096885c3ceba5dab30e3ee14291c45a1d6fa6038ec4db69d88d0"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
+    "bytes": 1269,
+    "sha256": "3c6709101c6aaa82888df5d8795c33f9e857196790eb320d9194e64be2b6bdd8"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
+    "bytes": 7328,
+    "sha256": "0b364451dc36a48dd6dae0f3b6ada05fd9b71e5208211f8ee5537d7e51a587e2"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
+    "bytes": 6556,
+    "sha256": "d90722af8f1439ae6b82d57858ee0b0720e320eb309cf30371666338aa66d106"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
+    "bytes": 1248,
+    "sha256": "0ef4bb354ff44b923564c4ddbdda5987919d220225129ec94614a618ceafc281"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
+    "bytes": 880,
+    "sha256": "0d103b99a4a8652f8871552a69d42d2a3760ac6a5e3ef02d979c4273257ff6a4"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
+    "bytes": 2608,
+    "sha256": "9c085407751b9061c1f996f6c39ce58451be22a8d334f09175f0e89e42736285"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
+    "bytes": 3507,
+    "sha256": "bc92e36ccd233722d4c5869bec71ddc7b12e2df56059942cce5a39065cc9c368"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
+    "bytes": 7507,
+    "sha256": "7b5b7413e2c895b1e148e82e292a117d53c7ec65b0696c992edca57b61b4a74b"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
+    "bytes": 23895,
+    "sha256": "f812dffca0bb66db6e2ec2e01dd19258636b2a5a3a0bb949a2e7295665e0ce61"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
+    "bytes": 1367,
+    "sha256": "12264f3c03d738311cd9237d212f1c07479e70f0cbe1ae725d29b36539aef637"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd",
+    "bytes": 246716,
+    "sha256": "495debc8fa967b77ed37799747b049832f2c95b2ecdb9f19ddcd68f8c9f96ab9"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
+    "bytes": 26718,
+    "sha256": "335e9ecd40bb594ec4b916ac8c7b9eead4e16fe1b79f9d4105fdb1c43b66bb1c"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
+    "bytes": 25279,
+    "sha256": "585bedc1313b40888dcc544cb74cd939a105ee674f3b1d3aa1cc6d34f70ff155"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
+    "bytes": 535,
+    "sha256": "133c9f64a5c5d573b78d0a474122b22506d8eadb5e063f67cdbbb8fa2f161d0e"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
+    "bytes": 5712,
+    "sha256": "6bdeb169c3717eb01108853bd9fc5a3750fb1fa5b82abbdd854d49855a40f519"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
+    "bytes": 4010,
+    "sha256": "475dcae1e7d1ea46232db6f8481040c15e53a52a3c256831d3df204212b0e831"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd",
+    "bytes": 171367,
+    "sha256": "c2dd9f61f892deae6acd8d20771ea79b12018af25f3bf8d06639c8542d218cfd"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd",
+    "bytes": 4762,
+    "sha256": "70a3c67959f9ad2333016328716101bf8b476e682f29830cc9ee8da63dca7cc2"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
+    "bytes": 2005,
+    "sha256": "49ec1c03440a9b5590e69acdf92b200fe133697de0b05f43a129fb94d1885026"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
+    "bytes": 2565,
+    "sha256": "69688ea15f82a870053b9a60c79359063dbcfeec9cdabafabad51a53934bc35b"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd",
+    "bytes": 2905,
+    "sha256": "ee7e7e1b9a1340536e25e87c8650a2b90a43b0e67d02d6746cd430048b3c1439"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd",
+    "bytes": 1377,
+    "sha256": "607ffb6879cf5d5d765bfdfb2548f3f427ea964ddee6d08a15f0dc781749866d"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/mce/mc.xsd",
+    "bytes": 3127,
+    "sha256": "3a37e461ecf5a8670fdec34029703401f8728ab9c96ec1739a6ae58d55212413"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/microsoft/wml-2010.xsd",
+    "bytes": 26549,
+    "sha256": "568b26ee156cb9549aa439ca2158965f77b7c1602b7e0316f40ac6cf586e35f2"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/microsoft/wml-2012.xsd",
+    "bytes": 3745,
+    "sha256": "0fa75578a000439a7988ba0c59fdc69f774bbd416cbacc14d07125b3f686cb74"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/microsoft/wml-2018.xsd",
+    "bytes": 901,
+    "sha256": "be0ff793a22dd31384650c3a4da14c2fa8062751c2e97b0e5ee852bda13c60ad"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/microsoft/wml-cex-2018.xsd",
+    "bytes": 1778,
+    "sha256": "fddc2b880cabb9005aebbc7e783e53c19fec1c03df7d0e2f2076a33a0fdfd081"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/microsoft/wml-cid-2016.xsd",
+    "bytes": 1002,
+    "sha256": "127ca209fa73d7cb708449cb355c871867948a96e4a74f7bf5811ef62d17991d"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd",
+    "bytes": 600,
+    "sha256": "842e7163409c8d74f4d7088a8bc99500d80bc75332681a0980055b08f374a604"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/schemas/microsoft/wml-symex-2015.xsd",
+    "bytes": 745,
+    "sha256": "16f6f8072249f431370723c2cd8974672e0d9c897e00e97dd918079df934871b"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/soffice.py",
+    "bytes": 5958,
+    "sha256": "05dbaf8c63cbc6cb044673695990e75ec2e055912cc63f04a3925e5b5ce37181"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/unpack.py",
+    "bytes": 4052,
+    "sha256": "83f69cecc87910183654c06345837244402e8a99edbf3bdddc1cf72f11304b62"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/validate.py",
+    "bytes": 3896,
+    "sha256": "8d802cbf8eaedd1fb0f3b2589715b68989a634a93b9e96a785761cb574d809e4"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/validators/__init__.py",
+    "bytes": 336,
+    "sha256": "83e0f035c5abea238d3f2c3968afbd511ed022b527b7c9cb60a9434cc34ff987"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/validators/base.py",
+    "bytes": 32859,
+    "sha256": "a6e577837a69cae934f0379df2470dfedaeb1d72b485a191e78649e78bc72256"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/validators/docx.py",
+    "bytes": 16376,
+    "sha256": "0ef04ce86b2e6b6a1cb088c0276fd0bd5b770d96fdfe7a6cc73d005feb3f0345"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/validators/pptx.py",
+    "bytes": 9824,
+    "sha256": "f937961e62a5fa0d002b8dc51a4c4e2cd8fcd59fe65853fa54edaca3fe99eccc"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/office/validators/redlining.py",
+    "bytes": 8917,
+    "sha256": "9a2366d972bb7a129ffdc57fad30e115590d195f39d3a1cd0c1b03cbdc39fa68"
+  },
+  {
+    "file": "assets/skills/xlsx/scripts/recalc.py",
+    "bytes": 17376,
+    "sha256": "b7745a4003a4ba1944022e33774a99f7d31c9ac6aed06198dadbc2eeb9392f76"
+  },
+  {
+    "file": "chunks/anthropic-IP5WROMV.js",
+    "bytes": 1057,
+    "sha256": "6d45469cc820f3d19413462b5e79709f41f7979c3e57036e07f3d474bbfe986d"
+  },
+  {
+    "file": "chunks/application-WOWDYKHR.js",
+    "bytes": 1002,
+    "sha256": "8fdf1f5e0098915c4ec1e397cc2ab81803668a09c2d20bd59179380157a7063f"
+  },
+  {
+    "file": "chunks/auth-command-BO6OVFUW.js",
+    "bytes": 2112,
+    "sha256": "3a49f2a83647060a41fe90ebb06261ebb481f507b558037d32688f67449aabad"
+  },
+  {
+    "file": "chunks/azure-openai-responses-HH7YYRQW.js",
+    "bytes": 4896,
+    "sha256": "48f1ceec78d90b69ef2c2785f655b47f8ceade8b2a4c09239613ad7cca73fe75"
+  },
+  {
+    "file": "chunks/chunk-25R53L7J.js",
+    "bytes": 35138,
+    "sha256": "b1b80ef07760f4f5aea422318bbb9966946f6b77faf11105cbb692f90fb70da9"
+  },
+  {
+    "file": "chunks/chunk-334CV6RF.js",
+    "bytes": 16145,
+    "sha256": "258bf9a241feb460547cec3a1e9d29b8070938ee663d95ca100d3b4743544e11"
+  },
+  {
+    "file": "chunks/chunk-3XRA4CYI.js",
+    "bytes": 17445,
+    "sha256": "f47af4b5716aff31492f898c8905800d6b29761a836303ac101434ae8c8ad614"
+  },
+  {
+    "file": "chunks/chunk-44DVVG5N.js",
+    "bytes": 14989,
+    "sha256": "f47dc92c2318a81233f195882764bfb59821a154f1d21095a81d8882a770b589"
+  },
+  {
+    "file": "chunks/chunk-4Y64C4JT.js",
+    "bytes": 3078,
+    "sha256": "07c3ac533ad39bc76cacb1d50c25fd762652998632a59d5fc3ff0e5ef5ded159"
+  },
+  {
+    "file": "chunks/chunk-66K6XTTT.js",
+    "bytes": 10792935,
+    "sha256": "6d2291a40bd1641653c43f10d7ecb47b546b34000b00b26e99ccf8974c55a08c"
+  },
+  {
+    "file": "chunks/chunk-6EB3RZOY.js",
+    "bytes": 4085,
+    "sha256": "6aa00348358a6c2a74d00b4621ad585fbdc067b6c0a12c84912425a6b35f176e"
+  },
+  {
+    "file": "chunks/chunk-6UEFDGWN.js",
+    "bytes": 804,
+    "sha256": "c401d46d59855ae467f073769683ff8e8e4dbcfbd0a74079bbf6c0b6ecd4d773"
+  },
+  {
+    "file": "chunks/chunk-75PL5LYJ.js",
+    "bytes": 77980,
+    "sha256": "b24b946c9e881b8fca8b000580ce4bde6f01577227645c41b440acefea67530d"
+  },
+  {
+    "file": "chunks/chunk-BWKFUKMS.js",
+    "bytes": 1647,
+    "sha256": "41d570d9241fcfa8a3717d7bf869e86e395d2e7b337041e371e00c9fce7e3689"
+  },
+  {
+    "file": "chunks/chunk-CMWH3NZU.js",
+    "bytes": 51247,
+    "sha256": "30f1b333276276c686eb905e5d0bc6e010da25b72c66d4c8e9d633f5e4dfe699"
+  },
+  {
+    "file": "chunks/chunk-CV4DZGP2.js",
+    "bytes": 510499,
+    "sha256": "2d05d7e467ee50e43f3d751c74478c3a781526dd9c6f720b86c98813d7134931"
+  },
+  {
+    "file": "chunks/chunk-CWWDVX6C.js",
+    "bytes": 1570,
+    "sha256": "00350709b5d2f020007e7fee4c2c3ecf4eb3dfb5a10b9b6dcbc1bc199759bb8e"
+  },
+  {
+    "file": "chunks/chunk-D76SO2ME.js",
+    "bytes": 1679,
+    "sha256": "702f9b377efc269ee9d1357fad8b6715ac0366d349606433cfd48a2265653f41"
+  },
+  {
+    "file": "chunks/chunk-DCFP5ZHZ.js",
+    "bytes": 17857,
+    "sha256": "552aea3758cd8f6cc48c9c3b71d83fe0b7ca8e02d2b55386d12248fc1087df32"
+  },
+  {
+    "file": "chunks/chunk-E44MYK6X.js",
+    "bytes": 6371,
+    "sha256": "989464ff4ef3a4b70c3857aef6532c8cf911361c59e7b71a55424852982f8bec"
+  },
+  {
+    "file": "chunks/chunk-EFVDRFCG.js",
+    "bytes": 2466,
+    "sha256": "92c67a51fe436a459aac77fc13877aac7954d286eec643c396d3f5eaf93c786f"
+  },
+  {
+    "file": "chunks/chunk-ENWNFUVD.js",
+    "bytes": 1192,
+    "sha256": "81edca4c0d62903f86f95fe36d580ad21cd0b83feca00ea3fc38a22e7e1087db"
+  },
+  {
+    "file": "chunks/chunk-FKQFVOLR.js",
+    "bytes": 3690,
+    "sha256": "e5ee981bacc74f5f236e47a7b79ba247988cb5c196e652255bfd9497756f2992"
+  },
+  {
+    "file": "chunks/chunk-GMLXHJYG.js",
+    "bytes": 8346,
+    "sha256": "32f5847d2b8511e050a48729e891ec4485adc0faf81de94cc381cef9d370db00"
+  },
+  {
+    "file": "chunks/chunk-GVK2JCCT.js",
+    "bytes": 32155,
+    "sha256": "ea5ce9693991ade90b5b2b8f0d25087d14208eb9dfb54b53a95c76a92437bdf3"
+  },
+  {
+    "file": "chunks/chunk-GWIQD75P.js",
+    "bytes": 8498,
+    "sha256": "558c1c7093c04e9ffa1c2c65f9afaf807680e0452fb3bf49639e6bb2f88d6938"
+  },
+  {
+    "file": "chunks/chunk-GZGSBO43.js",
+    "bytes": 331937,
+    "sha256": "04593eeaf9245b7359c2384f988654febb4586969d86ca88966ff6574f5916d6"
+  },
+  {
+    "file": "chunks/chunk-HALQRPNB.js",
+    "bytes": 2745,
+    "sha256": "df3fdface3b33ce6aa705c6d81b0aa21eb2eab88d2f9bd0d561ffa1b09425b10"
+  },
+  {
+    "file": "chunks/chunk-HEAI577S.js",
+    "bytes": 2494,
+    "sha256": "d28d40e3b52778aeff4e67385496e59d5e552162aa9229cd0274b2b4e19e39fa"
+  },
+  {
+    "file": "chunks/chunk-HQ2U4QVQ.js",
+    "bytes": 7056,
+    "sha256": "0cbbcd783f1112a65044d465ed58b6495c4b9293bd611acd9e75a36a6b8decc2"
+  },
+  {
+    "file": "chunks/chunk-IIHJNKC3.js",
+    "bytes": 106673,
+    "sha256": "63f894e935aa9b7fc89aee76576a1f6945b7b43c1b7fd92bfe94822d7089f747"
+  },
+  {
+    "file": "chunks/chunk-KTNHM6NK.js",
+    "bytes": 541006,
+    "sha256": "32ce4e4d698514e602a51f3d8186c8e59b7b78f5d68c9512b06d2ed9e51d951f"
+  },
+  {
+    "file": "chunks/chunk-L43V3NKW.js",
+    "bytes": 3896,
+    "sha256": "248e5b4dd48049f0a28a7c49fe75be1f8a01b6356ad5d4929a667ca38931218c"
+  },
+  {
+    "file": "chunks/chunk-L5D56V5D.js",
+    "bytes": 961,
+    "sha256": "14bf513b60f8deaeb9073eb4e17d3f51b9696627d09f8f14ff20082a8566fc25"
+  },
+  {
+    "file": "chunks/chunk-L5HAXNG2.js",
+    "bytes": 68366,
+    "sha256": "90506e1161149a6a727ee03a4b239858117410479c6d26d4250445806886b22e"
+  },
+  {
+    "file": "chunks/chunk-L6WOBZZ6.js",
+    "bytes": 1074,
+    "sha256": "c310dcfd224f0f8c6b387b1b91fd42e1432ee6bbfb314d92cc24801252c976ed"
+  },
+  {
+    "file": "chunks/chunk-L7HIW3OD.js",
+    "bytes": 1345008,
+    "sha256": "51185904144f40479d8250469790b8e098cde122d18640c3840350b415315408"
+  },
+  {
+    "file": "chunks/chunk-LOQ4VVEN.js",
+    "bytes": 1478,
+    "sha256": "cf794c0cf13db7dd1c720b683e1d5b37a4d4964d64b1d2040ae9950c3f62b421"
+  },
+  {
+    "file": "chunks/chunk-LXITXTQ4.js",
+    "bytes": 11690,
+    "sha256": "0b662db22f94ce78a85842a5b031ef1804da210332ef53d2109b67c9ded5d0a1"
+  },
+  {
+    "file": "chunks/chunk-NTK6PXFW.js",
+    "bytes": 12903,
+    "sha256": "0388106edb59cfcbc0476e58ca58135ab3826430851b6091cc2c1896dc290fc8"
+  },
+  {
+    "file": "chunks/chunk-O4EZGUN7.js",
+    "bytes": 1134,
+    "sha256": "f791f1261c0c95e793610eb4acd865745a1018b0ccf9aef1529b188bfdcc958c"
+  },
+  {
+    "file": "chunks/chunk-OHWTK4KK.js",
+    "bytes": 927,
+    "sha256": "afab17fda6deac5c59020ace49edb1800fdf6d107f47f0a5cfbccfb29b6ff1a4"
+  },
+  {
+    "file": "chunks/chunk-OKVSNQU7.js",
+    "bytes": 3324,
+    "sha256": "8d77822b788110d59b17a2b5016b83c591e5219d64b481d6550a3e69c26c2d31"
+  },
+  {
+    "file": "chunks/chunk-PPIEC7ZM.js",
+    "bytes": 940,
+    "sha256": "c408887d98f63a9e9e983fb0d233dbb4397888f8ff62bb5c0ddd37d1bbf1002f"
+  },
+  {
+    "file": "chunks/chunk-PRXIML4F.js",
+    "bytes": 935,
+    "sha256": "58914d7d6158e913d56e21b68383e8aca142e932287ee8d25e390edbd838f17c"
+  },
+  {
+    "file": "chunks/chunk-PWQHCWDV.js",
+    "bytes": 1067,
+    "sha256": "ba6694286e8b30b9f1200d40f51c272722dd160d65cd96746060e3167418c0c0"
+  },
+  {
+    "file": "chunks/chunk-R5B36TFT.js",
+    "bytes": 103755,
+    "sha256": "0d2aa429be4185f1ec164d2fbcaea0a40a163b787abca0d002e7f06e4f682fe4"
+  },
+  {
+    "file": "chunks/chunk-RJFP72G2.js",
+    "bytes": 5666,
+    "sha256": "348efb39084cbb1cf7c946f5b322d6c7c395c9e1ee607138d0cd4fbb45e2c490"
+  },
+  {
+    "file": "chunks/chunk-SHXPTUWI.js",
+    "bytes": 845,
+    "sha256": "faeafb68a80ca555f877b2905f4f838780beb14a0da03252c29780f53032e197"
+  },
+  {
+    "file": "chunks/chunk-SLFKHVQC.js",
+    "bytes": 850,
+    "sha256": "8f08dd0d6f2cf7a8418e5acff545dcd4fb3d64714a58d91b828c8f7cd40e45ad"
+  },
+  {
+    "file": "chunks/chunk-UYQ5FM7O.js",
+    "bytes": 12722,
+    "sha256": "95b82ce445a892b90b4b794fd57279a0ab7ddc2de04b4c1ebdeb1e23293777d6"
+  },
+  {
+    "file": "chunks/chunk-V5LPXJCG.js",
+    "bytes": 3668,
+    "sha256": "23cf355856adbd898c8c10a023ebfce8d472b2df4af6642dace0cd15e92d64df"
+  },
+  {
+    "file": "chunks/chunk-VR5GZAY6.js",
+    "bytes": 5018,
+    "sha256": "47c69d246098150dd630561c9a96ccdfb2858f2199d6bdb71d91578f76a0c967"
+  },
+  {
+    "file": "chunks/chunk-VYI2WX6B.js",
+    "bytes": 1255,
+    "sha256": "9630286417ec281b6d053ca0e4854740213e58f5b2bd666cbdfb8aa769b1b740"
+  },
+  {
+    "file": "chunks/chunk-WFWSBUYD.js",
+    "bytes": 854,
+    "sha256": "1d5f58e5b6263036dfb6c849d53206d3b60d1bc2732e970790c5a2b7c3f83237"
+  },
+  {
+    "file": "chunks/chunk-WTOVTF3H.js",
+    "bytes": 1293,
+    "sha256": "4e01c5ec2bc92f2d0704ce06cc4cb4af52b899dbc802230384aabe8c50ef55fd"
+  },
+  {
+    "file": "chunks/chunk-X55MANVC.js",
+    "bytes": 907,
+    "sha256": "d3281f45d5b141077a3a0ebc5809e35b550fea7af944570dca72bffb33ae8ff5"
+  },
+  {
+    "file": "chunks/chunk-XMZSDA7N.js",
+    "bytes": 2880,
+    "sha256": "866347c809b88188f598375206359779a3b1241ab83bd9189c93627f059b6c11"
+  },
+  {
+    "file": "chunks/chunk-XW5SC4DT.js",
+    "bytes": 3658,
+    "sha256": "56a6c299b40bea3f817d9bd7950cdf4c86ec464843a06545c597f451f39c053b"
+  },
+  {
+    "file": "chunks/chunk-XWWF52XZ.js",
+    "bytes": 336249,
+    "sha256": "e784f1818247029291739058edc67f32e060216ed86e78f1eb3b54796456d40f"
+  },
+  {
+    "file": "chunks/chunk-YYSTRBDA.js",
+    "bytes": 5556453,
+    "sha256": "4c5111aad07b0706b0e6c76ae0ddbf1b1230cfb4374bb4a493fcadfce69d1510"
+  },
+  {
+    "file": "chunks/chunk-Z3ZWQPG6.js",
+    "bytes": 1089,
+    "sha256": "c480ba7d158ad6e7916a39a9f41852920c754d5d9387c57b60b2af14751b5038"
+  },
+  {
+    "file": "chunks/chunk-Z4WWODNE.js",
+    "bytes": 263585,
+    "sha256": "ce994930b4b51c65f99fb8d772046b03f2907939591d135dc213d0fc7d692158"
+  },
+  {
+    "file": "chunks/chunk-ZITT4GJK.js",
+    "bytes": 2573,
+    "sha256": "e792f0ef27ebb6e81fc2918c553a7a02c9576db8442cb7fb0df12bf0aeb73876"
+  },
+  {
+    "file": "chunks/chunk-ZP6D2G3P.js",
+    "bytes": 22612,
+    "sha256": "3b0a81118df643c3b05c024089b962c2749b5115c891ec99842648e70de272d5"
+  },
+  {
+    "file": "chunks/chunk-ZUKMHIIH.js",
+    "bytes": 2623,
+    "sha256": "36d726d79cff4569c318ab09aa88041826f25b749395a6fa1982767c681cce8a"
+  },
+  {
+    "file": "chunks/clipboard-image-ABKA4VNC.js",
+    "bytes": 1068,
+    "sha256": "4fdea61746548d57bc905268866d45ee0206f621289f36d5da5b9270f2dfec4f"
+  },
+  {
+    "file": "chunks/data-dir-VLNTBIAQ.js",
+    "bytes": 1046,
+    "sha256": "621b250b414b1764e5dd6a7e045ae7cfde2650fe060ade7cc0f649d3bde83271"
+  },
+  {
+    "file": "chunks/dist-QWTF7LN2.js",
+    "bytes": 6210,
+    "sha256": "a1a4bd795db5f48fb1dbaea425f3b45c640e249330ec4a236fe4a20d8e1b0f48"
+  },
+  {
+    "file": "chunks/dist-SDAUTXBH.js",
+    "bytes": 6799,
+    "sha256": "1de8cac0c3853c07edf153b2a7010bc7a87af654d0850e42ac09b1751f750eba"
+  },
+  {
+    "file": "chunks/dist-TC7BYGFL.js",
+    "bytes": 18769,
+    "sha256": "5bfd9f74e77094b8ff6e739acd6afa881b8a3e7b83eac0509fc8ac03c6431942"
+  },
+  {
+    "file": "chunks/dist-Y6ZYZI4D.js",
+    "bytes": 45288,
+    "sha256": "2de94c483b7f76677beb6dca910d498a51b0833e849bbf8e7871e67d0d447493"
+  },
+  {
+    "file": "chunks/emscripten-module-C2J3Q3IY.js",
+    "bytes": 14412,
+    "sha256": "72e3f19e513d9e4e596872b11f1747bd2a66c370f716565be14322731f0a9f2d"
+  },
+  {
+    "file": "chunks/emscripten-module-IYILUY4H.js",
+    "bytes": 15673,
+    "sha256": "96534a35d29ed26fae1fb3ff50f56fbc5a96dbba75fb7c99e29ebe08a0ab6feb"
+  },
+  {
+    "file": "chunks/emscripten-module-WRKYGWFQ.js",
+    "bytes": 74084,
+    "sha256": "110c66c82c7d07f7c2c3764996e2bb5c322dcc0464fb221102557a53169382ba"
+  },
+  {
+    "file": "chunks/emscripten-module-XKD7UUQE.js",
+    "bytes": 39120,
+    "sha256": "07891f289e9e1c18f0ade05fd5383ead6792a831157a8344b4cce21b6f2e85f5"
+  },
+  {
+    "file": "chunks/ffi-52BUGIHV.js",
+    "bytes": 6896,
+    "sha256": "3a8b8d57d70ae4da4224435ccc8bcaff453be4583ac08379e84cb5e5a3be1053"
+  },
+  {
+    "file": "chunks/ffi-5WFBGJOK.js",
+    "bytes": 6896,
+    "sha256": "1198f366105b165d923db6851f62c2c51f4f0c6c9e2a26bcc0d684983f74de5c"
+  },
+  {
+    "file": "chunks/ffi-OOTJYJAS.js",
+    "bytes": 7983,
+    "sha256": "a01dfb9f9900db80dd9790c012b06909ed2f890a3fbab5c0235facf32c9def65"
+  },
+  {
+    "file": "chunks/ffi-QZLLARYY.js",
+    "bytes": 8082,
+    "sha256": "1d79a12f70ac9c6aa4a9c7b7fd02ced139a1133ecee8b62edde14a04384fa1ae"
+  },
+  {
+    "file": "chunks/google-IMJRY4FD.js",
+    "bytes": 994,
+    "sha256": "d6772114c19ca09be9461b82f2f12d5f7a2254edfe82aa772dd1428862a19f81"
+  },
+  {
+    "file": "chunks/google-vertex-WSYDZ4GI.js",
+    "bytes": 3824,
+    "sha256": "82555edd96ba40baefcc1c6f45498bbb65971ad47c8e283cfe873f9a44e5fdc4"
+  },
+  {
+    "file": "chunks/install-source-FIUDUO7G.js",
+    "bytes": 1556,
+    "sha256": "b5c6445ce765aa75978d6db585047de8f8efae466eda5a311b3774745065d67d"
+  },
+  {
+    "file": "chunks/launcher-PGKRJM4Z.js",
+    "bytes": 1489268,
+    "sha256": "eba1ff9ac92619ce5067326c5c76ac2556cbb8b75b9d021e54422ae9c0a4933c"
+  },
+  {
+    "file": "chunks/lifecycle-GP7HDNAT.js",
+    "bytes": 1783,
+    "sha256": "226ac62bd86571381f3f6909b9cbb3269325a45ce79ff1f08d1889b642860936"
+  },
+  {
+    "file": "chunks/main-G357CS7U.js",
+    "bytes": 20379,
+    "sha256": "72c7f96333f83c9193172cde94bf34d9c4b1bd639aef66c555000413c9ca49b6"
+  },
+  {
+    "file": "chunks/mistral-TV72IK4N.js",
+    "bytes": 687742,
+    "sha256": "341c78188e207c94a99f7dd063d0dd3078f3b1daaeb012aebbe8d922dcd9eeb4"
+  },
+  {
+    "file": "chunks/module-6F3E5H7Y-C5JVS6OD.js",
+    "bytes": 970,
+    "sha256": "1dde1db9e760db59a1c05327e65efe4effdbeec8aa400f3e445c5604eee6845e"
+  },
+  {
+    "file": "chunks/module-asyncify-R6PWJ6ZV-ZHXJA5Z7.js",
+    "bytes": 890,
+    "sha256": "c4f814a62d0485b3b20b9ad4c20b3423b0c76b4ae11a47d8a42ea2abcfaff190"
+  },
+  {
+    "file": "chunks/multipart-parser-5ILKBWAX.js",
+    "bytes": 5173,
+    "sha256": "e948de443ce48bbd6d12841891bd0faea445e0bdb9f274dc0e4f7d439bf6eb23"
+  },
+  {
+    "file": "chunks/network-proxy-TC37KAL6.js",
+    "bytes": 957,
+    "sha256": "e27e3710cab5f87a975a67daeeb37c7cba7a9763f030bcb2d3f5f30c79ca9bc2"
+  },
+  {
+    "file": "chunks/nudge-registry-MJG3DSFG.js",
+    "bytes": 820,
+    "sha256": "052d38907540c6660be9dd4aee4fe068374d457bd5be1922848eb370e3fd2642"
+  },
+  {
+    "file": "chunks/openai-codex-responses-3PRU3SR3.js",
+    "bytes": 19452,
+    "sha256": "59eafef37d8e67ae4092dae92ffeec8076c01ff3b374ad404c39c5ff056924c6"
+  },
+  {
+    "file": "chunks/openai-completions-RO3T35ID.js",
+    "bytes": 1086,
+    "sha256": "0afc05b78b216170e22e27b23307ae22655d5a745d6d291cb23d304009e41651"
+  },
+  {
+    "file": "chunks/openai-responses-V4CG5WWX.js",
+    "bytes": 5001,
+    "sha256": "01a54150909392b49a596b952af41b3a0cd09609d01edb49fb0581f6939ba5d3"
+  },
+  {
+    "file": "chunks/openrouter-M3NXQ7JY.js",
+    "bytes": 2931,
+    "sha256": "459dfb792458a57a7248e0446edda9b356e21e68f83bae4e9f85e185263685cd"
+  },
+  {
+    "file": "chunks/pdfjs-XFA6EEF2.js",
+    "bytes": 1622097,
+    "sha256": "f338ea859c4a72e496b9a664b0e0b3afc37b97d016663bb2a1d8e9621ffd591a"
+  },
+  {
+    "file": "chunks/photon_rs-G4OEF2QT.js",
+    "bytes": 24175,
+    "sha256": "fada6ee7db193ebcb492bff1dbbce321a0d2c32d06158559f874946678864f22"
+  },
+  {
+    "file": "chunks/plugin-command-SSE7BTPR.js",
+    "bytes": 9505,
+    "sha256": "027a9adebf073992210ae3aeafcab93f24951f1bfbd80167c1a6a5269c83fe0e"
+  },
+  {
+    "file": "chunks/provider-command-XFAW6MN7.js",
+    "bytes": 4978,
+    "sha256": "9cec2b19865928784b64d2b6fd3c7eed7fb4c456b545dbbf99d6822b656f213c"
+  },
+  {
+    "file": "chunks/questionnaire-bridge-UHFQF7GV.js",
+    "bytes": 909,
+    "sha256": "7eec54fe1765cfa754a5ad58240cbbec1212b3cb3558654983816f0d79725f3a"
+  },
+  {
+    "file": "chunks/run-acp-command-HJTGJSHA.js",
+    "bytes": 452102,
+    "sha256": "e6800fd570bd3c58c86eff6f6a486d6b04e945c59281c532b0ecb3e7960ac940"
+  },
+  {
+    "file": "chunks/run-app-command-F6VQSSTP.js",
+    "bytes": 7620,
+    "sha256": "44f149ae7c1fc749c4b9c5e6f438568196696e4a6f3237427d66a12b9425201f"
+  },
+  {
+    "file": "chunks/run-app-server-command-WN2KV3LE.js",
+    "bytes": 87219,
+    "sha256": "f4d0706dbd65688f4bba502638b5be5cfb07cacc8859590d79dbaafad693ddd1"
+  },
+  {
+    "file": "chunks/run-exec-command-UQB5WLPC.js",
+    "bytes": 42305,
+    "sha256": "0ab882c8f7d189963c0796aa7f1b90e86c82c6bf006e73615b16da8e5e897972"
+  },
+  {
+    "file": "chunks/src-OOEMRUAR.js",
+    "bytes": 21214,
+    "sha256": "0e122d5b8981217e452978361aac49036627c3a0a8e7c4fae00df36d256a0cef"
+  },
+  {
+    "file": "chunks/tools-TW7CLBMI.js",
+    "bytes": 1932,
+    "sha256": "2078057abc03e3213fe8ba8bd0a3b86427ca26b69493b89d77d97d53ce62e387"
+  },
+  {
+    "file": "chunks/undici-75A6L7DQ.js",
+    "bytes": 812,
+    "sha256": "2e5b9df98c221e8b3cbe7c95e6b912e717cf41ffd7757945070fc25261878acd"
+  },
+  {
+    "file": "chunks/update-FJPRPU3S.js",
+    "bytes": 5233,
+    "sha256": "9f591a77f3f522df3f6be6a33ad556a1429b00ffe0aa002384b3496832e67c01"
+  },
+  {
+    "file": "cli.js",
+    "bytes": 1637,
+    "sha256": "34c378a9577e8bfe4252738121818e32857354c2ea3547a5456f24cde33e1200"
+  },
+  {
+    "file": "configs/data-minimal.yaml",
+    "bytes": 1158,
+    "sha256": "51292a9ec10e88078456c4bba7429df5e40999a75e8677c6b4289e4868662766"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/LICENSE",
+    "bytes": 1069,
+    "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/MiniMax Computer Use.app/Contents/CodeResources",
+    "bytes": 1674,
+    "sha256": "f73c08d526d1e73593f45961be8e2b1b439ff78948f1a08a4563ed5f044dcfe5"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/MiniMax Computer Use.app/Contents/Info.plist",
+    "bytes": 3841,
+    "sha256": "5d0bd503fbb9a4f781f3a58d7e5dcea8973dc7a3a58f8d8d9c890725b2fb0250"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/MiniMax Computer Use.app/Contents/MacOS/cua-cursor-theme",
+    "bytes": 2513536,
+    "sha256": "edc6b9957de9a162bc5280260e45b70ed6cc7c7298c8980edb92831e0b66a21b"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/MiniMax Computer Use.app/Contents/MacOS/minimax-computer-use",
+    "bytes": 34492976,
+    "sha256": "afde319c8d6c77d2743d593c79b1b0fde867c67cec2163ebe5d462d0c742618b"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/MiniMax Computer Use.app/Contents/Resources/AppIcon.icns",
+    "bytes": 32092,
+    "sha256": "2c38d5bb80561bc3e20f86da56373a40f3daed3abedc3dfd81186cd35a017098"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/MiniMax Computer Use.app/Contents/_CodeSignature/CodeResources",
+    "bytes": 3001,
+    "sha256": "b3faf804a11fe0e422ea333cda731010aa1c42489da80f8c7fc56feb2e686e3e"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/MiniMax Computer Use.app/Contents/embedded.provisionprofile",
+    "bytes": 12536,
+    "sha256": "7153fe788262d57d7fce7727d745aab0b10188cb31088b408531620b7661a14a"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/THIRD_PARTY_NOTICES.md",
+    "bytes": 6877,
+    "sha256": "859e2c3e753a2d9477a52b169dd0d421e9746371a97af1033a9d16968d2a2634"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/build-provenance.json",
+    "bytes": 5342,
+    "sha256": "5e53417fda414ee96e7210a6674c13b63d65ef673135994d9cd9aeb7a8e05f89"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/candidate.json",
+    "bytes": 1376,
+    "sha256": "e6fc545ab12eca05188d6e0233739a70f394c143819eb56adc5a414f3f7c6c69"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/component.json",
+    "bytes": 1862,
+    "sha256": "1ba0a658ef2736ba66dd10c1e616e9b7d2af3a50c381643ab4d317d9b9486bfc"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-arm64/signing.entitlements",
+    "bytes": 521,
+    "sha256": "ee072061b90a53d44f0458053b5c8910fcd2c5b96466cdcffbda41a1072f0751"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/LICENSE",
+    "bytes": 1069,
+    "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/MiniMax Computer Use.app/Contents/CodeResources",
+    "bytes": 1674,
+    "sha256": "076f921e48bbb385ab50fba4aa2e5c1c7652f7cb2144db284a132a7a62f755d5"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/MiniMax Computer Use.app/Contents/Info.plist",
+    "bytes": 3841,
+    "sha256": "5d0bd503fbb9a4f781f3a58d7e5dcea8973dc7a3a58f8d8d9c890725b2fb0250"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/MiniMax Computer Use.app/Contents/MacOS/cua-cursor-theme",
+    "bytes": 2822672,
+    "sha256": "f3407804f1600d28a466c814810f75373e43a7f6a8e716d1cf7782e66c889b7d"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/MiniMax Computer Use.app/Contents/MacOS/minimax-computer-use",
+    "bytes": 37296160,
+    "sha256": "da8d388ba8c9757fce59a8872f2d130c773f306401427870aee0881b395a58a0"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/MiniMax Computer Use.app/Contents/Resources/AppIcon.icns",
+    "bytes": 32092,
+    "sha256": "2c38d5bb80561bc3e20f86da56373a40f3daed3abedc3dfd81186cd35a017098"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/MiniMax Computer Use.app/Contents/_CodeSignature/CodeResources",
+    "bytes": 3001,
+    "sha256": "187b5717512884213021a88a79dc863cdd79e936dc64d997aee85ecaedb47d3e"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/MiniMax Computer Use.app/Contents/embedded.provisionprofile",
+    "bytes": 12536,
+    "sha256": "7153fe788262d57d7fce7727d745aab0b10188cb31088b408531620b7661a14a"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/THIRD_PARTY_NOTICES.md",
+    "bytes": 6877,
+    "sha256": "859e2c3e753a2d9477a52b169dd0d421e9746371a97af1033a9d16968d2a2634"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/build-provenance.json",
+    "bytes": 5341,
+    "sha256": "f1b1ce6934b3deeeb6ac50fb772a65c1f87fd162d8dc84ecc8656396ea9ab201"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/candidate.json",
+    "bytes": 1374,
+    "sha256": "28823951ab35e6bc0684d8d792a7ee611b9d724f68959c9c69ed1a317045fb33"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/component.json",
+    "bytes": 1860,
+    "sha256": "9962430ea748e8837615c7b0c87a483f546e97b932513099ef9a5dfa8fccefb7"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/darwin-x64/signing.entitlements",
+    "bytes": 521,
+    "sha256": "ee072061b90a53d44f0458053b5c8910fcd2c5b96466cdcffbda41a1072f0751"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/LICENSE",
+    "bytes": 1069,
+    "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/THIRD_PARTY_NOTICES.md",
+    "bytes": 6877,
+    "sha256": "859e2c3e753a2d9477a52b169dd0d421e9746371a97af1033a9d16968d2a2634"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/build-provenance.json",
+    "bytes": 5345,
+    "sha256": "a3ff9bc7e1ca99064a585a701b4276b4e826d300bb71b86bb390cebd4ad7d4d5"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/candidate.json",
+    "bytes": 1266,
+    "sha256": "0ba139cd30aafeeb6dee4aa9022dff0707391c5e4b3a18e132769f6698c4c98f"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/component.json",
+    "bytes": 1356,
+    "sha256": "c06c4056391bcce1ab3c3155a61dc870a782e03aee21da718d699b0645e9a138"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/cua-cursor-theme.exe",
+    "bytes": 1745640,
+    "sha256": "ef53bfff59d5fea27d426aafda5119b2b7577f72d355b4bf2f2e30d12d2a8c9c"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/cua_driver_abi.h",
+    "bytes": 7762,
+    "sha256": "e952620e41ac81b2d900886c7b0a24ebc6268a4edb8df88cc9971ae34af4ba0d"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/cua_driver_node_runtime.node",
+    "bytes": 568552,
+    "sha256": "b68a279c471f743653192db75caecfda54ce21d002e83c67f5b5adc960c48d29"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/cua_driver_sdk.dll",
+    "bytes": 23547112,
+    "sha256": "022f750a930da6479c60bc15d4e89250841a2026493757afd02906960a367b29"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/minimax-computer-use-uia.exe",
+    "bytes": 19204328,
+    "sha256": "6c5cf0b0bdaa8817d965fca15a3eb52f88ee701c39856e67ddf89558329b08ae"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-arm64/minimax-computer-use.exe",
+    "bytes": 29320936,
+    "sha256": "759b76cd2a2145a011f0e2433b52200d72c9c1ad107a25813858f5441e2e2c1f"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/LICENSE",
+    "bytes": 1069,
+    "sha256": "c0779290c1d4783169aa3dbfb55feb505e563ef8a004bbf55298ceffcfbda8d9"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/THIRD_PARTY_NOTICES.md",
+    "bytes": 6877,
+    "sha256": "859e2c3e753a2d9477a52b169dd0d421e9746371a97af1033a9d16968d2a2634"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/build-provenance.json",
+    "bytes": 5344,
+    "sha256": "84105c9edd24d44afbbdd07c01ba8ce3dc3b92439d3bbaf0bb58f77d6a496392"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/candidate.json",
+    "bytes": 1264,
+    "sha256": "eb9883a1cc52909f63400aa565a5cf25a8f3c2a6ca139d4c8679e63ba143708b"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/component.json",
+    "bytes": 1354,
+    "sha256": "42dd5ca403123c9ea55e522b1dcf894d66a6c22ee5380c9210d7dbcce8575a74"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/cua-cursor-theme.exe",
+    "bytes": 2031336,
+    "sha256": "88e6ad88e96630977a3a12e47e83bf0ec45553ee0cb7f7e9c031897a80309479"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/cua_driver_abi.h",
+    "bytes": 7762,
+    "sha256": "e952620e41ac81b2d900886c7b0a24ebc6268a4edb8df88cc9971ae34af4ba0d"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/cua_driver_node_runtime.node",
+    "bytes": 626408,
+    "sha256": "3f6d41702b3f080c000591e0cde314c3bcafbd5a1105fa41f62b43420c672c8d"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/cua_driver_sdk.dll",
+    "bytes": 27299048,
+    "sha256": "64b0632410d9baf7a843c17ac994780b5dcc7a19403613a1ae253598dfb2667c"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/minimax-computer-use-uia.exe",
+    "bytes": 22289640,
+    "sha256": "a6c5ee5675cc5d27faee7719eae66d91559b42127c5089133b833031d4368408"
+  },
+  {
+    "file": "embedded/computer-use/0.34.1/win32-x64/minimax-computer-use.exe",
+    "bytes": 34949864,
+    "sha256": "be49b89916dea667de3dbab7bdca8c98ef2f87ba78a07327c6ba547965194e1c"
+  },
+  {
+    "file": "embedded/mcode-tools/cli.mjs",
+    "bytes": 985512,
+    "sha256": "40ed9f6bfb30b68c3b53834d30ed9332f5f2dbab20a0086b7ae611416a429873"
+  },
+  {
+    "file": "embedded/mcode-tools/manifest.json",
+    "bytes": 1238,
+    "sha256": "c8b2af19e2c7ff40ad8771b1d3ee19d947f1d07d843829248a0f058cf9966720"
+  },
+  {
+    "file": "embedded/mcode-tools/native/registry-js.LICENSE",
+    "bytes": 1092,
+    "sha256": "371fcc6c09ada2d6103115f65cbe5e892893086c3abe837859753150fcfb808e"
+  },
+  {
+    "file": "embedded/mcode-tools/native/win32-arm64/registry.node",
+    "bytes": 891904,
+    "sha256": "81081e71c8eaadab4d8d1c489a67ff1cddf7c876d409021e92b7cfc565bee3d5"
+  },
+  {
+    "file": "embedded/mcode-tools/native/win32-ia32/registry.node",
+    "bytes": 527360,
+    "sha256": "30e04d544498ab1fba51dda5bf1471e74ae96bb8b6af058f17bcdd6b2e8dfd80"
+  },
+  {
+    "file": "embedded/mcode-tools/native/win32-x64/registry.node",
+    "bytes": 696320,
+    "sha256": "c46fa65cb72a22c4ed846df91c4ca733c5ab7b6bfff711eb2510dba15b1e3033"
+  },
+  {
+    "file": "emscripten-module.wasm",
+    "bytes": 518880,
+    "sha256": "0c031dd404df00f2d1ed9491a6590d014e88a50424996e5fd70feff1c931c045"
+  },
+  {
+    "file": "image-preview-worker.js",
+    "bytes": 1257,
+    "sha256": "ef384490625de29ebace86d89ba6af82df48e9b11a8ae759169521b2403c90a1"
+  },
+  {
+    "file": "internal-bin/mcode-tools",
+    "bytes": 339,
+    "sha256": "10b4bbd4790df30e3cd751b398e21cffb98a060f2382ee05e69de8d478daa1b5"
+  },
+  {
+    "file": "internal-bin/mcode-tools.cmd",
+    "bytes": 250,
+    "sha256": "97720464bdbe9fb13d6a21a05ab12065e75a9489fccfc0b03932adaa24b25e1f"
+  },
+  {
+    "file": "mcode-tools.js",
+    "bytes": 967,
+    "sha256": "a4a8c705d79190e09373e505ebafc09ed7634b244a3fe0e5d614dd7621ea9cbd"
+  },
+  {
+    "file": "native/darwin/prebuilds/darwin-arm64/darwin-modifiers.node",
+    "bytes": 50200,
+    "sha256": "7657cd6bd999227b5c8ed17a4c78eb50fa414835295636fddef6ec1567623a07"
+  },
+  {
+    "file": "native/darwin/prebuilds/darwin-x64/darwin-modifiers.node",
+    "bytes": 12776,
+    "sha256": "0e51e550acf559bf33bdbbdf047f69168b64694f46d27cb4195928b26be0ca0b"
+  },
+  {
+    "file": "native/win32/prebuilds/win32-arm64/win32-console-mode.node",
+    "bytes": 3072,
+    "sha256": "9796bc34059cd2e6e4058abe35c94cc860b34885bb8e2ccdc9a9684746b89a3a"
+  },
+  {
+    "file": "native/win32/prebuilds/win32-x64/win32-console-mode.node",
+    "bytes": 3072,
+    "sha256": "98733d8797b0cf8359f892fc8c49d9267f8c548b5d8b3a1d2e00b057f34a71be"
+  },
+  {
+    "file": "package.json",
+    "bytes": 1168,
+    "sha256": "d589d78286971b8c347eadfc0ed87dc61e874ef358820f1f5e0a2c87f9a41bc9"
+  },
+  {
+    "file": "photon_rs_bg.wasm",
+    "bytes": 1881634,
+    "sha256": "10468181565c56004c867f3a4af96f89a0ef5a63a72f2b5fb12c1f1992a3615c"
+  },
+  {
+    "file": "quickjs-worker.js",
+    "bytes": 16272,
+    "sha256": "27fa4b179a79058a77314de720d6552b74a672a5e1f502626b854c505430e5e5"
+  },
+  {
+    "file": "verify-native-install.mjs",
+    "bytes": 4824,
+    "sha256": "b5ccede20d0f291c9ef3f2a684494fd523e9cafdee350e86f46f5d621529833c"
+  }
+]

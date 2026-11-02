@@ -169,13 +169,13 @@ export function assertWritableTarget(target, { root, label = '输出', extraRoot
 
 /** 候选版本号必须显式、带候选后缀，并且以复核过的官方版本为前缀。 */
 export function assertCandidateVersion(version) {
-  const official = plan.official.version
+  const supported = [plan.official.version, '0.7.4']
   if (typeof version !== 'string' || !/^\d+\.\d+\.\d+-opl-bash\.\d{8}\.\d+$/.test(version))
     throw new Error(
       `候选版本号必须是 <官方版本>-opl-bash.<YYYYMMDD>.<序号>，收到 ${JSON.stringify(version)}。`,
     )
-  if (!version.startsWith(`${official}-opl-bash.`))
-    throw new Error(`候选版本号必须以官方版本 ${official} 开头，拒绝 ${version}。`)
+  if (!supported.some((official) => version.startsWith(`${official}-opl-bash.`)))
+    throw new Error(`候选版本号必须以已复核官方版本 ${supported.join('/')} 开头，拒绝 ${version}。`)
   return version
 }
 

@@ -16,6 +16,7 @@ import {
   parseKimiContextUsage,
   parseKimiTranscriptUsage,
   parseMiniMaxContextUsage,
+  parseMiniMaxTurnUsage,
   parseOpenCodeKiloTurnUsage,
   parsePoolContextUsage,
   parsePoolTurnUsage,
@@ -23,6 +24,74 @@ import {
 } from '../../src/execution/host/usage-account.ts'
 
 describe('external Harness usage parsers', () => {
+  const miniMaxRow = (extra: Record<string, unknown> = {}) => ({
+    id: 8306,
+    turnId: 'native-turn',
+    model: 'minimax/MiniMax-M3.1-Flash',
+    inputTokens: 1_150,
+    outputTokens: 96,
+    cacheReadTokens: 19_873,
+    cacheWriteTokens: 0,
+    reasoningTokens: 0,
+    ...extra,
+  })
+
+  it('sums only MiniMax requests from the selected native turn with disjoint cache buckets', () => {
+    expect(
+      parseMiniMaxTurnUsage(
+        [
+          miniMaxRow({ turnId: 'previous-turn', inputTokens: 999_999 }),
+          miniMaxRow(),
+          miniMaxRow({
+            id: 8307,
+            inputTokens: 144,
+            outputTokens: 9,
+            cacheReadTokens: 21_023,
+          }),
+        ],
+        'native-turn',
+        'MiniMax-M3.1-Flash',
+      ),
+    ).toEqual({
+      inputTokens: 1_294,
+      outputTokens: 105,
+      cacheReadTokens: 40_896,
+      cacheWriteTokens: 0,
+      reasoningTokens: 0,
+      totalTokens: 42_295,
+    })
+  })
+
+  it.each([
+    { id: '' },
+    { model: 'minimax/MiniMax-M3' },
+    { model: 'other/MiniMax-M3.1-Flash' },
+    { inputTokens: -1 },
+    { outputTokens: 0.5 },
+    { cacheReadTokens: undefined },
+    { cacheWriteTokens: undefined },
+    { reasoningTokens: 97 },
+    { inputTokens: Number.MAX_SAFE_INTEGER },
+  ])('withholds incomplete or inconsistent MiniMax usage (%j)', (extra) => {
+    expect(
+      parseMiniMaxTurnUsage([miniMaxRow(extra)], 'native-turn', 'MiniMax-M3.1-Flash'),
+    ).toBeUndefined()
+  })
+
+  it('rejects duplicate MiniMax request ids and incomplete reasoning breakdowns', () => {
+    for (const rows of [
+      [miniMaxRow(), miniMaxRow()],
+      [miniMaxRow(), miniMaxRow({ id: 8307, reasoningTokens: undefined })],
+      [miniMaxRow({ inputTokens: Number.MAX_SAFE_INTEGER - 19_969 }), miniMaxRow({ id: 8308 })],
+    ])
+      expect(parseMiniMaxTurnUsage(rows, 'native-turn', 'MiniMax-M3.1-Flash')).toBeUndefined()
+    expect(parseMiniMaxTurnUsage([], 'native-turn', 'MiniMax-M3.1-Flash')).toBeUndefined()
+    expect(
+      parseMiniMaxTurnUsage([miniMaxRow()], 'other-turn', 'MiniMax-M3.1-Flash'),
+    ).toBeUndefined()
+    expect(parseMiniMaxTurnUsage({}, 'native-turn', 'MiniMax-M3.1-Flash')).toBeUndefined()
+  })
+
   it('converts Grok full prompt buckets into disjoint DSH counters', () => {
     expect(
       parseGrokTurnUsage({

@@ -99,7 +99,7 @@ MiniMax 只走官方 `mcode` CLI 的官方账号与 ACP 接入。登录由用户
 
 mcode 自身工具没有可验证的 DSH read-only/workspace 隔离接口。MiniMax 只支持用户明确授权的完整访问：原生 DSH 会话须选 `danger-full-access`，外部 `delegate`/`delegate-start` 须显式传 `--sandbox full-access`。受限任务在启动前拒绝，旧受限记录不能直接升级；用户授权后另建会话。明确授权的完整访问对齐官方 `danger-full-access`（sandbox 完整访问、approval `never`），并通过 mcode ACP 将 `permissionMode` 设为广告的 `bypassPermissions`（Full access），新建、恢复和每次发送前验证回读。该官方接口会记录 mcode 的权限模式选择；不删除显式拒绝规则，不替用户回答已经挂起的审批。未授权或受限记录不得自动升级。
 
-Windows MiniMax Bash 后端由适配器解析 Git for Windows，并通过 `MCODE_SHELL_PATH` 固定；显式 `OPL_GIT_BASH_PATH` 错误时拒绝，不能换 Shell。ACP 必须回读相同 Bash 路径、type=bash、version=1 和 `[-c]` 参数；新建、跨进程恢复及发送前核对。官方 mcode 0.6.3 尚不支持该接口，本机使用独立的源码候选版；缺少回读时不发送 prompt，不把 `SHELL` 环境变量或模型主动包装 bash.exe 当作后端已配置。候选版不会随官方 mcode 更新自动改变；切回官方启动器前先验证接口和真实工具执行。此 Shell 设置不提供 DSH read-only/workspace 隔离；权限按上述完整访问映射独立确认。
+Windows MiniMax Bash 后端由适配器解析 Git for Windows，并通过 `MCODE_SHELL_PATH` 固定；显式 `OPL_GIT_BASH_PATH` 错误时拒绝，不能换 Shell。ACP 必须回读相同 Bash 路径、type=bash、version=1 和 `[-c]` 参数；新建、跨进程恢复及发送前核对。当前候选逐文件保留官方 npm mcode 0.7.4，使用其原生按会话 Git Bash 绑定，由独立 OPL ACP 扩展提供 Shell 回读与仅对话编辑；缺少回读时不发送 prompt，不把 `SHELL` 环境变量或模型主动包装 bash.exe 当作后端已配置。候选版不会随官方 mcode 更新自动改变；切回官方启动器前先验证接口和真实工具执行。此 Shell 设置不提供 DSH read-only/workspace 隔离；权限按上述完整访问映射独立确认。
 
 MiniMax 组合 ID 不写死：先运行 `delegate-list` 查询本机实际可用组合，再用返回的精确 ID 调用。`delegate-list` 没有列出 MiniMax 组合时报告未就绪，不回退其他模型、分组或 Harness，也不改用 Gateway 密钥。
 

@@ -48,7 +48,7 @@ export function verifyMinimaxBash(snapshot: AcpSessionSnapshot): void {
     advertised.args[0] !== '-c'
   ) {
     throw new HarnessConfigurationError(
-      'MiniMax Code 未确认所要求的 Git Bash 后端。当前官方 mcode 0.6.3 不提供此接口；请配置支持 MCODE_SHELL_PATH 和 ACP shell 回读的候选版或后续官方版。已停止，未发送任务，不回退 PowerShell、CMD 或 WSL。',
+      'MiniMax Code 未确认所要求的 Git Bash 后端。请配置已验证的 MCode 候选启动器（0.7.4 + OPL），或具备相同 ACP shell 回读的版本。已停止，未发送任务，不回退 PowerShell、CMD 或 WSL。',
     )
   }
 }

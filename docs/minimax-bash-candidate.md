@@ -1,12 +1,23 @@
-# MiniMax Bash 候选版：可复现构建与选择性使用
+# MiniMax Bash 候选版：构建与选择
 
-本目录（`scripts/mcode-candidate/`）把本机可用的 MiniMax Code Bash 候选版整理成他人可复现、可选择使用的交付准备。它**不替换官方 `mcode` CLI**，也**不要求每次官方更新都重新编译**：候选版是显式选择的独立来源，官方 CLI 照常安装、登录和更新。
+当前候选基于官方 npm `@minimax-ai/code@0.7.4`。官方分发文件与账号实现保持原样，OPL 扩展单独存放在 `overlay/`；它使用原生 Git Bash 绑定，并提供 ACP Shell 回读、仅对话历史的编辑、官方登录取消与授权到期处理。M3.1 的实际广告名为 `MiniMax-M3.1-Flash`，不附加 Preview。
 
-本目录不是官方发布物。候选版只有在其 ACP 回读通过真实核验后，才可用于 MiniMax 组合；官方 mcode 0.6.3 不提供该接口，详见 [docs/minimax-code.md](minimax-code.md)。
+## 当前 0.7.4 候选
 
-交付准备分两段：`build-candidate.mjs` / `verify-candidate.mjs` 负责**产出与校验**候选目录；`lifecycle.mjs` 负责**导入、版本目录、显式选择、升级、切回官方**，全程离线、可 dry-run、不自动更新、不读凭据与用户配置。生命周期复用既有的套件 Harness 根目录布局与 `pipeline.mjs` 的清单/许可/能力原语，不自建安装体系。
+固定输入在 `scripts/mcode-candidate/distribution.json`，官方文件清单在 `official-0.7.4-files.json`。构建先核对 npm 归档 SHA-512、许可 SHA-256 与逐文件摘要，再安装依赖；依赖安装后重新核对原始文件，生成含便携 Node 的完整清单。清单的 `filesSha256` 是官方文件数组经 `JSON.stringify` 序列化的 SHA-256。
 
-离线生命周期脚本写自己的审计回执；DSH Host 的 `oplExecution/select-minimax-candidate` 则在校验后发布真实执行组合，并检查该 Host 所有项目的活动任务。两者的保证范围不同，详见「选择性使用（不覆盖官方安装）」。
+```powershell
+node scripts/mcode-candidate/build-distribution.mjs --out "D:/mcode/0.7.4-opl-bash.20261102.2" --archive "D:/downloads/code-0.7.4.tgz" --node "C:/Program Files/nodejs/node.exe" --license "D:/downloads/MiniMax-LICENSE" --proxy http://127.0.0.1:7897
+node scripts/mcode-candidate/verify-candidate.mjs --candidate "D:/mcode/0.7.4-opl-bash.20261102.2" --out "D:/mcode/verification"
+```
+
+当前构建支持 Windows 与 Node 24–26。许可文件取自固定的官方公开提交；npm 0.7.4 暂无同版本公开源码标签，因此此交付不声称从 0.7.4 源码重新编译。overlay 使用该 npm 包的固定导出；升级版本必须重新核验导出、协议和真实工具，不能只改版本字符串。
+
+选择使用 `control.mjs minimax-candidate-select --version <版本> --source <目录>`，由 Host 核对全项目空闲并保存实际启动器。静态通过后仍需真实 ACP new/load、Git Bash、正式模型和 effort、仅对话编辑及登录流程验收。旧候选保留，可在全项目空闲时重新选择；历史日志不改名或重写。
+
+## 旧 0.6.3 源码构建记录
+
+以下固定输入和命令仅适用于旧源码候选，保留用于复现与回退。
 
 ## 固定事实
 
