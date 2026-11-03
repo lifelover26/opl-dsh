@@ -18,6 +18,11 @@ const configOptions = () => [
 ]
 const approvals = new Map()
 const editHistory = []
+const editHistoryFile = () => join(process.cwd(), 'edit-history.json')
+const persistEditHistory = async () => {
+  if (process.env.OPL_FIXTURE_EDIT_PERSIST === '1')
+    await writeFile(editHistoryFile(), JSON.stringify(editHistory))
+}
 const send = (v) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ...v }) + '\n')
 const update = (u) => send({ method: 'session/update', params: { sessionId, update: u } })
 const chunk = (t) =>
@@ -39,6 +44,7 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
     const index = m.params.targetPromptIndex
     const text = editHistory[index]
     editHistory.splice(index)
+    await persistEditHistory()
     return answer(m.id, {
       success: true,
       target_prompt_index: index,
@@ -51,6 +57,14 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
   else if (m.method === 'session/new' || m.method === 'session/load') {
     await appendFile(join(process.cwd(), 'connections.txt'), m.method + '\n')
     sessionId = m.params.sessionId ?? 'test-native'
+    if (process.env.OPL_FIXTURE_EDIT_PERSIST === '1') {
+      try {
+        const saved = JSON.parse(await readFile(editHistoryFile(), 'utf8'))
+        editHistory.splice(0, editHistory.length, ...saved)
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error
+      }
+    }
     await writeFile(
       join(process.cwd(), 'launch.json'),
       JSON.stringify({
@@ -75,13 +89,19 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
     await appendFile(join(process.cwd(), 'calls.txt'), m.params.prompt[0].text + '\n')
     const text = m.params.prompt[0].text
     if (
-      (process.env.OPL_FIXTURE_EDIT_FAILURE === 'quota' && text === 'user: replacement') ||
+      (['quota', 'quota-recorded'].includes(process.env.OPL_FIXTURE_EDIT_FAILURE) &&
+        text === 'user: replacement') ||
       (process.env.OPL_FIXTURE_EDIT_FAILURE === 'ui-quota' && text.includes('EDIT_UI_RATE_LIMIT'))
     ) {
+      if (process.env.OPL_FIXTURE_EDIT_FAILURE === 'quota-recorded') {
+        editHistory.push(text)
+        await persistEditHistory()
+      }
       running = undefined
       return send({ id: m.id, error: { code: 'HARNESS_PROVIDER_RATE_LIMIT' } })
     }
     if (process.env.OPL_FIXTURE_EDIT === '1') editHistory.push(text)
+    await persistEditHistory()
     if (text.startsWith('以下是先前会话记录'))
       update({
         sessionUpdate: 'session_info_update',

@@ -7,8 +7,8 @@
  * official agent loop is never reimplemented: `pi` owns prompting, tool execution,
  * context management and session persistence.
  *
- * **The three ids below are adaptation intent, not availability evidence.** They are
- * three separate entries in the `our-free-model` catalog and they stay separate here.
+ * The ids below declare adapter support; the model-source owner decides live availability.
+ * Each is a separate entry in the `our-free-model` catalog and stays separate here.
  * They are never merged, never de-prefixed into one another, and each keeps its own
  * provider key in the generated `models.json`, so one lane can be withdrawn or moved
  * to another protocol without touching another lane.
@@ -31,6 +31,10 @@ export const PI_MODEL_NEMOTRON = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:
 export const PI_MODEL_LFM = 'liquid/lfm-2.5-2.6b:free'
 /** Catalog id: Thinking Machines Inkling Small, free lane. */
 export const PI_MODEL_INKLING = 'thinkingmachines/inkling-small:free'
+/** Catalog id: Thinking Machines Inkling, free lane, distinct from Inkling Small. */
+export const PI_MODEL_INKLING_FULL = 'thinkingmachines/inkling:free'
+/** Catalog id: Google Gemma 4 31B IT, free lane. */
+export const PI_MODEL_GEMMA = 'google/gemma-4-31b-it:free'
 
 /**
  * Every catalog id this adapter is prepared to pin, in catalog order.
@@ -39,7 +43,18 @@ export const PI_MODEL_INKLING = 'thinkingmachines/inkling-small:free'
  * reference belongs to, so two ids that share a family name can never be resolved
  * through one another's configuration.
  */
-export const PI_CODE_MODELS: readonly string[] = [PI_MODEL_NEMOTRON, PI_MODEL_LFM, PI_MODEL_INKLING]
+export const PI_CODE_MODELS: readonly string[] = [
+  PI_MODEL_NEMOTRON,
+  PI_MODEL_LFM,
+  PI_MODEL_INKLING,
+  PI_MODEL_INKLING_FULL,
+  PI_MODEL_GEMMA,
+]
+
+/** Official Pi thinking levels mapped to provider values; `null` removes a level. */
+export type PiThinkingLevelMap = Readonly<
+  Partial<Record<(typeof PI_THINKING_LEVELS)[number], string | null>>
+>
 
 /** One publishable lane, with the identity the generated config carries for it. */
 export interface PiLane {
@@ -47,6 +62,10 @@ export interface PiLane {
   readonly model: string
   /** Provider key written into `models.json` for this lane alone. */
   readonly provider: string
+  /** Whether Pi offers its thinking selector or preserves the channel's default. */
+  readonly thinking: 'cli-advertised' | 'upstream-default'
+  /** Provider effort values applied through the official `models.json` field. */
+  readonly thinkingLevelMap?: PiThinkingLevelMap
 }
 
 /**
@@ -95,7 +114,7 @@ export function piApiForProtocol(protocol: string): string {
 /**
  * The wire protocol pinned for each lane.
  *
- * This is the **declared pairing**, and it is per lane on purpose: the three lanes are
+ * This is the **declared pairing**, and it is per lane on purpose: the lanes are
  * different routes, and pinning one protocol for all of them would hide a lane that
  * changed. The model-source owner must resolve each lane under exactly the protocol
  * named here; a source that answers another one is refused rather than coerced.
@@ -107,6 +126,8 @@ const LANE_PROTOCOLS: Readonly<Record<string, PiProtocol>> = {
   [PI_MODEL_NEMOTRON]: 'chat',
   [PI_MODEL_LFM]: 'chat',
   [PI_MODEL_INKLING]: 'chat',
+  [PI_MODEL_INKLING_FULL]: 'chat',
+  [PI_MODEL_GEMMA]: 'chat',
 }
 
 /** The protocol this harness pins for one lane, or `undefined` for an unknown id. */
@@ -130,6 +151,8 @@ const LANE_REASONING: Readonly<Record<string, boolean>> = {
   [PI_MODEL_NEMOTRON]: true,
   [PI_MODEL_LFM]: false,
   [PI_MODEL_INKLING]: false,
+  [PI_MODEL_INKLING_FULL]: true,
+  [PI_MODEL_GEMMA]: false,
 }
 
 /** Whether the lane exposes a reasoning tier, or `undefined` for an unknown id. */
@@ -138,11 +161,22 @@ export const piLaneReasoning = (ref: ModelRef): boolean | undefined => {
   return lane ? LANE_REASONING[lane.model] : undefined
 }
 
-/** Lane table. Three entries on purpose: the ids are not interchangeable. */
+/** Each exact id has its own provider entry and thinking declaration. */
 const LANES: readonly PiLane[] = [
-  { model: PI_MODEL_NEMOTRON, provider: 'opl-pi-nemotron-lane' },
-  { model: PI_MODEL_LFM, provider: 'opl-pi-lfm-lane' },
-  { model: PI_MODEL_INKLING, provider: 'opl-pi-inkling-lane' },
+  { model: PI_MODEL_NEMOTRON, provider: 'opl-pi-nemotron-lane', thinking: 'cli-advertised' },
+  { model: PI_MODEL_LFM, provider: 'opl-pi-lfm-lane', thinking: 'cli-advertised' },
+  { model: PI_MODEL_INKLING, provider: 'opl-pi-inkling-lane', thinking: 'cli-advertised' },
+  {
+    model: PI_MODEL_INKLING_FULL,
+    provider: 'opl-pi-inkling-full-lane',
+    thinking: 'cli-advertised',
+    thinkingLevelMap: { off: 'none', max: 'max' },
+  },
+  {
+    model: PI_MODEL_GEMMA,
+    provider: 'opl-pi-gemma-lane',
+    thinking: 'upstream-default',
+  },
 ]
 
 /**

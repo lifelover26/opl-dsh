@@ -15,6 +15,8 @@ export interface ExternalEditIntent {
   fingerprint: string
   previousSessionId: string
   targetId: string
+  /** Exact official user event selected before the vendor fork; absent in older journals. */
+  targetSeq?: number
   expected: ExternalEditHistory
   phase: 'invoking' | 'ready' | 'admitting' | 'prompting' | 'settled' | 'uncertain'
   result?: ExternalEditResult
@@ -74,7 +76,12 @@ export class ExternalMessageEditTransactions {
   async prepare(
     context: ExternalEditContext,
     driver: ExternalMessageEditDriver,
-    input: { requestId: string; targetId: string; expected: ExternalEditHistory },
+    input: {
+      requestId: string
+      targetId: string
+      targetSeq?: number
+      expected: ExternalEditHistory
+    },
   ): Promise<ExternalEditResult> {
     const sessionId = context.record.nativeSessionId
     if (!sessionId || !input.requestId || this.active.has(sessionId))
@@ -86,6 +93,7 @@ export class ExternalMessageEditTransactions {
         prior.phase === 'ready' &&
         prior.requestId === input.requestId &&
         prior.targetId === input.targetId &&
+        prior.targetSeq === input.targetSeq &&
         prior.fingerprint === fingerprint &&
         JSON.stringify(prior.expected) === JSON.stringify(input.expected) &&
         prior.result
@@ -109,6 +117,7 @@ export class ExternalMessageEditTransactions {
       fingerprint,
       previousSessionId: context.record.acpSessionId,
       targetId: input.targetId,
+      ...(input.targetSeq === undefined ? {} : { targetSeq: input.targetSeq }),
       expected: structuredClone(input.expected),
       phase: 'invoking',
     }
@@ -159,9 +168,9 @@ export class ExternalMessageEditTransactions {
     await this.transition(sessionId, requestId, 'admitting', 'prompting')
   }
 
-  /** Reuse a verified fork when its failed replacement never crossed the vendor transport. */
+  /** Reuse a verified fork only for an explicitly selected, confirmed unsent replacement. */
   async reuseUnsent(
-    context: Pick<ExternalEditContext, 'record' | 'signal'>,
+    context: Pick<ExternalEditContext, 'record' | 'signal'> & { targetSeq?: number },
     previousRequestId: string,
     requestId: string,
     createEmpty?: () => Promise<ExternalEditResult>,
@@ -173,7 +182,7 @@ export class ExternalMessageEditTransactions {
     if (
       !intent ||
       intent.requestId !== previousRequestId ||
-      !['admitting', 'settled'].includes(intent.phase)
+      !['ready', 'admitting', 'settled'].includes(intent.phase)
     )
       throw Error('编辑消息的发送阶段尚未确认')
     if (
@@ -194,7 +203,14 @@ export class ExternalMessageEditTransactions {
         result = await createEmpty()
         if (!result.sessionId || result.retained.length) throw Error('新的空会话身份未确认')
       }
-      await this.journal.save({ ...intent, result, requestId, fingerprint, phase: 'ready' })
+      await this.journal.save({
+        ...intent,
+        result,
+        requestId,
+        fingerprint,
+        ...(context.targetSeq === undefined ? {} : { targetSeq: context.targetSeq }),
+        phase: 'ready',
+      })
       context.signal.throwIfAborted()
       if (externalEditRecordFingerprint(context.record) !== fingerprint)
         throw Error('编辑期间会话绑定已变化')

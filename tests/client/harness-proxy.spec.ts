@@ -832,7 +832,6 @@ describe('每个外部 Harness 独立的代理设置', () => {
   })
 
   it.each([
-    ['catalog-missing', '目录已移除'],
     ['disabled', '未启用'],
     ['unconfirmed', '状态未确认'],
     [undefined, '不可用'],
@@ -1054,8 +1053,16 @@ describe('每个外部 Harness 独立的代理设置', () => {
 
   it('不可用组合可逐项移除，保留配置且不改变其他项', async () => {
     const data = unavailableCatalog()
+    Object.assign(data.models.find((item) => item.ref.model === 'missing-kimi')!, {
+      unavailableKind: 'catalog-missing',
+      reason: 'OFM 当前目录已移除此模型，保留原组合配置',
+    })
     const { call, stored } = fixture(data)
     const view = await open(call, ExecutionCatalogSection)
+    const missing = walk(view).find(
+      (node) => node.getAttribute?.('data-opl-combination') === 'missing-kimi',
+    )!
+    expect(text(missing)).toContain('目录已移除')
     expect(walk(view).some((node) => node.getAttribute?.('aria-label') === '移除 Codex 组合')).toBe(
       false,
     )
@@ -1079,6 +1086,7 @@ describe('每个外部 Harness 独立的代理设置', () => {
     expect(
       walk(reopened).some((node) => node.getAttribute?.('data-opl-combination') === 'missing-kimi'),
     ).toBe(false)
+    expect(text(reopened)).not.toContain('missing-kimi')
   })
 
   it('保存失败保留取消全选草稿，重试保存仍停用隐藏项', async () => {

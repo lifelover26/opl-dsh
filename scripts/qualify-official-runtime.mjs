@@ -572,6 +572,7 @@ try {
       if (stored.refs?.[ref] !== expected) throw new Error('原生表单与隔离测试凭据存储回读不一致')
     },
     evidence.officialVersion,
+    JSON.parse(await readFile(join(root, 'qualification-conversation-counts.json'), 'utf8')),
   )
   if (!modelPluginFixture.requests.some((request) => request.usedTool))
     throw new Error('原版模型插件未完成官方工具调用后的模型回复')

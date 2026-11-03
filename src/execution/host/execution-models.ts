@@ -220,6 +220,15 @@ export class ExecutionModelResolver {
       rawSummary !== null && typeof rawSummary === 'object' && rawSummary !== undefined
         ? (rawSummary as { catalog?: unknown }).catalog
         : undefined
+    const currentOfmModels = Array.isArray(rawCatalog)
+      ? new Set(
+          rawCatalog.flatMap((entry) => {
+            if (entry === null || typeof entry !== 'object' || !('id' in entry)) return []
+            const id = (entry as { id?: unknown }).id
+            return typeof id === 'string' && id ? [id] : []
+          }),
+        )
+      : undefined
     // A successful OFM snapshot with a live membership route is authoritative for
     // generated external routes. Remove generated rows whose model disappeared
     // from that live route, while retaining user-created rows so a transient
@@ -243,24 +252,18 @@ export class ExecutionModelResolver {
         : []
     const hasLiveMembership = membershipModels.length > 0
     if (
-      Array.isArray(rawCatalog) &&
+      currentOfmModels &&
       rawSettings !== null &&
       typeof rawSettings === 'object' &&
       (rawSettings as { enabled?: unknown }).enabled === true &&
       hasLiveMembership
     ) {
-      const liveOfmModels = new Set(
-        rawCatalog.flatMap((entry) => {
-          if (entry === null || typeof entry !== 'object' || !('id' in entry)) return []
-          const id = (entry as { id?: unknown }).id
-          return typeof id === 'string' && id ? [id] : []
-        }),
-      )
       const staleOfmAutomatic = (item: CombinationDefinition) =>
         item.id.startsWith('auto:') &&
         !userEdited(item) &&
         OFM_PROVIDERS.includes(item.modelRef.provider) &&
-        (!liveOfmModels.has(item.modelRef.model) || !membershipModels.includes(item.modelRef.model))
+        (!currentOfmModels.has(item.modelRef.model) ||
+          !membershipModels.includes(item.modelRef.model))
       if (catalog.combinations.some(staleOfmAutomatic)) {
         catalog = await this.store.cleanLegacyCombinations(staleOfmAutomatic)
       }
@@ -462,9 +465,17 @@ export class ExecutionModelResolver {
       const harnessName = catalog.harnesses.find((h) => h.id === harnessRef)!.name
       return [{ modelRef: model.ref, harnessRef, name: model.name + ' + ' + harnessName }]
     })
+    const advertisedOfmModels = new Set(
+      providerModels.flat().map((model) => modelRefKey(model.ref)),
+    )
     const ofmDiscovery = new Map<string, (typeof catalog.models)[number]>()
     for (const model of catalog.models)
-      if (OFM_PROVIDERS.includes(model.ref.provider))
+      if (
+        OFM_PROVIDERS.includes(model.ref.provider) &&
+        (currentOfmModels
+          ? currentOfmModels.has(model.ref.model)
+          : advertisedOfmModels.has(modelRefKey(model.ref)))
+      )
         ofmDiscovery.set(modelRefKey(model.ref), model)
     catalog.ofmDiscovery = [...ofmDiscovery.values()].map((model) => {
       const declaredOfficial = officialHarnessFor(model.ref)
@@ -493,7 +504,7 @@ export class ExecutionModelResolver {
               harness: official,
               label: `官方 ${catalog.harnesses.find((h) => h.id === official)?.name ?? official}`,
             }
-          : automatic && automatic !== 'dsh'
+          : automatic && harnesses.includes(automatic)
             ? {
                 kind: 'recommended' as const,
                 harness: automatic,

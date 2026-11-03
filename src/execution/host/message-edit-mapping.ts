@@ -12,6 +12,45 @@ export interface ExternalEditChoice {
   turnIndex: number
 }
 
+/** An allocated prefix with no admitted replacement can be resumed by a new explicit edit. */
+export function externalPreparedChoice(
+  record: HarnessSession,
+  intent: ExternalEditIntent | undefined,
+  events: readonly SessionEvent[],
+  activeSeqs: ReadonlySet<number>,
+): { seq: number; text: string } | undefined {
+  if (
+    intent?.phase !== 'ready' ||
+    !intent.result ||
+    intent.recordId !== record.id ||
+    intent.sessionId !== record.nativeSessionId ||
+    intent.result.sessionId !== record.acpSessionId ||
+    record.turns.length !== intent.result.retained.length ||
+    record.turns.some(
+      (turn, index) => turn.native?.userMessageId !== intent.result!.retained[index]?.nextId,
+    )
+  )
+    return
+  const users = readNativeUserMessages(events)
+  if (users.some((message) => message.rpcId === intent.requestId)) return
+  const active = users.filter((message) => activeSeqs.has(message.seq))
+  // Older journals lack the native target. A sole visible input and a confirmed empty
+  // vendor prefix need no identity mapping or further rewind to start that input afresh.
+  if (
+    intent.targetSeq === undefined &&
+    (intent.result.retained.length ||
+      intent.expected.boundaries.length !== 1 ||
+      active.length !== 1)
+  )
+    return
+  const matches = active.filter(
+    (message) =>
+      (intent.targetSeq === undefined || message.seq === intent.targetSeq) &&
+      !message.attachments.length,
+  )
+  return matches.length === 1 ? { seq: matches[0]!.seq, text: matches[0]!.text } : undefined
+}
+
 /** An empty fork with no vendor send can be replaced explicitly even if its file was never created. */
 export function externalUnsentEmptyChoice(
   record: HarnessSession,

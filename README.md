@@ -51,7 +51,7 @@ brew install --cask gaofeng21cn/opl-dsh/opl-dsh
 - **SuperAgent 仓库协作**：继承 DeepSeek SuperAgent 原型的 GitHub／可选飞书接单、授权策略、工单、执行和管理面板。macOS 在“协作与自动化”打开独立窗口后配置。见[SuperAgent](docs/superagent.md)。
 - **Auto Review 工具审批**：支持专用 codex-auto-review、独立 reviewer，以及 [BambooNode StartLux](docs/bamboo-startlux-auto-review.md) 和 [Jev](docs/jev-auto-review.md) 决策模型；默认关闭。见[工具审批](docs/auto-review.md)。
 - **MiniMax 官方账号**：通过 mcode 登录中国站或国际站，支持登录状态、退出、取消授权与超时处理。见[MiniMax 账号与 mcode](docs/minimax-code.md)。
-- **对话体验**：不选工作区也可开始新对话；原生 DSH 支持[编辑消息并原地重发](docs/stop-edit.md)；[Todo](docs/todo-status.md)展示真实记录状态；可启用[后台任务系统通知](docs/desktop-notifications.md)。
+- **对话体验**：不选工作区也可开始新对话；支持[编辑消息并原地重发](docs/stop-edit.md)，轮次与步数可选当前对话或历史累计；[Todo](docs/todo-status.md)展示真实记录状态；可启用[后台任务系统通知](docs/desktop-notifications.md)。
 - **网页搜索**：登录 Gateway 后，原生 `web_search` 统一使用 GPT-6.1 Sol 搜索，无需额外配置。
 
 ### 常用执行组合

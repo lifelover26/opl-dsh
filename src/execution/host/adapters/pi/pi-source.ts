@@ -14,8 +14,8 @@
  *   the owner's answer to carry the model id and the protocol the combination already
  *   names. A source that returns a different id is refused, because accepting it would run
  *   a different model than the user selected.
- * - **The three lanes stay separate.** The Nemotron, LFM and Inkling ids are three catalog
- *   entries with three provider keys; a route resolved for one is never reused for another.
+ * - Each lane has its own catalog id and provider key; a route resolved for one is never
+ *   reused for another.
  * - **No duplicate local source for one provider.** This harness consumes the shared
  *   `our-free-model` provider route that the OFM owner already publishes. Registering a
  *   second source under that same provider would shadow every other harness's pairing, so

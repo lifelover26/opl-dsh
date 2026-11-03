@@ -29,6 +29,8 @@ export {
   PI_MODEL_NEMOTRON,
   PI_MODEL_LFM,
   PI_MODEL_INKLING,
+  PI_MODEL_INKLING_FULL,
+  PI_MODEL_GEMMA,
   PI_MODEL_OPTION,
   PI_THINKING_OPTION,
   PI_PERMISSION_OPTION,
@@ -44,6 +46,7 @@ export {
   piWireModel,
   type PiLane,
   type PiProtocol,
+  type PiThinkingLevelMap,
 } from './pi-models.ts'
 export {
   PI_PERMISSIONS,

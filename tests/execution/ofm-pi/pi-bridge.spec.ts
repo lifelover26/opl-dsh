@@ -22,6 +22,11 @@ import { piStorage } from '../../../src/execution/host/adapters/pi/pi-config.ts'
 import {
   PI_MODEL_LFM,
   PI_MODEL_NEMOTRON,
+  PI_MODEL_INKLING_FULL,
+  PI_MODEL_GEMMA,
+  PI_PROVIDER,
+  piLane,
+  piLaneReasoning,
 } from '../../../src/execution/host/adapters/pi/pi-models.ts'
 import { startControlledProvider, type ControlledProvider } from './fixtures/provider.ts'
 import {
@@ -80,6 +85,8 @@ async function launch(
 ): Promise<Launch> {
   const cli = realCli!
   const controlled = await startControlledProvider(overrides.script ?? 'tool-then-answer')
+  const model = overrides.model ?? PI_MODEL_NEMOTRON
+  const modelRef = { provider: PI_PROVIDER, model }
   const home = piTempDir('opl-pi-会话 home-')
   const storage = piStorage(home)
   mkdirSync(storage.agentDir, { recursive: true })
@@ -99,11 +106,11 @@ async function launch(
     OPL_PI_AGENT_DIR: storage.agentDir,
     OPL_PI_SESSION_DIR: storage.sessionDir,
     OPL_PI_SESSION_INDEX_DIR: storage.sessionIndexDir,
-    OPL_PI_PROVIDER: overrides.provider ?? 'opl-pi-nemotron-lane',
-    OPL_PI_MODEL: overrides.model ?? PI_MODEL_NEMOTRON,
+    OPL_PI_PROVIDER: overrides.provider ?? piLane(modelRef)!.provider,
+    OPL_PI_MODEL: model,
     OPL_PI_BASE_URL: overrides.baseURL ?? controlled.baseURL,
     OPL_PI_API: 'openai-completions',
-    OPL_PI_REASONING: '1',
+    OPL_PI_REASONING: piLaneReasoning(modelRef) ? '1' : '0',
     OPL_PI_THINKING: overrides.thinking ?? '',
     OPL_PI_PERMISSION_TIER: 'full-access',
     OPL_PI_SHELL_PATH: overrides.shell ?? safeBash(),
@@ -118,6 +125,121 @@ async function launch(
 }
 
 afterAll(() => piTestCleanup())
+
+describe('Pi added lane config over the official CLI', () => {
+  it.runIf(realCli).each([
+    { thinking: 'max', wire: 'max' },
+    { thinking: 'off', wire: 'none' },
+  ])(
+    'runs exact Inkling with $thinking mapped through the official config',
+    async ({ thinking, wire }) => {
+      const run = await launch({ model: PI_MODEL_INKLING_FULL, thinking, script: 'answer-only' })
+      try {
+        await run.agent.acp.request('initialize', { protocolVersion: 1, clientCapabilities: {} })
+        const session = (await run.agent.acp.request('session/new', {
+          cwd: run.cwd,
+          mcpServers: [],
+        })) as any
+        expect(session.models.currentModelId).toBe('thinkingmachines/inkling:free')
+        const option = session.configOptions.find((entry: any) => entry.id === 'thinking')
+        expect(option.options.map((entry: any) => entry.value)).toEqual([
+          'off',
+          'minimal',
+          'low',
+          'medium',
+          'high',
+          'max',
+        ])
+        expect(option.currentValue).toBe(thinking)
+        const config = JSON.parse(readFileSync(join(run.agentDir, 'models.json'), 'utf8'))
+        expect(Object.keys(config.providers)).toEqual(['opl-pi-inkling-full-lane'])
+        expect(config.providers['opl-pi-inkling-full-lane']).toMatchObject({
+          api: 'openai-completions',
+          models: [
+            { id: 'thinkingmachines/inkling:free', thinkingLevelMap: { off: 'none', max: 'max' } },
+          ],
+        })
+        await run.agent.acp.request('session/prompt', {
+          sessionId: session.sessionId,
+          prompt: [{ type: 'text', text: 'Reply OK.' }],
+        })
+        expect(run.provider.requests).toEqual(['/v1/chat/completions'])
+        expect(run.provider.payloads).toHaveLength(1)
+        expect(run.provider.payloads[0]).toMatchObject({
+          model: 'thinkingmachines/inkling:free',
+          reasoning_effort: wire,
+        })
+      } finally {
+        await run.agent.dispose()
+        await run.provider.close()
+      }
+    },
+  )
+
+  it.runIf(realCli)(
+    'keeps Gemma on its exact model without a thinking selector or wire override',
+    async () => {
+      const run = await launch({ model: PI_MODEL_GEMMA, script: 'answer-only' })
+      try {
+        await run.agent.acp.request('initialize', { protocolVersion: 1, clientCapabilities: {} })
+        const session = (await run.agent.acp.request('session/new', {
+          cwd: run.cwd,
+          mcpServers: [],
+        })) as any
+        expect(session.models.currentModelId).toBe('google/gemma-4-31b-it:free')
+        expect(session.configOptions.some((entry: any) => entry.id === 'thinking')).toBe(false)
+        const config = JSON.parse(readFileSync(join(run.agentDir, 'models.json'), 'utf8'))
+        expect(Object.keys(config.providers)).toEqual(['opl-pi-gemma-lane'])
+        expect(config.providers['opl-pi-gemma-lane'].models).toEqual([
+          { id: 'google/gemma-4-31b-it:free', name: 'google/gemma-4-31b-it:free' },
+        ])
+        await expect(
+          run.agent.acp.request('session/set_config_option', {
+            sessionId: session.sessionId,
+            configId: 'thinking',
+            value: 'off',
+          }),
+        ).rejects.toThrow(/官方 Harness 拒绝了本次请求参数/)
+        expect(run.provider.requests).toHaveLength(0)
+        await run.agent.acp.request('session/prompt', {
+          sessionId: session.sessionId,
+          prompt: [{ type: 'text', text: 'Reply OK.' }],
+        })
+        expect(run.provider.requests).toEqual(['/v1/chat/completions'])
+        expect(run.provider.payloads).toHaveLength(1)
+        expect(run.provider.payloads[0]?.model).toBe('google/gemma-4-31b-it:free')
+        for (const field of [
+          'reasoning',
+          'reasoning_effort',
+          'thinking',
+          'enable_thinking',
+          'chat_template_kwargs',
+        ])
+          expect(run.provider.payloads[0]).not.toHaveProperty(field)
+      } finally {
+        await run.agent.dispose()
+        await run.provider.close()
+      }
+    },
+  )
+
+  it.runIf(realCli).each(['off', 'high'])(
+    'refuses an explicit %s choice on Gemma before sending a prompt',
+    async (thinking) => {
+      const run = await launch({ model: PI_MODEL_GEMMA, thinking })
+      try {
+        await run.agent.acp.request('initialize', { protocolVersion: 1, clientCapabilities: {} })
+        await expect(
+          run.agent.acp.request('session/new', { cwd: run.cwd, mcpServers: [] }),
+        ).rejects.toThrow(/官方 Harness 拒绝了本次请求参数/)
+        expect(run.provider.requests).toHaveLength(0)
+      } finally {
+        await run.agent.dispose()
+        await run.provider.close()
+      }
+    },
+  )
+})
 
 describe('Pi bridge: initialization and pinning over the official CLI', () => {
   it.runIf(realCli)('reports the official exhausted retry as a provider failure', async () => {

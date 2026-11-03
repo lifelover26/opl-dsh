@@ -40,7 +40,7 @@ test('first installation delegates the verified complete archive to the official
       },
       install: async (args) => calls.push(args),
     })
-    const archive = join(dir, 'vendor/dsh-our-free-model-2.7.2.tgz')
+    const archive = join(dir, 'vendor', `${fixturePlugin.name}-${fixturePlugin.version}.tgz`)
     assert.deepEqual(requests, [fixturePlugin.source])
     assert.deepEqual(calls, [['add', archive]])
     assert.deepEqual(await readFile(archive), archiveBytes)
@@ -110,29 +110,35 @@ for (const response of [
       assert.deepEqual(JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')), {
         dependencies: { 'user-plugin': '1.0.0' },
       })
-      await assert.rejects(readFile(join(dir, 'vendor/dsh-our-free-model-2.7.2.tgz')), {
-        code: 'ENOENT',
-      })
+      await assert.rejects(
+        readFile(join(dir, 'vendor', `${fixturePlugin.name}-${fixturePlugin.version}.tgz`)),
+        { code: 'ENOENT' },
+      )
     })
   })
 
-test('OPL reinstall preserves a user-selected source, newer version and disabled bundle', async () => {
-  const manifest = {
-    dependencies: { 'dsh-our-free-model': 'file:/user/ofm-3.0.0.tgz' },
-    dsh: { profile: { bundles: ['@one-person-lab/dsh-opl'] } },
-  }
-  await profile(manifest, async (dir) => {
-    const installed = join(dir, 'node_modules/dsh-our-free-model')
-    await mkdir(installed, { recursive: true })
-    await writeFile(join(installed, 'package.json'), JSON.stringify({ version: '3.0.0' }))
-    await installModelPlugins({ dir, install: async () => assert.fail('must not reinstall') })
-    assert.deepEqual(JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')), manifest)
-    assert.equal(
-      JSON.parse(await readFile(join(installed, 'package.json'), 'utf8')).version,
-      '3.0.0',
-    )
+for (const version of ['2.7.4', '3.0.0'])
+  test(`OPL reinstall preserves a user-selected source, installed ${version} and disabled bundle`, async () => {
+    const manifest = {
+      dependencies: { 'dsh-our-free-model': `file:/user/ofm-${version}.tgz` },
+      dsh: { profile: { bundles: ['@one-person-lab/dsh-opl'] } },
+    }
+    await profile(manifest, async (dir) => {
+      const installed = join(dir, 'node_modules/dsh-our-free-model')
+      await mkdir(installed, { recursive: true })
+      await writeFile(join(installed, 'package.json'), JSON.stringify({ version }))
+      await installModelPlugins({
+        dir,
+        fetchImpl: async () => assert.fail('must not download'),
+        install: async () => assert.fail('must not reinstall'),
+      })
+      assert.deepEqual(JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')), manifest)
+      assert.equal(
+        JSON.parse(await readFile(join(installed, 'package.json'), 'utf8')).version,
+        version,
+      )
+    })
   })
-})
 
 test('repair restores the existing profile instead of replacing the upstream dependency', async () => {
   await profile({ dependencies: { 'dsh-our-free-model': 'file:/user/ofm.tgz' } }, async (dir) => {

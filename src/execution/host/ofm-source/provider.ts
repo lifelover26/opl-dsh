@@ -1,6 +1,5 @@
 /**
- * Pairing policy for the original `dsh-our-free-model` plugin, pinned at the
- * revision the installer installs (v2.1.0, `7e3a1da5`).
+ * Pairing policy for the `dsh-our-free-model` plugin.
  *
  * The plugin owns its catalog, channels, rotation chain, credentials and updater.
  * This records which provider routes it publishes and which Harness may run which
@@ -95,6 +94,9 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'glm-5.3-flash-free',
     'opencode/glm-5.3-flash-free',
     'opencode/deepseek-v4.1-flash-free',
+    'opencode/nemotron-3.5-lightning-free',
+    'opencode/nemotron-3.5-super-vl-free',
+    'opencode/flint-40b-free',
     'deepseek-v4.1-flash-free',
     'space-bunny-free',
     'minimax-m3.1-flash-free',
@@ -108,6 +110,8 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
     'liquid/lfm-2.5-2.6b:free',
     'thinkingmachines/inkling-small:free',
+    'thinkingmachines/inkling:free',
+    'google/gemma-4-31b-it:free',
   ],
   kilo: [
     'inclusionai/ling-3.1-flash-1019-free',

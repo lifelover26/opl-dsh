@@ -59,6 +59,7 @@ import { join } from 'node:path'
 import { commandLaunch } from '../../harness-registry.ts'
 import { RpcTurnOutcome } from '../rpc-turn-outcome.ts'
 import { PI_CREDENTIAL_ENV, buildPiModelsConfig, buildPiSettings } from './pi-config.ts'
+import { PI_PROVIDER, piLane } from './pi-models.ts'
 import { PiTurnUsage, piContextUsage, piSessionStatsUsage } from './pi-usage.ts'
 
 // ── Launch contract ────────────────────────────────────────────────────────────────
@@ -75,8 +76,10 @@ const baseURL = process.env.OPL_PI_BASE_URL ?? ''
 const api = process.env.OPL_PI_API ?? ''
 /** Whether the lane exposes a reasoning tier; declared per lane by the adapter. */
 const reasoning = process.env.OPL_PI_REASONING === '1'
-/** Empty means "the caller expressed no choice"; nothing is written. */
-const thinking = process.env.OPL_PI_THINKING ?? ''
+/** Toggle-only lanes keep the channel's default without advertising a Pi effort. */
+const upstreamThinking = piLane({ provider: PI_PROVIDER, model })?.thinking === 'upstream-default'
+/** Last verified explicit choice, restored on load and fork; empty preserves the CLI default. */
+let thinking = process.env.OPL_PI_THINKING ?? ''
 const permissionTier = process.env.OPL_PI_PERMISSION_TIER ?? ''
 const shellPath = process.env.OPL_PI_SHELL_PATH ?? ''
 const credential = process.env[PI_CREDENTIAL_ENV] ?? ''
@@ -538,6 +541,8 @@ async function readThinkingLevels(): Promise<string[]> {
  */
 async function applyThinking(requested?: string): Promise<string | undefined> {
   if (!requested) return undefined
+  if (upstreamThinking)
+    throw configuration('此模型保留渠道默认思考设置，不提供可选思考档位；已停止，未发送任务。')
   const levels = await readThinkingLevels()
   if (!levels.includes(requested))
     throw configuration(
@@ -549,13 +554,14 @@ async function applyThinking(requested?: string): Promise<string | undefined> {
     throw configuration(
       `官方 Pi 思考档位未生效（实际 ${String(live ?? '未知')}，要求 ${requested}），已停止，未发送任务。`,
     )
+  thinking = requested
   return requested
 }
 
 /** The config options this projection advertises, all read from live official state. */
 async function configOptions(currentThinking?: string): Promise<unknown[]> {
   const state = await readState()
-  const levels = await readThinkingLevels()
+  const levels = upstreamThinking ? undefined : await readThinkingLevels()
   return [
     {
       type: 'select',
@@ -564,13 +570,17 @@ async function configOptions(currentThinking?: string): Promise<unknown[]> {
       currentValue: state?.model?.id ?? '',
       options: [{ value: model, name: model }],
     },
-    {
-      type: 'select',
-      id: THINKING_OPTION,
-      category: 'thought_level',
-      currentValue: currentThinking ?? state?.thinkingLevel ?? '',
-      options: levels.map((value) => ({ value, name: value })),
-    },
+    ...(levels
+      ? [
+          {
+            type: 'select',
+            id: THINKING_OPTION,
+            category: 'thought_level',
+            currentValue: currentThinking ?? state?.thinkingLevel ?? '',
+            options: levels.map((value) => ({ value, name: value })),
+          },
+        ]
+      : []),
     {
       type: 'select',
       id: PERMISSION_OPTION,
@@ -850,7 +860,7 @@ async function editRewind(
   return { ok: true, sessionId: newId, retained, ephemeral }
 }
 
-/** One lifecycle at a time: a prompt cannot interleave with a fork/read. */
+/** Serialize prompts, history edits and configuration writes. */
 let lifecycle: Promise<unknown> = Promise.resolve()
 function serialize<T>(run: () => Promise<T>): Promise<T> {
   const next = lifecycle.then(run, run)
@@ -997,25 +1007,31 @@ async function invoke(method: string, params: any): Promise<unknown> {
     throw configuration('会话身份不匹配')
 
   if (method === 'session/set_config_option') {
-    const configId = String(params?.configId ?? '')
-    const value = String(params?.value ?? '')
-    if (configId === MODEL_OPTION) {
-      if (value !== model)
-        throw configuration(`官方 Pi 只接受本组合固定的模型 ${model}，拒绝 ${value}。`)
-      await piCommand('set_model', { provider, modelId: model })
-      await assertModel()
-    } else if (configId === THINKING_OPTION) {
-      if (value && value !== thinking)
-        throw configuration(`官方 Pi 只接受本组合固定的思考档位，拒绝 ${value}。`)
-      await applyThinking(value)
-    } else if (configId === PERMISSION_OPTION) {
-      throw configuration('官方 Pi 的权限档位在启动时固定，会话内不可更改。')
-    } else {
-      throw configuration(`官方 Pi 未广告 ${configId} 配置项，无法确认该取值。`)
-    }
-    const options = await configOptions()
-    emit({ sessionUpdate: 'config_option_update', configOptions: options })
-    return { configOptions: options }
+    return serialize(async () => {
+      if (params?.sessionId !== undefined && params.sessionId !== sessionId)
+        throw configuration('会话身份不匹配')
+      const configId = String(params?.configId ?? '')
+      const value = String(params?.value ?? '')
+      if (configId === MODEL_OPTION) {
+        if (value !== model)
+          throw configuration(`官方 Pi 只接受本组合固定的模型 ${model}，拒绝 ${value}。`)
+        await piCommand('set_model', { provider, modelId: model })
+        await assertModel()
+      } else if (configId === THINKING_OPTION) {
+        if (upstreamThinking)
+          throw configuration('官方 Pi 未广告 thinking 配置项；此模型保留渠道默认思考设置。')
+        if (typeof params?.value !== 'string' || !value)
+          throw configuration('官方 Pi 需要一个已广告的非空思考档位。')
+        await applyThinking(value)
+      } else if (configId === PERMISSION_OPTION) {
+        throw configuration('官方 Pi 的权限档位在启动时固定，会话内不可更改。')
+      } else {
+        throw configuration(`官方 Pi 未广告 ${configId} 配置项，无法确认该取值。`)
+      }
+      const options = await configOptions()
+      emit({ sessionUpdate: 'config_option_update', configOptions: options })
+      return { configOptions: options }
+    })
   }
 
   if (method === 'session/prompt') {

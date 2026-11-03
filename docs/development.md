@@ -125,6 +125,8 @@ Homebrew Cask 固定对应 Release 的 URL 和摘要，调用相同安装器；�
 
 Linux CI 执行契约漂移、模块边界、格式、Host/Client 类型、构建与测试。构建必须先于 artifact 测试。
 
+SuperAgent 的 POSIX 服务控制、账户 Shell wrapper、Unix 信号与权限测试在 Linux/macOS 执行；Windows 保留共享逻辑、文档与 Git 配置语义检查，只跳过依赖 POSIX 的具体用例或测试组。Windows 官方兼容与发布资格任务也运行这套共享测试；通过不代表提供 Windows SuperAgent 启动入口。
+
 官方桌面资格工作流在相关变更、发布及手动触发时覆盖 macOS arm64 与 Windows。它使用独立临时 profile 和模拟模型，验证实际 Client 插槽、RPC、两类协议模型流、官方工具、重启恢复及官方应用未修改，产出 JSON 和截图。具体命令和平台要求见 [兼容验证](compatibility.md)。
 
 本地模拟验证不等于真实 Gateway 或所有外部 Harness 组合验收；一台 Mac 的通过也不代表 Windows 通过。发布还需要实际公开资产与摘要回读。本地实现请求不自动触发提交、推送、发布或用户 profile 升级。

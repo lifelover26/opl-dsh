@@ -112,6 +112,19 @@ if (captureSelections || process.argv.includes('--readback-selections')) {
     assert.equal(actual.sandbox, preset)
     assert.equal(actual.approval, approval)
   }
+  const countBaseline = JSON.parse(
+    await readFile(join(root, 'qualification-conversation-counts.json'), 'utf8'),
+  )
+  const counts = await wire('session/projections', {
+    request: { sessionId: countBaseline.sessionId },
+  })
+  assert.deepEqual(
+    counts.values.oplConversationCounts,
+    countBaseline.current,
+    'Current-history counts changed after restart',
+  )
+  assert.equal(counts.values.sessionStats.turns, countBaseline.history.turns)
+  assert.equal(counts.values.sessionStats.steps, countBaseline.history.steps)
   console.log(JSON.stringify({ selectionRestore: true, sessions: Object.keys(selections).length }))
   process.exit(0)
 }
@@ -416,6 +429,69 @@ try {
     ),
   )
   assert(requests.filter((r) => r.usedTool).length >= 2, 'official tool execution missing')
+  const countSession = await rpc('session', 'create', {
+    request: { cwd: project, permissionPreset: 'read-only' },
+  })
+  const countSessionId = countSession.sessionId
+  await rpc('session', 'selectModel', {
+    request: { sessionId: countSessionId, provider: 'opl-gateway', model: 'deepseek-flash' },
+  })
+  await rpc('session', 'prompt', {
+    request: {
+      sessionId: countSessionId,
+      requestId: crypto.randomUUID(),
+      mode: 'queue',
+      content: [{ type: 'text', text: 'Count scope original request.' }],
+    },
+  })
+  assert.equal(
+    (await rpc('session', 'wait', { sessionId: countSessionId })).outcome.kind,
+    'completed',
+  )
+  const beforeCounts = await wire('session/projections', { request: { sessionId: countSessionId } })
+  assert.equal(beforeCounts.values.oplConversationCounts.turns, 1)
+  assert.equal(
+    beforeCounts.values.oplConversationCounts.steps,
+    beforeCounts.values.sessionStats.steps,
+  )
+  const edit = await harness('message-edit-state', { sessionId: countSessionId })
+  assert.equal(edit.supported, true)
+  assert.equal(edit.choices.length, 1)
+  await harness('message-edit-send', {
+    targetSeq: edit.choices[0].seq,
+    head: edit.head,
+    prompt: {
+      sessionId: countSessionId,
+      requestId: crypto.randomUUID(),
+      mode: 'queue',
+      content: [{ type: 'text', text: 'Count scope replacement request.' }],
+    },
+  })
+  assert.equal(
+    (await rpc('session', 'wait', { sessionId: countSessionId })).outcome.kind,
+    'completed',
+  )
+  const afterCounts = await wire('session/projections', { request: { sessionId: countSessionId } })
+  assert.equal(afterCounts.values.oplConversationCounts.turns, 1)
+  assert.equal(afterCounts.values.sessionStats.turns, 2)
+  assert.equal(
+    afterCounts.values.sessionStats.steps,
+    beforeCounts.values.sessionStats.steps + afterCounts.values.oplConversationCounts.steps,
+  )
+  await wire('session/rename', {
+    request: { sessionId: countSessionId, title: 'Conversation count qualification' },
+  })
+  await writeFile(
+    join(root, 'qualification-conversation-counts.json'),
+    JSON.stringify({
+      sessionId: countSessionId,
+      current: afterCounts.values.oplConversationCounts,
+      history: {
+        turns: afterCounts.values.sessionStats.turns,
+        steps: afterCounts.values.sessionStats.steps,
+      },
+    }) + '\n',
+  )
   if (process.platform === 'win32') {
     // MSYS2 external programs need full access with the official rc.2 backend.
     // Only this disposable Session receives that explicit preset.

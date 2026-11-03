@@ -35,6 +35,7 @@ import {
   externalEditChoices,
   externalEditedRecord,
   externalEditRecovery,
+  externalPreparedChoice,
   externalTerminalFailureChoice,
   externalUnsentEmptyChoice,
 } from './message-edit-mapping.ts'
@@ -66,6 +67,7 @@ import { EventEmitter } from 'node:events'
 import {
   ToolCallId,
   LlmError,
+  ReasoningEffortId,
   type GenerateOptions,
   type StreamChunk,
   type TokenUsage,
@@ -128,6 +130,9 @@ import {
 } from '../contracts/sessions.ts'
 import { ExternalEffortStore } from './external-effort-store.ts'
 import { ExecutionModelResolver } from './execution-models.ts'
+import { assertOfmModelAvailable } from './model-admission.ts'
+import { OFM_PROVIDERS } from './ofm-source/provider.ts'
+import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
 import { modelDefaultEffort } from '../../shared/model-reasoning.ts'
 import type { CombinationDefinition, ModelRef } from '../contracts/catalog.ts'
 import { adapterFor, defaultHarness } from './adapters/index.ts'
@@ -2602,6 +2607,68 @@ export class HarnessService {
     if (blocked) throw Error(blocked)
   }
 
+  /** Check the selected model before an edit can change either conversation history. */
+  async assertConversationModelAvailable(sessionId: string): Promise<void> {
+    await this.ready
+    await this.waitForSelectionChange(sessionId)
+    const session = this.ctx.sessions.get(asSessionId<SessionId>(sessionId))
+    if (!session) return
+    const selection = this.ctx.sessionProjections.snapshot(session, ['modelSelection']).values
+      .modelSelection
+    const ref = selection?.next ?? selection?.lastUsed
+    if (!ref || !OFM_PROVIDERS.includes(ref.provider)) return
+    const catalog = await this.executionCatalog()
+    const definition = this.combinationFor(sessionId, catalog, ref)
+    await assertOfmModelAvailable(
+      this.ctx,
+      ref,
+      this.options.readOfm,
+      (definition?.harnessRef ?? defaultHarness(ref)) !== 'dsh',
+    )
+  }
+
+  /** Validate the assembled route and leave CLI-owned effort out of native provider controls. */
+  async prepareConversationRequest(
+    sessionId: string,
+    request: LlmCallConfig,
+  ): Promise<LlmCallConfig> {
+    await this.ready
+    await this.waitForSelectionChange(sessionId)
+    const catalog = await this.executionCatalog()
+    const definition = this.combinationFor(sessionId, catalog, request)
+    await assertOfmModelAvailable(
+      this.ctx,
+      request,
+      this.options.readOfm,
+      (definition?.harnessRef ?? defaultHarness(request)) !== 'dsh',
+    )
+    const session = this.ctx.sessions.get(asSessionId<SessionId>(sessionId))
+    const selection = session
+      ? this.ctx.sessionProjections.snapshot(session, ['modelSelection']).values.modelSelection
+      : undefined
+    const current = selection?.next ?? selection?.lastUsed
+    if (current && modelRefKey(current) !== modelRefKey(request))
+      throw new LlmError('模型选择已改变，请重新发送；本轮未使用旧模型。', 'HARNESS_BINDING')
+    const adapter = definition && adapterFor(definition.harnessRef, request, this.modelSources)
+    if (
+      definition &&
+      (this.cliOwnsEffort(definition) || adapter?.capabilities.reasoning === 'none')
+    ) {
+      const { reasoningEffort: _, ...ref } = request
+      return ref
+    }
+    if (
+      request.reasoningEffort === undefined &&
+      (request.model.split('::').at(-1) === 'deepseek-flash' ||
+        request.model.split('::').at(-1)?.startsWith('gpt-'))
+    ) {
+      const info = await this.ctx.llm.resolveModelInfo(request.provider, request.model)
+      const effort = modelDefaultEffort(request.model, info.reasoning)
+      if (effort !== undefined) return { ...request, reasoningEffort: ReasoningEffortId(effort) }
+    }
+    return request
+  }
+
   private externalDriver(record: HarnessSession): ExternalMessageEditDriver | undefined {
     switch (record.harnessRef) {
       case 'codex':
@@ -2690,12 +2757,12 @@ export class HarnessService {
   }
 
   private async externalHistory(record: HarnessSession): Promise<ExternalEditHistory> {
+    await this.connectAdmitted(record)
     const fingerprint = externalEditRecordFingerprint(record)
     const cached = this.externalHistories.get(record.id)
     if (cached?.fingerprint === fingerprint) return cached.history
     const driver = this.externalDriver(record)
     if (!driver) throw Error('此执行引擎尚不支持编辑消息')
-    await this.connectAdmitted(record)
     const intent = record.nativeSessionId
       ? this.externalMessageEdits.intent(record.nativeSessionId)
       : undefined
@@ -2780,6 +2847,14 @@ export class HarnessService {
       if (busy || this.messageEdits.pending(session.id))
         return { ...base, supported: true, choices: [] }
       const intent = this.externalMessageEdits.intent(session.id)
+      const preparedChoice = externalPreparedChoice(
+        record,
+        intent,
+        session.snapshotEvents(),
+        new Set<number>(session.surface.nodes),
+      )
+      if (preparedChoice)
+        return { ...base, pending: false, supported: true, choices: [preparedChoice] }
       const emptyChoice = externalUnsentEmptyChoice(
         record,
         intent,
@@ -2855,6 +2930,7 @@ export class HarnessService {
   /** Normal composer send with an exact old message target; retains the Session identity. */
   async messageEditSend(input: MessageEditSend) {
     return this.runtimeMaintenance.admit(async () => {
+      await this.assertConversationModelAvailable(input.prompt.sessionId)
       const state = await this.messageEditState({ sessionId: input.prompt.sessionId })
       if (!state.supported || state.busy) throw Error('请先停止当前对话，再编辑消息')
       const resolved = await this.ctx.sessionController.resolveAgent(input.prompt.sessionId)
@@ -2881,6 +2957,12 @@ export class HarnessService {
       try {
         return await agent.runMaintenance(async (signal) => {
           const priorIntent = this.externalMessageEdits.intent(agent.id)
+          const preparedChoice = externalPreparedChoice(
+            record,
+            priorIntent,
+            agent.session.snapshotEvents(),
+            new Set<number>(agent.session.surface.nodes),
+          )
           const emptyChoice = externalUnsentEmptyChoice(
             record,
             priorIntent,
@@ -2894,7 +2976,7 @@ export class HarnessService {
             new Set<number>(agent.session.surface.nodes),
           )
           const history =
-            emptyChoice || terminalChoice
+            emptyChoice || terminalChoice || preparedChoice
               ? undefined
               : await this.externalRecoveryHistory(record, priorIntent)
           const recovery = history
@@ -2906,9 +2988,12 @@ export class HarnessService {
                 new Set<number>(agent.session.surface.nodes),
               )
             : undefined
-          const empty = emptyChoice?.seq === input.targetSeq
+          const prepared = preparedChoice?.seq === input.targetSeq
+          const empty =
+            emptyChoice?.seq === input.targetSeq || (prepared && priorIntent?.result?.ephemeral)
           const unsent =
             empty ||
+            prepared ||
             terminalChoice?.seq === input.targetSeq ||
             (recovery?.kind === 'unsent' && recovery.choice.seq === input.targetSeq)
           const choice = history
@@ -2925,9 +3010,13 @@ export class HarnessService {
           // mean that the selected user message changed. Native DSH editing keeps the
           // strict cursor check in MessageEditTransactions.
           if (!choice && !unsent) throw Error('消息已变化，请重新选择')
+          // Cached choices and terminal failures do not establish a live connection.
+          // Restore it before changing the fork binding or advancing its durable send guard.
+          if (unsent && !empty) await this.connectAdmitted(record)
+          signal.throwIfAborted()
           const result = unsent
             ? await this.externalMessageEdits.reuseUnsent(
-                { record, signal },
+                { record, signal, targetSeq: input.targetSeq },
                 priorIntent!.requestId,
                 input.prompt.requestId,
                 empty
@@ -2944,25 +3033,33 @@ export class HarnessService {
                 {
                   requestId: input.prompt.requestId,
                   targetId: choice!.boundaryId,
+                  targetSeq: input.targetSeq,
                   expected: history!,
                 },
               )
           const next = unsent
-            ? { ...record, acpSessionId: result.sessionId, turns: record.turns.slice(0, -1) }
+            ? {
+                ...record,
+                acpSessionId: result.sessionId,
+                turns: prepared ? record.turns : record.turns.slice(0, -1),
+              }
             : externalEditedRecord(record, history!, choice!.boundaryId, result)
           Object.assign(record, next)
           await this.save(record)
           const current = this.active.get(record.id)
-          if (!current?.acp) throw Error('编辑后的连接已断开')
+          if (!current?.acp || current.acp.closed) throw Error('编辑后的连接已断开')
           current.provisional = false
           delete current.editHistory
+          const needsPreparedLoad =
+            prepared && !result.ephemeral && current.sessionInfo?.sessionId !== result.sessionId
           // An ephemeral fork is already active in the bridge and cannot be loaded from
           // disk yet. Its in-memory session identity must follow the persisted binding.
           current.sessionInfo = { ...current.sessionInfo, sessionId: result.sessionId }
           if (
-            history &&
-            result.sessionId !== history.sessionId &&
-            (!result.ephemeral || record.harnessRef === 'claude')
+            needsPreparedLoad ||
+            (history &&
+              result.sessionId !== history.sessionId &&
+              (!result.ephemeral || record.harnessRef === 'claude'))
           ) {
             current.sessionInfo = object(
               await current.acp.request('session/load', {
@@ -4378,6 +4475,13 @@ export class HarnessService {
     const definition = (await this.executionCatalog()).combinations.find(
       (c) => c.id === selected.combination,
     )
+    if (
+      definition &&
+      adapterFor(definition.harnessRef, definition.modelRef, this.modelSources)?.capabilities
+        .reasoning === 'none' &&
+      input.reasoningEffort !== undefined
+    )
+      throw Error('当前 Harness 未提供推理档位，请重新选择')
     if (!definition || !this.cliOwnsEffort(definition)) {
       const { sessionId, ...request } = input
       return this.native('selectModel', { sessionId, ...request })
@@ -4670,7 +4774,7 @@ export class HarnessService {
       const model = catalog.models.find(
         (item) => modelRefKey(item.ref) === modelRefKey(definition.modelRef),
       )
-      if (!model?.available) throw Error('模型未配置或凭据未就绪')
+      if (!model?.available) throw Error(model?.reason ?? '模型未配置或凭据未就绪')
       const harness = catalog.harnesses.find((item) => item.id === definition.harnessRef)
       const adapter = adapterFor(definition.harnessRef, definition.modelRef, this.modelSources)
       if (!harness || !adapter) throw Error('组合没有兼容适配器')

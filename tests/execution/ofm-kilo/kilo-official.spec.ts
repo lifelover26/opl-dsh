@@ -213,7 +213,7 @@ describe.skipIf(!BINARY)('官方 Kilo CLI 实测面', () => {
     await harness.acp.request('session/close', { sessionId: created.sessionId })
   })
 
-  it('effort 对本组合的模型不可用，且从不广告 max，适配器因此不发送档位', async () => {
+  it('每个声明模型均无 effort 广告或可写档位', async () => {
     const created = (await harness.acp.request('session/new', {
       cwd: harness.cwd,
       mcpServers: [],
@@ -222,25 +222,26 @@ describe.skipIf(!BINARY)('官方 Kilo CLI 实测面', () => {
     const beforePin = (created.configOptions ?? []).find((o: any) => o.id === 'effort')
     expect(beforePin.options.map((o: any) => o.value)).toEqual(['thinking'])
 
-    const pinned = kiloModelValue(KILO_OFM_MODELS[0])
-    const written = (await harness.acp.request('session/set_config_option', {
-      sessionId: created.sessionId,
-      configId: KILO_MODEL_OPTION,
-      value: pinned,
-    })) as Record<string, any>
-    // 实测：一旦选中本路由模型，effort 选项整体消失，剩下的只有 model 与 mode。
-    expect((written.configOptions ?? []).map((o: any) => o.id).sort()).toEqual(['mode', 'model'])
-    const effort = (written.configOptions ?? []).find((o: any) => o.id === 'effort')
-    expect(effort).toBeUndefined()
-    // 即使写入也一律被拒，因此适配器不会发送 effort。
-    for (const value of ['thinking', 'high', 'max']) {
-      await expect(
-        harness.acp.request('session/set_config_option', {
-          sessionId: created.sessionId,
-          configId: 'effort',
-          value,
-        }),
-      ).rejects.toThrow()
+    for (const id of KILO_OFM_MODELS) {
+      const pinned = kiloModelValue(id)
+      const written = (await harness.acp.request('session/set_config_option', {
+        sessionId: created.sessionId,
+        configId: KILO_MODEL_OPTION,
+        value: pinned,
+      })) as Record<string, any>
+      expect(modelOption(written).currentValue).toBe(pinned)
+      // 本路由模型没有 effort 配置项，只有 model 与 mode。
+      expect((written.configOptions ?? []).map((o: any) => o.id).sort()).toEqual(['mode', 'model'])
+      expect((written.configOptions ?? []).find((o: any) => o.id === 'effort')).toBeUndefined()
+      for (const value of ['thinking', 'high', 'max']) {
+        await expect(
+          harness.acp.request('session/set_config_option', {
+            sessionId: created.sessionId,
+            configId: 'effort',
+            value,
+          }),
+        ).rejects.toThrow()
+      }
     }
     await harness.acp.request('session/close', { sessionId: created.sessionId })
   })

@@ -52,6 +52,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: node --test tests/qualification.test.mjs
+      - name: Verify shared SuperAgent tests on Windows
+        if: matrix.os == 'windows-latest'
+        run: npm test --workspace dsh-superagent
       - name: Verify Windows native launcher and ACL regressions
         if: matrix.os == 'windows-latest'
         run: |

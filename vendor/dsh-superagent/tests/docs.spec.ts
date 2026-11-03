@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, join, normalize, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -29,7 +29,7 @@ function listed(heading: string): string[] {
     return [...row.split('|')[1]!.matchAll(/`([^`]+)`/g)].map(([, name]) => {
       if (!name!.includes('/')) return join(directory, name!)
       directory = dirname(name!)
-      return name!
+      return normalize(name!)
     })
   })
 }
@@ -42,7 +42,7 @@ describe('documentation', () => {
     const violations = numbered.flatMap(name => links(join(ROOT, 'docs', name)).flatMap(target => {
       const linked = resolve(ROOT, 'docs', target)
       if (!linked.endsWith('.md')) return []
-      const number = NUMBERED.exec(linked.slice(linked.lastIndexOf('/') + 1))?.[1]
+      const number = NUMBERED.exec(basename(linked))?.[1]
       return dirname(linked) === join(ROOT, 'docs') && number !== undefined && number < name.slice(0, 3) ? [] : [`${name} → ${target}`]
     }))
     expect(violations).toEqual([])

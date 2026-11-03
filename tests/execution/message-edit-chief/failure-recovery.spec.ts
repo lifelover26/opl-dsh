@@ -5,6 +5,7 @@ import type { ExternalEditHistory } from '../../../src/execution/host/message-ed
 import type { ExternalEditIntent } from '../../../src/execution/host/message-edit-external.ts'
 import {
   externalEditRecovery,
+  externalPreparedChoice,
   externalTerminalFailureChoice,
   externalUnsentEmptyChoice,
 } from '../../../src/execution/host/message-edit-mapping.ts'
@@ -59,6 +60,58 @@ function fixture() {
     recover: () => externalEditRecovery(record, history, intent, events, active),
   }
 }
+
+it('resumes an allocated prefix only at its persisted official edit target', () => {
+  const f = fixture()
+  f.intent.phase = 'ready'
+  f.intent.targetSeq = 2
+  f.record.turns.pop()
+  const second = f.events[1]!
+  if (second.type !== 'user/message') throw Error('fixture user required')
+  second.data.source = { kind: 'user', rpcId: 'original-second' } as never
+  const choice = () => externalPreparedChoice(f.record, f.intent, f.events, f.active)
+  expect(choice()).toEqual({ seq: 2, text: 'same' })
+  f.intent.targetSeq = 99
+  expect(choice()).toBeUndefined()
+  f.intent.targetSeq = 2
+  f.active.delete(2)
+  expect(choice()).toBeUndefined()
+  f.active.add(2)
+  f.record.turns[0]!.native!.userMessageId = 'different-prefix'
+  expect(choice()).toBeUndefined()
+})
+
+it('recovers a legacy known-empty allocation without guessing between multiple user inputs', () => {
+  const f = fixture()
+  f.intent.phase = 'ready'
+  f.intent.expected.boundaries = [{ id: 'old-b' }]
+  f.intent.result!.retained = []
+  f.record.turns = []
+  f.events.pop()
+  const choice = () => externalPreparedChoice(f.record, f.intent, f.events, f.active)
+  expect(choice()).toEqual({ seq: 1, text: 'same' })
+  f.events.push(structuredClone(f.events[0]!))
+  expect(choice()).toBeUndefined()
+})
+
+it.each(['invoking', 'admitting', 'prompting', 'uncertain', 'settled'] as const)(
+  'does not treat %s as a confirmed prepared allocation',
+  (phase) => {
+    const f = fixture()
+    f.intent.phase = phase
+    f.intent.targetSeq = 2
+    f.record.turns.pop()
+    expect(externalPreparedChoice(f.record, f.intent, f.events, f.active)).toBeUndefined()
+  },
+)
+
+it('does not resume a prepared allocation if its replacement already appears in the log', () => {
+  const f = fixture()
+  f.intent.phase = 'ready'
+  f.intent.targetSeq = 2
+  f.record.turns.pop()
+  expect(externalPreparedChoice(f.record, f.intent, f.events, f.active)).toBeUndefined()
+})
 
 it('recovers a settled failed input by its exact vendor and official request identities', () => {
   expect(fixture().recover()).toEqual({ kind: 'settled' })

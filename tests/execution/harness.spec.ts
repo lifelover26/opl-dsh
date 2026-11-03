@@ -595,11 +595,11 @@ describe('native conversation combinations', () => {
           },
         ),
       )
-      const record = (await service.list()).sessions.find(
-        (row) => row.nativeSessionId === session.id,
-      )!
-      expect(record.turns.at(-1)?.reasoningEffort).toBe(effort)
     }
+    const store = new HarnessSessionStore(service.directory)
+    cleanups.push(() => store.dispose())
+    const record = (await store.load()).find((row) => row.nativeSessionId === session.id)
+    expect(record?.turns.map((turn) => turn.reasoningEffort)).toEqual(['high', 'max'])
   })
   it('omits provider reasoning controls when the selected CLI has no effort interface', async () => {
     const ref = { provider: 'opl-gateway', model: 'grok::grok-4.7' }
@@ -2322,11 +2322,28 @@ describe('external execution progress deadlines', () => {
   })
 })
 
-it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
+it.each([
+  false,
+  true,
+  'quota',
+  'quota-restart',
+  'cached-disconnected',
+  'ready-restart',
+  'legacy-ready-restart',
+  'ephemeral-ready-restart',
+  'unsent',
+  'ephemeral-unsent',
+] as const)(
   'edits an external conversation with recovery mode=%s',
   async (mode) => {
-    const ephemeral = mode === true || mode === 'ephemeral-unsent'
-    const rejected = mode === 'quota' || mode === 'unsent' || mode === 'ephemeral-unsent'
+    const prepared =
+      mode === 'ready-restart' ||
+      mode === 'legacy-ready-restart' ||
+      mode === 'ephemeral-ready-restart'
+    const ephemeral =
+      mode === true || mode === 'ephemeral-unsent' || mode === 'ephemeral-ready-restart'
+    const quota = mode === 'quota' || mode === 'quota-restart'
+    const rejected = quota || prepared || mode === 'unsent' || mode === 'ephemeral-unsent'
     const { Session, SessionId } = await import('@deepseek-ai/dsh-session')
     const ref = { provider: 'opl-gateway', model: 'grok::grok-4.7' }
     const f = await nativeSetup([{ id: ref.model, name: 'Grok' }])
@@ -2341,7 +2358,10 @@ it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
       env: {
         ...systemEnvironment(),
         OPL_FIXTURE_EDIT: '1',
-        ...(mode === 'quota' ? { OPL_FIXTURE_EDIT_FAILURE: 'quota' } : {}),
+        OPL_FIXTURE_EDIT_PERSIST: '1',
+        ...(quota
+          ? { OPL_FIXTURE_EDIT_FAILURE: mode === 'quota-restart' ? 'quota-recorded' : 'quota' }
+          : {}),
       },
     })
     const queued: ReturnType<typeof createUserMessage>[] = []
@@ -2413,7 +2433,8 @@ it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
       },
     })
     await f.service.selectCombination({ sessionId: real.id, combination: GROK_COMBINATION })
-    for (const requestId of ['first', 'second']) {
+    const initialRequests = mode === 'legacy-ready-restart' ? ['first'] : ['first', 'second']
+    for (const requestId of initialRequests) {
       number++
       const user = createUserMessage({
         source: { kind: 'user', rpcId: requestId },
@@ -2427,7 +2448,17 @@ it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
       real.append('turn/end', { turn: number, reason: { kind: 'completed' } })
     }
     const before = await f.service.messageEditState({ sessionId: real.id })
-    expect(before.choices.map((item) => item.text)).toEqual(['same', 'same'])
+    expect(before.choices.map((item) => item.text)).toEqual(initialRequests.map(() => 'same'))
+    if (mode === 'cached-disconnected') {
+      const owner = f.service as unknown as {
+        active: Map<string, { acp: AcpProcess; bridgeStop?: () => Promise<void> }>
+      }
+      for (const active of owner.active.values()) {
+        await active.acp.dispose()
+        await active.bridgeStop?.()
+      }
+      owner.active.clear()
+    }
     // A completed external turn can append non-user observations after the state
     // read. The selected message identity remains the same and must stay editable.
     real.append('step/start', { turn: 99, step: 1 })
@@ -2467,10 +2498,14 @@ it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
     const releaseQuotaSettlement = Promise.withResolvers<void>()
     const owner = f.service as unknown as {
       externalMessageEdits: ExternalMessageEditTransactions
+      externalEditJournal: {
+        save(intent: ReturnType<ExternalMessageEditTransactions['intent']>): Promise<void>
+      }
       records: Map<string, HarnessSession>
+      save(record: HarnessSession): Promise<void>
       changed(record: HarnessSession): void
     }
-    if (mode === 'quota') {
+    if (quota) {
       const settle = owner.externalMessageEdits.settle.bind(owner.externalMessageEdits)
       vi.spyOn(owner.externalMessageEdits, 'settle').mockImplementationOnce(async (...args) => {
         await settle(...args)
@@ -2478,8 +2513,26 @@ it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
         await releaseQuotaSettlement.promise
       })
     }
-    expect(await f.service.messageEditSend(input)).toEqual({ accepted: true })
-    if (mode === 'quota') {
+    if (prepared) {
+      const save = owner.save.bind(owner)
+      vi.spyOn(owner, 'save').mockImplementation(async (row) => {
+        await save(row)
+        if (!row.turns.length && owner.externalMessageEdits.intent(real.id)?.phase === 'ready')
+          throw Error('connection interrupted after binding was saved')
+      })
+      await expect(f.service.messageEditSend(input)).rejects.toThrow('connection interrupted')
+      expect((await readFile(join(f.root, 'calls.txt'), 'utf8')).trim().split('\n')).toHaveLength(
+        initialRequests.length,
+      )
+      if (mode === 'legacy-ready-restart') {
+        const { targetSeq: _targetSeq, ...legacy } = owner.externalMessageEdits.intent(real.id)!
+        await owner.externalEditJournal.save(legacy)
+      }
+      await f.service.dispose()
+      f.service = new HarnessService(f.ctx, f.options)
+      cleanups.push(() => f.service.dispose())
+    } else expect(await f.service.messageEditSend(input)).toEqual({ accepted: true })
+    if (quota) {
       await quotaSettlement.promise
       let streamCompleted = false
       const terminal = completion.then(() => {
@@ -2506,6 +2559,13 @@ it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
     }
     await completion
     if (rejected) {
+      if (mode === 'quota-restart') {
+        const row = [...owner.records.values()].find((item) => item.nativeSessionId === real.id)!
+        expect(row.turns.at(-1)?.native?.userMessageId).toBeDefined()
+        await f.service.dispose()
+        f.service = new HarnessService(f.ctx, f.options)
+        cleanups.push(() => f.service.dispose())
+      }
       if (mode === 'ephemeral-unsent') {
         const owner = f.service as unknown as {
           active: Map<string, { acp: AcpProcess; bridgeStop?: () => Promise<void> }>
@@ -2518,7 +2578,7 @@ it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
       }
       const state = await f.service.messageEditState({ sessionId: real.id })
       expect(state.pending).toBe(false)
-      expect(state.choices.map((x) => x.text)).toEqual(['replacement'])
+      expect(state.choices.map((x) => x.text)).toEqual([prepared ? 'same' : 'replacement'])
       const editedAgain = {
         targetSeq: state.choices[0]!.seq,
         head: state.head,
@@ -2547,9 +2607,10 @@ it.each([false, true, 'quota', 'unsent', 'ephemeral-unsent'] as const)(
         .map((part) => part.text),
     ).toEqual([finalText])
     expect((await readFile(join(f.root, 'calls.txt'), 'utf8')).trim().split('\n')).toEqual([
-      'user: same',
-      'user: same',
-      ...(mode !== 'unsent' && mode !== 'ephemeral-unsent' ? ['user: replacement'] : []),
+      ...initialRequests.map(() => 'user: same'),
+      ...(!prepared && mode !== 'unsent' && mode !== 'ephemeral-unsent'
+        ? ['user: replacement']
+        : []),
       ...(rejected ? ['user: final'] : []),
     ])
     expect((await f.service.messageEditState({ sessionId: real.id })).pending).toBe(false)

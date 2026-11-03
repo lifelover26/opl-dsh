@@ -27,6 +27,11 @@ export class DesktopPipe {
         const message = JSON.parse(bytes)
         if (!message.id) {
           if (message.method === 'Runtime.exceptionThrown') this.events.push(message)
+          if (
+            message.method === 'Network.responseReceived' &&
+            message.params.response.url.endsWith('/api/settings/mutate')
+          )
+            this.events.push(message)
           continue
         }
         const pending = this.pending.get(message.id)
@@ -80,6 +85,7 @@ export async function verifyDesktopClient(
   progress = () => {},
   credentialReadback = async () => {},
   officialVersion = undefined,
+  conversationCountFixture = undefined,
 ) {
   const result = {
     clientMounted: false,
@@ -129,6 +135,7 @@ export async function verifyDesktopClient(
   }
   if (!session) throw new Error('未发现官方桌面 Client 页面')
   await pipe.command('Runtime.enable', {}, session)
+  await pipe.command('Network.enable', {}, session)
   await pipe.command('Page.enable', {}, session)
   const errors = () =>
     pipe.events.filter(
@@ -178,11 +185,62 @@ export async function verifyDesktopClient(
       session,
       "Array.from(document.querySelectorAll('[role=dialog]')).map(node=>node.innerText).join('\\n').slice(-8000)",
     )
+    result.settingsWriteFailures = []
+    for (const event of pipe.events
+      .filter((event) => event.sessionId === session && event.method === 'Network.responseReceived')
+      .slice(-6)) {
+      try {
+        const body = await pipe.command(
+          'Network.getResponseBody',
+          { requestId: event.params.requestId },
+          session,
+        )
+        const response = JSON.parse(body.body).result
+        const error = !response?.ok ? response?.error : undefined
+        if (error) result.settingsWriteFailures.push({ code: error.code, message: error.message })
+      } catch {
+        // A released response body is unavailable; retain the original DOM failure.
+      }
+    }
     await captureFailureScreenshot()
     throw new Error(description + '；当前入口：' + JSON.stringify(buttons))
   }
   const clickLabel = (labels, scope = 'document') =>
     `(() => { const labels=${JSON.stringify(labels)}; const root=${scope}; if(!root)return false; const node=Array.from(root.querySelectorAll('button,[role=menuitem]')).find(x=>x.getClientRects().length && !x.disabled && (labels.includes((x.getAttribute('aria-label')||x.textContent||'').trim()) || x.matches('[role=menuitem]') && labels.some(label => (x.textContent||'').trim().startsWith(label)))); if(!node)return false; node.click(); return true })()`
+  async function chooseCountMode(labels) {
+    const selector = 'document.querySelector("[data-opl-preference=conversation-counts] button")'
+    const accepted = `!${selector}.disabled && ${JSON.stringify(labels)}.some(label=>${selector}.textContent.includes(label))`
+    const refused =
+      'Boolean(document.querySelector("[data-opl-preference=conversation-counts] [role=alert]"))'
+    async function choose() {
+      await waitFor(`Boolean(${selector} && !${selector}.disabled)`, '轮次与步数设置未就绪')
+      await pipe.evaluate(session, `${selector}.click()`)
+      await waitFor(clickLabel(labels), '计数选项未显示')
+      await waitFor(`(${accepted}) || (${refused} && !${selector}.disabled)`, '计数写入没有结束')
+    }
+    await choose()
+    if (await pipe.evaluate(session, refused)) {
+      // Startup fixtures can change the same namespace. The shared form recovers
+      // its revision; exercise one new user choice only for a proven CAS refusal.
+      const event = pipe.events
+        .filter(
+          (event) => event.sessionId === session && event.method === 'Network.responseReceived',
+        )
+        .at(-1)
+      const body =
+        event &&
+        (await pipe.command(
+          'Network.getResponseBody',
+          { requestId: event.params.requestId },
+          session,
+        ))
+      const code = body && JSON.parse(body.body).result?.error?.code
+      if (code !== 'settings/conflict') throw new Error('计数偏好保存失败：' + String(code))
+      result.countPreferenceConflicts = (result.countPreferenceConflicts ?? 0) + 1
+      await choose()
+    }
+    await waitFor(accepted, '计数偏好未保存')
+  }
   await waitFor("document.body.innerText.includes('OPL')", 'OPL Client 未挂载')
   result.clientMounted = true
   if (officialVersion === '0.2.1-rc.3') {
@@ -336,6 +394,28 @@ export async function verifyDesktopClient(
       result.generalPreferences = {
         notifications: true,
         nativeGeneralItems: true,
+      }
+      const countSelector =
+        'document.querySelector("[data-opl-preference=conversation-counts] button")'
+      await waitFor(
+        `Boolean(${countSelector} && !${countSelector}.disabled)`,
+        '轮次与步数设置未就绪',
+      )
+      await waitFor(
+        `${countSelector}.textContent.includes('当前对话') || ${countSelector}.textContent.includes('Current conversation')`,
+        '计数默认值不是当前对话',
+      )
+      await chooseCountMode(['历史累计', 'All history'])
+      await selectPanel()
+      await waitFor(
+        `${countSelector}.textContent.includes('历史累计') || ${countSelector}.textContent.includes('All history')`,
+        '重进设置后计数偏好丢失',
+      )
+      await chooseCountMode(['当前对话', 'Current conversation'])
+      result.generalPreferences.conversationCounts = {
+        currentDefault: true,
+        historySaved: true,
+        currentRestored: true,
       }
     }
     if (panel.marker === 'catalog') {
@@ -837,6 +917,41 @@ export async function verifyDesktopClient(
   const modelPluginScreenshot = await captureScreenshot('our-free-model')
   if (modelPluginScreenshot) screenshots.push(modelPluginScreenshot)
   else result.screenshotFailures.push('our-free-model')
+  if (conversationCountFixture) {
+    async function closeSettings() {
+      for (const type of ['keyDown', 'keyUp'])
+        await pipe.command(
+          'Input.dispatchKeyEvent',
+          { type, key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 },
+          session,
+        )
+      await waitFor(`!${settingsNav}`, '轮次验收时设置未关闭')
+    }
+    const showsCounts = ({ turns, steps }) =>
+      `Array.from(document.querySelectorAll('button,[role=button]')).some(node=>node.getClientRects().length && (${JSON.stringify(`${turns} 轮 ${steps} 步`)}===node.textContent.trim() || ${JSON.stringify(`${turns} turns ${steps} steps`)}===node.textContent.trim() || node.textContent.includes(${JSON.stringify(`${turns} 轮 ${steps} 步`)}) || node.textContent.includes(${JSON.stringify(`${turns} turns ${steps} steps`)})))`
+    await closeSettings()
+    await waitFor(
+      `(() => {const title='Conversation count qualification';const node=Array.from(document.querySelectorAll('*')).find(x=>x.getClientRects().length && x.textContent?.trim()===title && !Array.from(x.children).some(c=>c.textContent?.trim()===title));if(!node)return false;node.click();return true})()`,
+      '计数验收对话未进入侧边栏',
+    )
+    await waitFor(showsCounts(conversationCountFixture.current), '原统计栏没有显示当前对话计数')
+    async function selectCountScope(label) {
+      await openSettings()
+      await waitFor(clickLabel(['通用设置', 'General'], settingsNav), '通用设置未打开')
+      await chooseCountMode(label)
+      await closeSettings()
+    }
+    await selectCountScope(['历史累计', 'All history'])
+    await waitFor(showsCounts(conversationCountFixture.history), '原统计栏没有显示历史累计计数')
+    await selectCountScope(['当前对话', 'Current conversation'])
+    await waitFor(showsCounts(conversationCountFixture.current), '原统计栏没有恢复当前对话计数')
+    result.conversationCounts = {
+      editedNativeConversation: true,
+      currentPill: conversationCountFixture.current,
+      historyPill: conversationCountFixture.history,
+      restoredCurrent: true,
+    }
+  }
   result.runtimeExceptions = errors().length
   if (errors().length)
     throw new Error(

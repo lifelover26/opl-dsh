@@ -9,6 +9,7 @@ import * as gateway from '../gateway/host/index.ts'
 import * as control from './execution.ts'
 import * as nativeModelProviders from '../compat/host/model-providers.ts'
 import * as gitBash from '../shell/host/git-bash.ts'
+import * as conversationStats from '../conversation-stats/host/index.ts'
 import { Config } from './config.ts'
 export { Config } from './config.ts'
 
@@ -22,6 +23,7 @@ export function apply(ctx: Context, config: Config): void {
   if (process.platform === 'win32') ctx.plugin(gitBash, {})
   ctx.plugin(gateway, structuredClone(config.gateway.get()) as gateway.OplGatewayConfig)
   ctx.plugin(control, { executionLimits: config.executionLimits })
+  ctx.plugin(conversationStats)
   ctx.plugin(nativeModelProviders)
   ctx.plugin(GatewayModelsService)
   ctx.plugin(SetupService)

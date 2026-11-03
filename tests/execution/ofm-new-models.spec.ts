@@ -20,6 +20,11 @@ import type { HarnessSession } from '../../src/execution/contracts/sessions.ts'
 import type { AcpSessionSnapshot, AdapterOptions } from '../../src/execution/host/adapters/types.ts'
 
 const lanes = [
+  ['opencode/nemotron-3.5-lightning-free', 'opencode', 'EAC Nemotron 3.5 Lightning Free'],
+  ['opencode/nemotron-3.5-super-vl-free', 'opencode', 'EAC Nemotron 3.5 Super VL Free'],
+  ['opencode/flint-40b-free', 'opencode', 'EAC Flint 40B Free'],
+  ['thinkingmachines/inkling:free', 'pi', 'Kilo Inkling'],
+  ['google/gemma-4-31b-it:free', 'pi', 'Kilo Gemma 4 31B'],
   ['minimaxai/minimax-m3.1-flash', 'opencode', 'EAC MiniMax M3.1 Flash'],
   ['stepfun-ai/step-5-preview', 'step-code', 'EAC Step 5 Preview'],
   [VIBE_MODEL, 'vibe', 'EAC Mistral Large 4'],

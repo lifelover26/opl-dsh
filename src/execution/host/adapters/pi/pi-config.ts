@@ -23,6 +23,7 @@
  * launch environment. The file therefore contains no secret, and no literal key is
  * written, logged, or placed in an argument vector.
  */
+import { PI_PROVIDER, piLane, type PiThinkingLevelMap } from './pi-models.ts'
 
 /** Official environment variable that redirects the agent directory. */
 export const PI_AGENT_DIR_ENV = 'PI_CODING_AGENT_DIR'
@@ -83,13 +84,15 @@ export interface PiProviderEntry {
      * removes the thinking tier instead of failing loudly.
      */
     readonly reasoning?: boolean
+    /** Official effort mapping; omitted levels retain Pi's documented defaults. */
+    readonly thinkingLevelMap?: PiThinkingLevelMap
   }[]
 }
 
 /**
  * Build the `models.json` document for exactly the pinned lane.
  *
- * One provider, one model: the three Pi catalog ids never share an entry, so a lane cannot
+ * One provider, one model: the Pi catalog ids never share an entry, so a lane cannot
  * inherit another's base URL or model name.
  *
  * @param options - the lane identity, the resolved route, the official API name, and
@@ -103,6 +106,10 @@ export function buildPiModelsConfig(options: {
   api: string
   reasoning?: boolean
 }): Record<string, unknown> {
+  const thinkingLevelMap =
+    options.reasoning === true
+      ? piLane({ provider: PI_PROVIDER, model: options.model })?.thinkingLevelMap
+      : undefined
   const entry: PiProviderEntry = {
     baseUrl: options.baseURL,
     api: options.api,
@@ -110,9 +117,12 @@ export function buildPiModelsConfig(options: {
     // request time, so this file holds no credential.
     apiKey: `$${PI_CREDENTIAL_ENV}`,
     models: [
-      options.reasoning === true
-        ? { id: options.model, name: options.model, reasoning: true }
-        : { id: options.model, name: options.model },
+      {
+        id: options.model,
+        name: options.model,
+        ...(options.reasoning === true ? { reasoning: true } : {}),
+        ...(thinkingLevelMap ? { thinkingLevelMap } : {}),
+      },
     ],
   }
   return { providers: { [options.provider]: entry } }
