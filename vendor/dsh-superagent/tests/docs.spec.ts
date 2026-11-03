@@ -18,8 +18,8 @@ const files = (directory: string): string[] => readdirSync(join(ROOT, directory)
  * Extract repo-relative file paths from the first column of a table under `## <heading>` in `docs/007-architecture.md`.
  * Bare filenames inherit the directory of the preceding path in the same cell.
  */
-function listed(heading: string): string[] {
-  const lines = read('docs/007-architecture.md').split('\n')
+function listed(heading: string, source = read('docs/007-architecture.md')): string[] {
+  const lines = source.split(/\r?\n/)
   const start = lines.indexOf(`## ${heading}`)
   const end = lines.findIndex((line, index) => index > start && line.startsWith('## '))
   // The first two rows are the header and its separator.
@@ -55,13 +55,13 @@ describe('documentation', () => {
   it('leaves no merge conflict markers in any document', () => {
     expect(documents.filter(path => /^(<{7}|>{7}) /m.test(read(path)))).toEqual([])
   })
-  it('lists every module of src in the module table of 007 Architecture, and only files that exist', () => {
-    const modules = listed('Modules')
+  it.each(['\n', '\r\n'])('lists every module of src in the module table of 007 Architecture, and only files that exist (%j line endings)', ending => {
+    const modules = listed('Modules', read('docs/007-architecture.md').replace(/\r?\n/g, ending))
     expect(files('src').filter(path => !modules.includes(path))).toEqual([])
     expect(modules.filter(path => !existsSync(join(ROOT, path)))).toEqual([])
   })
-  it('lists every test in the test table of 007 Architecture, and only files that exist', () => {
-    const tests = listed('Tests')
+  it.each(['\n', '\r\n'])('lists every test in the test table of 007 Architecture, and only files that exist (%j line endings)', ending => {
+    const tests = listed('Tests', read('docs/007-architecture.md').replace(/\r?\n/g, ending))
     expect(files('tests').filter(path => /\.spec\.tsx?$/.test(path) && !tests.includes(path))).toEqual([])
     expect(tests.filter(path => !existsSync(join(ROOT, path)))).toEqual([])
   })
