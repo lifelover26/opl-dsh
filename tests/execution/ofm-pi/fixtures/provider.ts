@@ -29,6 +29,8 @@ export interface ControlledProvider {
   baseURL: string
   /** Every request path the CLI actually called. */
   readonly requests: string[]
+  /** Parsed model request bodies received from the official CLI. */
+  readonly payloads: Readonly<Record<string, unknown>>[]
   /** System messages actually received by the controlled provider. */
   readonly systemMessages: string[]
   /** Authorization header values seen, so a test can assert the key was forwarded. */
@@ -63,6 +65,7 @@ export async function startControlledProvider(
   script: ProviderScript = 'tool-then-answer',
 ): Promise<ControlledProvider> {
   const requests: string[] = []
+  const payloads: Record<string, unknown>[] = []
   const systemMessages: string[] = []
   const authorizations: string[] = []
   const arrivalWaiters: { count: number; resolve: () => void }[] = []
@@ -97,6 +100,7 @@ export async function startControlledProvider(
       } catch {
         parsed = {}
       }
+      payloads.push(parsed)
       for (const message of parsed.messages ?? [])
         if (message.role === 'system' || message.role === 'developer')
           systemMessages.push(JSON.stringify(message.content))
@@ -175,6 +179,7 @@ export async function startControlledProvider(
   return {
     baseURL: `http://127.0.0.1:${address.port}/v1`,
     requests,
+    payloads,
     systemMessages,
     authorizations,
     waitForRequest(count = 1) {

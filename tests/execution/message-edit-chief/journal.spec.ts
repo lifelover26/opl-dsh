@@ -30,6 +30,15 @@ async function fixture() {
 const filename = createHash('sha256').update('dsh').digest('hex') + '.json'
 
 describe('external edit journal persistence', () => {
+  it('retains the exact optional native target and rejects invalid sequence values', async () => {
+    const { home, store, directory } = await fixture()
+    await store.save({ ...intent, targetSeq: 17 })
+    const restarted = new FileExternalEditJournal(home)
+    await restarted.load()
+    expect(restarted.get('dsh')?.targetSeq).toBe(17)
+    await writeFile(join(directory, filename), JSON.stringify({ ...intent, targetSeq: -1 }))
+    await expect(restarted.load()).rejects.toThrow('损坏')
+  })
   it('restores an invoking intent after a new owner loads it', async () => {
     const { home, store } = await fixture()
     await store.save(intent)

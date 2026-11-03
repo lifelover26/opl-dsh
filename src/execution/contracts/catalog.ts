@@ -54,6 +54,6 @@ export interface ExecutionCatalog {
   recommendations?: Array<{ modelRef: ModelRef; harnessRef: string; name: string }>
   /** Live adapter compatibility for the manual pairing form; not a readiness verdict. */
   supportedPairings?: Array<{ modelRef: ModelRef; harnessRefs: string[] }>
-  /** Live OFM models that need maintainer review before becoming combinations. */
+  /** Current OFM directory entries; saved combination references alone are excluded. */
   ofmDiscovery?: OfmDiscoveryItem[]
 }

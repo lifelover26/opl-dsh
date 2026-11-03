@@ -207,9 +207,8 @@ export const kiloAdapter: HarnessAdapter = {
     // `session/cancel` answers -32601 on the pinned release. Advertising a cancellation the
     // CLI does not implement would let a caller believe a turn was stopped.
     cancel: false,
-    // The `effort` option is advertised but offers no values for the declared models and
-    // rejects every write, so no effort is selectable here and the tier belongs to the model.
-    reasoning: 'model-declared',
+    // The paired route models advertise no selectable effort values in the pinned CLI.
+    reasoning: 'none',
     autoReview: 'unsupported',
   },
   matches: (ref: ModelRef) => isKiloModel(ref),

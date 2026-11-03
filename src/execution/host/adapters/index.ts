@@ -19,7 +19,7 @@ import type { HarnessAdapter } from './types.ts'
 import type { ExternalModelSources } from '../model-sources.ts'
 import { officialHarnessFor } from '../../contracts/official-harnesses.ts'
 import { officialOpenCodeModel, isHiddenOfmSelection } from '../ofm-source/selection-policy.ts'
-import { OFM_PROVIDERS } from '../ofm-source/provider.ts'
+import { OFM_PROVIDER, OFM_PROVIDERS } from '../ofm-source/provider.ts'
 export const harnessAdapters: readonly HarnessAdapter[] = [
   codexAdapter,
   claudeAdapter,
@@ -55,6 +55,7 @@ export function nativeHarnessMatches(id: string, ref: ModelRef): boolean {
 export function automaticHarness(ref: ModelRef): string | undefined {
   if (isHiddenOfmSelection(ref)) return undefined
   if (officialOpenCodeModel(ref) !== undefined) return 'opencode'
+  if (ref.provider === OFM_PROVIDER && ref.model === 'deepseek-ai/deepseek-v4.1-flash') return 'dsh'
   if (OFM_PROVIDERS.includes(ref.provider) || ref.provider === 'opl-gateway') {
     const recommended = [openCodeAdapter, piAdapter, kiloAdapter, zcodeOfmAdapter].find((adapter) =>
       adapter.matches(ref),

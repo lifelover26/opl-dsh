@@ -1,11 +1,15 @@
 /** Original model plugin, isolated upstream fixtures, and the real OPL/DSH callers. */
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
 
 export const MODEL_PLUGIN_FIXTURE = 'opl-qualification-free'
+const fixtureTool = 'list_harness_combinations'
+const renamedFixtureTool =
+  'clint_' + createHash('sha256').update(fixtureTool).digest('hex').slice(0, 12)
 
 export async function startModelPluginFixture() {
   const requests = []
@@ -27,10 +31,11 @@ export async function startModelPluginFixture() {
       for await (const part of req) bytes += part
       const body = JSON.parse(bytes)
       const usedTool = body.messages?.some((message) => message.role === 'tool')
-      const hasTool = body.tools?.some(
-        (tool) => tool.function?.name === 'list_harness_combinations',
-      )
-      requests.push({ model: body.model, usedTool: !!usedTool, hasTool: !!hasTool })
+      const toolName = body.tools
+        ?.map((tool) => tool.function?.name)
+        .find((name) => name === fixtureTool || name === renamedFixtureTool)
+      const hasTool = toolName !== undefined
+      requests.push({ model: body.model, usedTool: !!usedTool, hasTool, toolName, path: req.url })
       const tool = !usedTool && hasTool
       const delta = tool
         ? {
@@ -39,7 +44,7 @@ export async function startModelPluginFixture() {
                 index: 0,
                 id: 'ofm-fixture-call',
                 type: 'function',
-                function: { name: 'list_harness_combinations', arguments: '{}' },
+                function: { name: toolName, arguments: '{}' },
               },
             ],
           }

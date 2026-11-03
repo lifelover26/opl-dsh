@@ -24,6 +24,7 @@ const schema = z
     fingerprint: nonempty,
     previousSessionId: nonempty,
     targetId: nonempty,
+    targetSeq: z.number().int().nonnegative().optional(),
     expected: z.object({
       sessionId: nonempty,
       token: nonempty,
@@ -56,10 +57,11 @@ export function parseExternalEditIntent(value: unknown): ExternalEditIntent {
       item.expected.settledInputId !== item.expected.boundaries.at(-1)?.id)
   )
     throw Error('外部编辑记录的历史身份不一致')
-  const { result: prepared, ...base } = item
+  const { result: prepared, targetSeq, ...base } = item
   const { settledInputId, ...expected } = item.expected
   const parsed: ExternalEditIntent = {
     ...base,
+    ...(targetSeq === undefined ? {} : { targetSeq }),
     expected: {
       ...expected,
       ...(settledInputId !== undefined ? { settledInputId } : {}),

@@ -16,15 +16,23 @@ import { createPiAdapter } from '../../../src/execution/host/adapters/pi/index.t
 import {
   PI_HARNESS,
   PI_MODEL_INKLING,
+  PI_MODEL_INKLING_FULL,
+  PI_MODEL_GEMMA,
   PI_MODEL_LFM,
   PI_MODEL_NEMOTRON,
   PI_PROVIDER,
   createPiSource,
   registerPiSource,
   piLaneProtocol,
+  resolvePiRoute,
   type PiSourceAnswer,
 } from '../../../src/execution/host/adapters/pi/index.ts'
 import type { ModelRef } from '../../../src/execution/contracts/catalog.ts'
+import {
+  applyOfmModelSource,
+  createOfmApiConnection,
+} from '../../../src/execution/host/ofm-source/index.ts'
+import { fixtureCaller } from '../ofm-source/owner-api-fixture.ts'
 
 const owner = { effect: (effect: () => () => void) => effect() } as unknown as Context
 const ctx = { credentials: {}, get: () => undefined } as unknown as Context
@@ -85,6 +93,12 @@ describe('Pi source registration', () => {
     expect(sources.supports(PI_HARNESS, { provider: PI_PROVIDER, model: PI_MODEL_INKLING })).toBe(
       true,
     )
+    expect(
+      sources.supports(PI_HARNESS, { provider: PI_PROVIDER, model: PI_MODEL_INKLING_FULL }),
+    ).toBe(true)
+    expect(sources.supports(PI_HARNESS, { provider: PI_PROVIDER, model: PI_MODEL_GEMMA })).toBe(
+      true,
+    )
     // Another harness, another owner, or an unpinned id is not absorbed.
     expect(sources.supports('codex', nemotron)).toBe(false)
     expect(sources.supports(PI_HARNESS, { provider: 'other', model: PI_MODEL_NEMOTRON })).toBe(
@@ -94,6 +108,21 @@ describe('Pi source registration', () => {
       false,
     )
   })
+
+  it.each([PI_MODEL_INKLING_FULL, PI_MODEL_GEMMA])(
+    'refuses a different model or protocol for %s',
+    async (model) => {
+      const modelRef = { provider: PI_PROVIDER, model }
+      const substituted = registered({ model: PI_MODEL_INKLING })
+      await expect(substituted.sources.resolve(PI_HARNESS, modelRef, 'chat')).rejects.toThrow(
+        /与所选组合.*不一致/,
+      )
+      const changedProtocol = registered({ model, protocol: 'responses' })
+      await expect(changedProtocol.sources.resolve(PI_HARNESS, modelRef, 'chat')).rejects.toThrow(
+        /与本组合固定的协议（chat）不一致/,
+      )
+    },
+  )
 
   it('pins each lane to the model the combination names, never the source answer', async () => {
     const first = registered({ model: PI_MODEL_NEMOTRON })
@@ -181,6 +210,56 @@ describe('Pi source registration', () => {
     spy.mockRestore()
     warn.mockRestore()
   })
+})
+
+describe('Pi additions through the OFM public owner API', () => {
+  it.each(['thinkingmachines/inkling:free', 'google/gemma-4-31b-it:free'])(
+    'resolves exact %s and refuses it after owner withdrawal',
+    async (model) => {
+      const fixture = fixtureCaller({ models: [model, PI_MODEL_INKLING] })
+      const catalog = new Set(fixture.state.models)
+      const modelContext = {
+        effect: (effect: () => () => void) => effect(),
+        llm: {
+          listProviders: () => [{ id: PI_PROVIDER }],
+          listModels: async () => [...catalog].map((id) => ({ id })),
+          resolveModelInfo: async (provider: string, id: string) => ({ provider, id }),
+        },
+      } as unknown as Context
+      const sources = new ExternalModelSources(modelContext)
+      modelContext.oplExternalModelSources = sources
+      const dispose = applyOfmModelSource(modelContext, {
+        providers: [PI_PROVIDER],
+        connection: createOfmApiConnection(fixture.caller, 'http://ofm.example.test'),
+      })
+      try {
+        const modelRef = { provider: PI_PROVIDER, model }
+        const options = { home: '', grokCommand: '', nativeBridgePath: '', modelSources: sources }
+        await expect(resolvePiRoute({ modelRef }, options)).resolves.toMatchObject({
+          model,
+          provider:
+            model === PI_MODEL_INKLING_FULL ? 'opl-pi-inkling-full-lane' : 'opl-pi-gemma-lane',
+          protocol: 'chat',
+          api: 'openai-completions',
+          baseURL: 'http://127.0.0.1:32123/v1',
+          apiKey: fixture.state.key,
+        })
+        expect(fixture.calls).toEqual([
+          { url: 'http://ofm.example.test/api/our-free-model/clients', method: 'GET' },
+        ])
+        fixture.withdraw(model)
+        await expect(resolvePiRoute({ modelRef }, options)).rejects.toThrow(
+          /未提供可用的外部执行端点/,
+        )
+        expect(fixture.calls).toHaveLength(2)
+        catalog.delete(model)
+        await expect(resolvePiRoute({ modelRef }, options)).rejects.toThrow(/当前目录未提供模型/)
+        expect(fixture.calls).toHaveLength(2)
+      } finally {
+        dispose()
+      }
+    },
+  )
 })
 
 describe('Pi launch-time source freshness', () => {

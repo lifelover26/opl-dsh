@@ -173,13 +173,17 @@ it('names only the program and how it ended when a command prints no diagnostics
   const commands = new Commands(() => deployment, {}, new AbortController().signal)
   const secret = 'secret reply text'
   await expect(commands.run('sh', ['-c', 'exit 3', secret])).rejects.toMatchObject({ message: 'sh exited with code 3', exitCode: 3 })
-  await expect(commands.run('sh', ['-c', 'kill -9 $$', secret])).rejects.toMatchObject({ message: 'sh was stopped by SIGKILL' })
   await expect(commands.run('/no/such/program', ['secret reply text'])).rejects.toMatchObject({ message: 'program could not run: ENOENT' })
   // Timeouts kill the child with SIGTERM; Node's default error message would echo every argument.
   const timedOut = { killed: true, signal: 'SIGTERM', code: null, stderr: '',
     message: 'Command failed: /path/lark-bot im +messages-reply --markdown withdrawn' }
   expect(commandError(timedOut, '/path/lark-bot')).toMatchObject({ message: 'lark-bot timed out after 90 s' })
   expect(String(commandError(timedOut, '/path/lark-bot'))).not.toContain('withdrawn')
+})
+// Windows reports the Git Bash shell's termination as an exit code, not a POSIX signal.
+it.skipIf(process.platform === 'win32')('names a POSIX signal that stopped a command without exposing its arguments', async () => {
+  const commands = new Commands(() => deployment, {}, new AbortController().signal)
+  await expect(commands.run('sh', ['-c', 'kill -9 $$', 'secret reply text'])).rejects.toMatchObject({ message: 'sh was stopped by SIGKILL' })
 })
 it('reports failures as CliError with the code the CLI names and the exit status', async () => {
   const notFound = commandError({ stderr: 'gh: Not Found (HTTP 404)\n', code: 1 })

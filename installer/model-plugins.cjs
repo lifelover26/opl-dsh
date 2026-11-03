@@ -15,10 +15,10 @@ const { createHash, randomUUID } = require('node:crypto')
 const MODEL_PLUGINS = [
   {
     name: 'dsh-our-free-model',
-    version: '2.7.2',
+    version: '2.8.0',
     source:
-      'https://github.com/Ebony-Vinyl/dsh-our-free-model/releases/download/v2.7.2/dsh-our-free-model-2.7.2.tgz',
-    sha256: 'a167f743e8e05217f7b11e8f807fffeeb22e77e020a8318d4b5ff1d331f692a1',
+      'https://github.com/Ebony-Vinyl/dsh-our-free-model/releases/download/v2.8.0/dsh-our-free-model-2.8.0.tgz',
+    sha256: '2dc255aeddd46d1f37ed53916ab0cbfe2081412ace8ae3d2c59b38b9b78eba3b',
   },
 ]
 

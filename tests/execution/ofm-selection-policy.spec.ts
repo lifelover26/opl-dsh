@@ -2,7 +2,12 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
-import { adapterFor, defaultHarness } from '../../src/execution/host/adapters/index.ts'
+import {
+  adapterFor,
+  automaticHarness,
+  defaultHarness,
+} from '../../src/execution/host/adapters/index.ts'
+import { officialHarnessFor } from '../../src/execution/contracts/official-harnesses.ts'
 import {
   defaultExecutionCatalog,
   ExecutionCatalogStore,
@@ -285,22 +290,14 @@ it('distinguishes removed OFM references from a failed directory read and preser
       reason: 'OFM 当前目录已移除此模型，保留原组合配置',
     })
     expect(missing.recommendations?.some((item) => item.modelRef.model === ref.model)).toBe(false)
-    expect(missing.ofmDiscovery?.find((item) => item.modelRef.model === ref.model)).toMatchObject({
-      available: false,
-      unavailableKind: 'catalog-missing',
-      reason: 'OFM 当前目录已移除此模型，保留原组合配置',
-    })
+    expect(missing.ofmDiscovery?.find((item) => item.modelRef.model === ref.model)).toBeUndefined()
     fail = true
     const unknown = await resolver.resolve()
     expect(unknown.models.find((item) => item.ref.model === ref.model)).toMatchObject({
       available: false,
       unavailableKind: 'unconfirmed',
     })
-    expect(unknown.ofmDiscovery?.find((item) => item.modelRef.model === ref.model)).toMatchObject({
-      available: false,
-      unavailableKind: 'unconfirmed',
-      reason: 'OFM 状态读取失败，对应模型尚未确认启用',
-    })
+    expect(unknown.ofmDiscovery?.find((item) => item.modelRef.model === ref.model)).toBeUndefined()
     expect((await store.get()).combinations.find((item) => item.id === 'saved-kimi')).toEqual(
       saved.combinations.at(-1),
     )
@@ -774,6 +771,13 @@ it.each(['opencode/glm-5.3-flash-free', 'opencode/deepseek-v4.1-flash-free'])(
     expect(resolved.recommendations).toContainEqual(
       expect.objectContaining({ harnessRef: 'opencode' }),
     )
+    expect(resolved.ofmDiscovery).toContainEqual(
+      expect.objectContaining({
+        modelRef: { provider: 'our-free-model', model },
+        status: { kind: 'recommended', harness: 'opencode', label: '推荐 OpenCode' },
+      }),
+    )
+    expect(automaticHarness({ provider: 'our-free-model', model })).toBe('opencode')
     expect(officialOpenCodeModel({ provider: 'our-free-model', model })).toBeUndefined()
     expect(OPENCODE_OFM_MODELS).toContain(model)
   },
@@ -889,6 +893,139 @@ it('projects a newly discovered OFM model into recommendations and selection nam
     }),
   )
 })
+
+it('recommends the exact EAC DeepSeek model with DSH without creating an official combination', async () => {
+  const catalog = defaultExecutionCatalog()
+  const ref = { provider: 'our-free-model', model: 'deepseek-ai/deepseek-v4.1-flash' }
+  const ctx = {
+    get: () => undefined,
+    llm: {
+      listProviders: () => [{ id: 'our-free-model', name: 'OFM' }],
+      listConfigurableProviders: () => [],
+      listModels: async () => [],
+    },
+  }
+  const resolved = await new ExecutionModelResolver(
+    ctx as never,
+    { get: async () => catalog } as never,
+    undefined,
+    async () => ({
+      catalog: [{ id: ref.model, name: 'EAC DeepSeek V4.1 Flash', route: 'our-free-model' }],
+      settings: { enabled: true, forward: { enabled: false, running: false } },
+    }),
+  ).resolve()
+  expect(automaticHarness(ref)).toBe('dsh')
+  expect(adapterFor('dsh', ref)?.id).toBe('dsh')
+  expect(officialHarnessFor(ref)).toBeUndefined()
+  expect(automaticHarness({ ...ref, provider: 'custom' })).toBeUndefined()
+  expect(automaticHarness({ ...ref, provider: 'our-free-model-region' })).toBeUndefined()
+  expect(resolved.models).toContainEqual(
+    expect.objectContaining({ ref, source: 'Our Free Model', available: true }),
+  )
+  expect(resolved.recommendations).toContainEqual({
+    modelRef: ref,
+    harnessRef: 'dsh',
+    name: 'EAC DeepSeek V4.1 Flash + DSH',
+  })
+  expect(resolved.ofmDiscovery).toContainEqual({
+    modelRef: ref,
+    name: 'EAC DeepSeek V4.1 Flash',
+    available: true,
+    status: { kind: 'recommended', harness: 'dsh', label: '推荐 DSH' },
+  })
+  expect(resolved.combinations.some((item) => item.modelRef.model === ref.model)).toBe(false)
+  for (const model of ['deepseek-v4.1-flash-free', 'opencode/deepseek-v4.1-flash-free'])
+    expect(automaticHarness({ provider: ref.provider, model })).toBe('opencode')
+})
+
+it.each(['unknown-model', 'deepseek-ai/deepseek-v4.1-flash-preview'])(
+  'keeps %s manual when only the generic DSH adapter can run it',
+  async (model) => {
+    const catalog = defaultExecutionCatalog()
+    const ref = { provider: 'our-free-model', model }
+    const ctx = {
+      get: () => undefined,
+      llm: {
+        listProviders: () => [{ id: ref.provider, name: 'OFM' }],
+        listConfigurableProviders: () => [],
+        listModels: async () => [{ id: model }],
+      },
+    }
+    const resolved = await new ExecutionModelResolver(
+      ctx as never,
+      { get: async () => catalog } as never,
+    ).resolve()
+    expect(automaticHarness(ref)).toBeUndefined()
+    expect(defaultHarness(ref)).toBe('dsh')
+    expect(resolved.ofmDiscovery).toContainEqual(
+      expect.objectContaining({
+        modelRef: ref,
+        status: { kind: 'manual', harnesses: ['dsh'], label: '仅可手动尝试' },
+      }),
+    )
+    expect(resolved.recommendations?.some((item) => item.modelRef.model === model)).toBe(false)
+    expect(resolved.combinations.some((item) => item.modelRef.model === model)).toBe(false)
+  },
+)
+
+it.each(['available', 'disabled', 'catalog-missing', 'unconfirmed'] as const)(
+  'preserves EAC DeepSeek readiness and a disabled saved choice when the source is %s',
+  async (state) => {
+    const catalog = defaultExecutionCatalog()
+    const ref = { provider: 'our-free-model', model: 'deepseek-ai/deepseek-v4.1-flash' }
+    const saved = {
+      id: 'auto:' + JSON.stringify([ref.provider, ref.model]),
+      name: 'My DeepSeek',
+      modelRef: ref,
+      harnessRef: 'dsh',
+      permissionPolicy: 'workspace' as const,
+      isDefault: true,
+      enabled: false,
+      generated: false,
+      autoEnabled: false,
+      autoEnabledDisabled: true,
+    }
+    catalog.combinations.push(saved)
+    const ctx = {
+      get: () => undefined,
+      llm: { listProviders: () => [], listConfigurableProviders: () => [] },
+    }
+    const resolved = await new ExecutionModelResolver(
+      ctx as never,
+      { get: async () => structuredClone(catalog) } as never,
+      undefined,
+      async () => {
+        if (state === 'unconfirmed') throw Error('OFM unavailable')
+        return {
+          catalog: state === 'catalog-missing' ? [] : [{ id: ref.model, route: ref.provider }],
+          settings: {
+            enabled: state !== 'disabled',
+            forward: { enabled: false, running: false },
+          },
+        }
+      },
+    ).resolve()
+    const availability =
+      state === 'available' ? { available: true } : { available: false, unavailableKind: state }
+    expect(resolved.models.find((item) => item.ref.model === ref.model)).toMatchObject(availability)
+    if (state === 'catalog-missing' || state === 'unconfirmed')
+      expect(resolved.ofmDiscovery?.some((item) => item.modelRef.model === ref.model)).toBe(false)
+    else
+      expect(resolved.ofmDiscovery).toContainEqual(
+        expect.objectContaining({
+          modelRef: ref,
+          ...availability,
+          status: { kind: 'recommended', harness: 'dsh', label: '推荐 DSH' },
+        }),
+      )
+    expect(resolved.recommendations?.some((item) => item.modelRef.model === ref.model)).toBe(
+      state === 'available',
+    )
+    expect(resolved.combinations.filter((item) => item.modelRef.model === ref.model)).toEqual([
+      saved,
+    ])
+  },
+)
 
 it('removes generated OFM combinations only after a successful catalog omits them', async () => {
   const stale = { provider: 'our-free-model', model: 'nvidia/nemotron-3-super-120b-a12b:free' }

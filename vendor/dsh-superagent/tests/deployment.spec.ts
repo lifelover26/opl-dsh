@@ -16,25 +16,11 @@ const gh = (file: string, login: string, push = true): string => program(file, `
 /** Fake lark-cli script body returning canned auth, strict-mode, and bot info responses. */
 const lark = (status: object, mode = 'bot', bot: object = { bot: { open_id: 'ou_bot', app_name: 'Widgets Bot' }, code: 0 }): string =>
   `case "$*" in\n  "auth status") echo '${JSON.stringify(status)}' ;;\n  "config strict-mode") echo 'strict-mode: ${mode} (source: profile)' ;;\n  "api GET /open-apis/bot/v3/info --as bot --format ndjson") echo '${JSON.stringify(bot)}' ;;\nesac`
-const minimal = (overrides: Record<string, unknown> = {}) => ({ stateDir: join(dir, 'state'), ...overrides })
-const machine = (overrides: Partial<Machine> = {}): Machine => ({ ...machineOf(Config(minimal())), ...overrides })
+const minimal = (overrides: Record<string, unknown> = {}) => ({ stateDir: '/var/lib/dsh-superagent', ...overrides })
+const machine = (overrides: Partial<Machine> = {}): Machine => ({ ...machineOf(Config(minimal({ stateDir: join(dir, 'state') }))), ...overrides })
 /** Runs commands like worker shells do, but locally: the stand-ins first on PATH, then the system's git. */
 const probe: Probe = async argv => (await exec(argv[0]!, argv.slice(1), { env: { PATH: path, HOME: dir } })).stdout
 const setupError = (place: string, code: string, values: Record<string, unknown> = {}) => expect.objectContaining({ place, code, values: expect.objectContaining(values) })
-
-beforeEach(async () => {
-  dir = mkdtempSync(join(tmpdir(), 'deployment-'))
-  mkdirSync(join(dir, 'bin')); mkdirSync(join(dir, 'state', 'worker-bin'), { recursive: true }); mkdirSync(join(dir, 'widgets', 'src'), { recursive: true })
-  path = [join(dir, 'state-link', 'worker-bin'), `${join(dir, 'state', 'worker-bin')}/`, join(dir, 'bin'), '/usr/bin', '/bin'].join(':')
-  gh(join(dir, 'bin', 'gh'), 'Agent-Bot')
-  program(join(dir, 'bin', 'lark-cli'), lark({ appId: 'cli_bot', brand: 'lark', identities: { bot: { status: 'ready' } } }))
-  // Stale worker shims with the same binary name must be skipped regardless of PATH normalization or symlinks.
-  program(join(dir, 'state', 'worker-bin', 'gh'))
-  symlinkSync(join(dir, 'state'), join(dir, 'state-link'))
-  await exec('git', ['init', '-q', join(dir, 'widgets')], { env: gitEnv() })
-  await exec('git', ['-C', join(dir, 'widgets'), 'remote', 'add', 'origin', 'git@github.com:acme/widgets.git'], { env: gitEnv() })
-})
-afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
 // Setup spawns CLI subprocesses that can take several seconds when tests run in parallel.
 vi.setConfig({ testTimeout: 30_000 })
@@ -42,11 +28,11 @@ vi.setConfig({ testTimeout: 30_000 })
 describe('configuration schema', () => {
   it('requires only the state directory and reads the editable fields through references', () => {
     expect(() => Config({})).toThrow('stateDir')
-    const read = machineOf(Config({ stateDir: join(dir, 'state') }))
+    const read = machineOf(Config(minimal()))
     // Limits are volatile references that the loader updates in place and callers read when used.
     expect({ ...read, promptMaxChars: read.promptMaxChars.get(), admissionContextMaxPages: read.admissionContextMaxPages.get(),
       admissionContextTimeoutMs: read.admissionContextTimeoutMs.get() })
-      .toEqual({ stateDir: join(dir, 'state'), promptMaxChars: 100000, admissionContextMaxPages: 10, admissionContextTimeoutMs: 15000 })
+      .toEqual({ stateDir: '/var/lib/dsh-superagent', promptMaxChars: 100000, admissionContextMaxPages: 10, admissionContextTimeoutMs: 15000 })
     expect(() => Config(minimal({ stateDir: 'relative/dir' }))).toThrow()
     expect(() => Config(minimal({ stateDir: '~/dir' }))).toThrow()
   })
@@ -56,7 +42,22 @@ describe('configuration schema', () => {
   })
 })
 
-describe('setup', () => {
+// Setup probes execute /bin/sh CLI fixtures, which Windows execFile cannot launch.
+describe.skipIf(process.platform === 'win32')('setup with POSIX CLI executables', () => {
+  beforeEach(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'deployment-'))
+    mkdirSync(join(dir, 'bin')); mkdirSync(join(dir, 'state', 'worker-bin'), { recursive: true }); mkdirSync(join(dir, 'widgets', 'src'), { recursive: true })
+    path = [join(dir, 'state-link', 'worker-bin'), `${join(dir, 'state', 'worker-bin')}/`, join(dir, 'bin'), '/usr/bin', '/bin'].join(':')
+    gh(join(dir, 'bin', 'gh'), 'Agent-Bot')
+    program(join(dir, 'bin', 'lark-cli'), lark({ appId: 'cli_bot', brand: 'lark', identities: { bot: { status: 'ready' } } }))
+    // Stale worker shims with the same binary name must be skipped regardless of PATH normalization or symlinks.
+    program(join(dir, 'state', 'worker-bin', 'gh'))
+    symlinkSync(join(dir, 'state'), join(dir, 'state-link'))
+    await exec('git', ['init', '-q', join(dir, 'widgets')], { env: gitEnv() })
+    await exec('git', ['-C', join(dir, 'widgets'), 'remote', 'add', 'origin', 'git@github.com:acme/widgets.git'], { env: gitEnv() })
+  })
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
+
   it('reads the repository from the GitHub Source and the accounts from their CLIs, skipping the worker shims', async () => {
     const deployment = await resolveDeployment(machine(), { repository: 'acme/widgets', cli: 'gh' }, probe, path)
     expect(deployment).toMatchObject({ repository: 'acme/widgets', github: { cli: join(dir, 'bin', 'gh'), login: 'Agent-Bot', noreply: '7+Agent-Bot@users.noreply.github.com' } })

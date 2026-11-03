@@ -39,6 +39,11 @@ export function isRetiredModel(ref: ModelRef): boolean {
 export function displayModelName(ref: ModelRef, name?: string): string {
   const id = ref.model.includes('::') ? ref.model.slice(ref.model.lastIndexOf('::') + 2) : ref.model
   if (ref.provider === 'our-free-model') {
+    if (id === 'opencode/nemotron-3.5-lightning-free') return 'EAC Nemotron 3.5 Lightning Free'
+    if (id === 'opencode/nemotron-3.5-super-vl-free') return 'EAC Nemotron 3.5 Super VL Free'
+    if (id === 'opencode/flint-40b-free') return 'EAC Flint 40B Free'
+    if (id === 'thinkingmachines/inkling:free') return 'Kilo Inkling'
+    if (id === 'google/gemma-4-31b-it:free') return 'Kilo Gemma 4 31B'
     if (id === 'minimaxai/minimax-m3.1-flash') return 'EAC MiniMax M3.1 Flash'
     if (id === 'stepfun-ai/step-5-preview') return 'EAC Step 5 Preview'
     if (id === 'mistralai/mistral-large-4-1t-a52b') return 'EAC Mistral Large 4'

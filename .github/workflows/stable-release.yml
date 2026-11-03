@@ -132,6 +132,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Verify shared SuperAgent tests on Windows
+        if: runner.os == 'Windows'
+        run: npm test --workspace dsh-superagent
       - name: Verify Windows launcher and ACL regressions
         if: runner.os == 'Windows'
         shell: bash

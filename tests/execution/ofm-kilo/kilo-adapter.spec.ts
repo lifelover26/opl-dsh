@@ -234,7 +234,7 @@ describe('Kilo 声明面', () => {
     expect(KILO_SHELL_FACTS.advertisesShell).toBe(false)
     expect(KILO_SHELL_FACTS.advertisesTerminal).toBe(false)
     // 实测：本组合声明的模型没有可用档位，写入一律被拒；没有 Auto Review；权限是转发不是沙箱。
-    expect(c.reasoning).toBe('model-declared')
+    expect(c.reasoning).toBe('none')
     expect(KILO_EFFORT_FACTS.advertisesEffortOptionOnDefault).toBe(true)
     expect(KILO_EFFORT_FACTS.defaultValues).toEqual(['thinking'])
     expect(KILO_EFFORT_FACTS.advertisesEffortOptionForDeclaredModels).toBe(false)
@@ -390,6 +390,28 @@ describe('Kilo 启动参数与环境', () => {
     expect(() => assertNoKiloEffort('max', boom)).toThrow(/未广告任何推理档位/)
     expect(() => assertNoKiloEffort('thinking', boom)).toThrow(/未广告任何推理档位/)
   })
+
+  it.each(['none', 'low', 'high', 'max', 'thinking', 'not-advertised'])(
+    '显式档位 %s 在读取 CLI、解析来源和准备 shell 前拒绝',
+    async (reasoningEffort) => {
+      const { sources } = sourcesWith()
+      const resolveRoute = vi.spyOn(sources, 'resolve')
+      const prepareShell = vi.fn(async (env: NodeJS.ProcessEnv) => testBinding(env))
+      shellBinding.current = prepareShell
+      const launchOptions: AdapterOptions = {
+        ...options(sources),
+        get command(): string {
+          throw Error('拒绝无效档位前不应读取 CLI 命令')
+        },
+      }
+
+      await expect(
+        kiloAdapter.prepare!({} as never, record({ reasoningEffort }), launchOptions),
+      ).rejects.toThrow(/未广告任何可用推理档位/)
+      expect(resolveRoute).not.toHaveBeenCalled()
+      expect(prepareShell).not.toHaveBeenCalled()
+    },
+  )
 })
 
 describe('Kilo 来源解析', () => {

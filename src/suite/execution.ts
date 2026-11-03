@@ -13,14 +13,13 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { Context } from '@deepseek-ai/cordis'
 import { installSessionWaitProjection } from '../execution/host/session-wait.ts'
 import { createHarnessService } from '../execution/host/harness.ts'
+import { installConversationRequest } from '../execution/host/conversation-request.ts'
 import { MiniMaxCodeModelAdapter } from '../execution/host/adapters/minimax-models.ts'
 import { MINIMAX_CODE_PROVIDER } from '../execution/host/adapters/minimax.ts'
 import { installCollaborationTools } from '../collaboration/host/tools.ts'
 import { installPermissionMemory } from '../compat/host/permission-memory.ts'
 import { installComputerUse } from '../computer-use/host/index.ts'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
-import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import { modelDefaultEffort } from '../shared/model-reasoning.ts'
 import type { AutoReviewMaintenance } from '../auto-review/contracts/maintenance.ts'
 import { EXTERNAL_REVIEW_BINDING_SERVICE } from '../auto-review/host/index.ts'
 import { createOfmOwnerApiReader } from '../execution/host/ofm-owner-api.ts'
@@ -94,30 +93,7 @@ export function apply(ctx: Context, config: Config): void {
       await harness.claimMessageEdit(payload.agent, decision.messages, payload.turn, payload.step)
     return decision
   })
-  ctx.on('agent/request', async (payload, next) => {
-    harness.assertRuntimeAvailable()
-    const edited = await harness.commitMessageEdit(
-      payload.agent,
-      payload.turn,
-      payload.step,
-      payload.signal,
-    )
-    await harness.assertConversationEditable(payload.agent.session.id, edited)
-    harness.assertRuntimeAvailable()
-    const request = await next()
-    harness.assertRuntimeAvailable()
-    if (
-      request.reasoningEffort !== undefined ||
-      (request.model.split('::').at(-1) !== 'deepseek-flash' &&
-        !request.model.split('::').at(-1)?.startsWith('gpt-'))
-    )
-      return request
-    const info = await ctx.llm.resolveModelInfo(request.provider, request.model)
-    const effort = modelDefaultEffort(request.model, info.reasoning)
-    return effort === undefined
-      ? request
-      : { ...request, reasoningEffort: ReasoningEffortId(effort) }
-  })
+  installConversationRequest(ctx, harness)
   ctx.on('llm/stream', (options, next) => harness.conversationStream(options, next))
   installNativeProgressGuard(
     ctx,
