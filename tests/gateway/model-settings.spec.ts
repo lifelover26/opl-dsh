@@ -89,7 +89,15 @@ function fixture({ officialRedaction = false } = {}) {
       discoverModels: discover,
     },
     get: (name: string) =>
-      name === 'settings' ? settings : name === 'oplGatewayAccount' ? account : undefined,
+      name === 'settings'
+        ? settings
+        : name === 'credentials'
+          ? credentials
+          : name === 'llm'
+            ? ctx.llm
+            : name === 'oplGatewayAccount'
+              ? account
+              : undefined,
     logger: { warn: vi.fn() },
   } as unknown as Context
   return { ctx, state, users, revisions, settings, discover, credentials, keys }

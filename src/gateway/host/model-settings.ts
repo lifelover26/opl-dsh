@@ -1,9 +1,10 @@
 import { gatewayModelChoices } from '../shared/model-choices.ts'
 import { gatewayGroupEnabled } from './group-settings.ts'
 import { createHash } from 'node:crypto'
+import { isDeepStrictEqual } from 'node:util'
 /** Models page operations. DSH profile settings are the only writable model catalog. */
 import type { Context } from '@deepseek-ai/cordis'
-import type { SettingsDescriptor } from '@deepseek-ai/dsh-settings'
+import type { SettingsDescriptor, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { GATEWAY_GROUPS } from '../contracts/groups.ts'
 import { DEFAULT_MODELS, toAdapterConfig } from './config.ts'
 import type { ModelDraft, GatewayModelSettings } from '../contracts/models.ts'
@@ -24,6 +25,14 @@ import {
 const record = (value: unknown): Record<string, any> =>
   value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
 
+/** Resolve settings for callers whose plugin consumes the service through optional injection. */
+function modelSettingsService(ctx: Context): Context['settings'] {
+  const settings = ctx.get('settings')
+  if (!settings)
+    throw Object.assign(new Error('官方模型设置服务尚未就绪'), { code: 'SETTINGS_UNAVAILABLE' })
+  return settings
+}
+
 /** Preserve saved model key order for catalog hashes; settings redaction rebuilds object fields. */
 function savedModelCatalogs(settings: Context['settings']): Record<string, unknown> {
   const descriptors = settings.describe()
@@ -40,6 +49,84 @@ function savedModelCatalogs(settings: Context['settings']): Record<string, unkno
       return [group.id, profile.models]
     }),
   )
+}
+
+const copiedCatalogs = new WeakMap<object, Map<string, { fingerprint: string; revision: number }>>()
+
+/** Keep inherited catalogs copied by our Settings writes eligible until another write changes their revision. */
+function modelCatalogState(ctx: Context, settings: Context['settings']) {
+  const descriptors = settings.describe()
+  const catalogs = savedModelCatalogs(settings)
+  const owner = ctx.root ?? ctx
+  let copied = copiedCatalogs.get(owner)
+  if (!copied) copiedCatalogs.set(owner, (copied = new Map()))
+  for (const [id, previous] of copied) {
+    const namespace = id === 'deepseek' ? 'opl-suite' : 'llm-pi-ai'
+    if (
+      descriptors.find((item) => item.ns === namespace)?.revision !== previous.revision ||
+      catalogs[id] === undefined ||
+      catalogFingerprint(catalogs[id]) !== previous.fingerprint
+    )
+      copied.delete(id)
+  }
+  return { descriptors, catalogs, copied }
+}
+
+/** Track only inherited catalogs materialized by this revision-checked write. */
+async function mutateModelSettings(
+  ctx: Context,
+  namespace: string,
+  ops: readonly SettingsPathOp[],
+  revision: number,
+  editedGroup?: string,
+): Promise<void> {
+  const settings = modelSettingsService(ctx)
+  const before = modelCatalogState(ctx, settings)
+  const inherited = GATEWAY_GROUPS.filter(
+    (group) =>
+      (group.id === 'deepseek' ? 'opl-suite' : 'llm-pi-ai') === namespace &&
+      group.id !== editedGroup &&
+      (before.catalogs[group.id] === undefined || before.copied.has(group.id)),
+  ).map((group) => {
+    const descriptor = before.descriptors.find((item) => item.ns === namespace)
+    const value = record(descriptor?.value)
+    const prefix = group.id === 'deepseek' ? ['gateway'] : ['providers', group.provider]
+    const profile = {
+      ...record(group.id === 'deepseek' ? value.gateway : record(value.providers)[group.provider]),
+    }
+    for (const op of ops) {
+      if (
+        op.op === 'set' &&
+        op.path.length === prefix.length + 1 &&
+        prefix.every((part, index) => op.path[index] === part)
+      )
+        profile[String(op.path.at(-1))] = op.value
+    }
+    return { group, expected: profile }
+  })
+  await settings.mutate(namespace, ops, revision)
+  if (editedGroup) before.copied.delete(editedGroup)
+  const after = modelCatalogState(ctx, settings)
+  const current = after.descriptors.find((item) => item.ns === namespace)?.revision
+  if (current === undefined) return
+  for (const { group, expected } of inherited) {
+    const descriptor = after.descriptors.find((item) => item.ns === namespace)
+    const value = record(descriptor?.value)
+    const profile =
+      group.id === 'deepseek' ? value.gateway : record(value.providers)[group.provider]
+    const user = record(record(record(descriptor?.user).providers)[group.provider])
+    // Only the fields in this write may change an inherited configuration.
+    // A saved defaultInput is an explicit policy even when it equals a schema default.
+    if (
+      after.catalogs[group.id] !== undefined &&
+      isDeepStrictEqual(profile, expected) &&
+      user.defaultInput === undefined
+    )
+      after.copied.set(group.id, {
+        fingerprint: catalogFingerprint(after.catalogs[group.id]),
+        revision: current,
+      })
+  }
 }
 
 /** Read saved model declarations without treating the official schema's input defaults as user choices. */
@@ -74,7 +161,8 @@ function providerSettings(
 
 /** Add the OPL-owned reviewer without replacing any existing chat provider. */
 export async function ensureAutoReviewProvider(ctx: Context): Promise<void> {
-  const descriptor = ctx.settings
+  const settings = modelSettingsService(ctx)
+  const descriptor = settings
     .describe({ redactSecrets: true })
     .find((item) => item.ns === 'llm-pi-ai')
   if (!descriptor) throw Error('Auto Review requires the official pi-ai settings instance')
@@ -82,7 +170,8 @@ export async function ensureAutoReviewProvider(ctx: Context): Promise<void> {
   if (provider) return
   const base = record(record(descriptor.base).providers)['opl-gateway-auto-review']
   if (!base) throw Error('Auto Review provider is absent from the installed bundle')
-  await ctx.settings.mutate(
+  await mutateModelSettings(
+    ctx,
     'llm-pi-ai',
     [{ op: 'set', path: ['providers', 'opl-gateway-auto-review'], value: base }],
     descriptor.revision,
@@ -107,8 +196,7 @@ export function migrateGatewayProtocolDefaults(ctx: Context): Promise<void> {
 }
 
 async function migrateProtocolDefaults(ctx: Context): Promise<void> {
-  const service = ctx.get('settings') ?? ctx.settings
-  if (!service) return
+  const service = modelSettingsService(ctx)
   const settings = service.describe({ redactSecrets: true })
   const descriptor = settings.find((item) => item.ns === 'llm-pi-ai')
   if (!descriptor) return
@@ -151,16 +239,15 @@ async function migrateProtocolDefaults(ctx: Context): Promise<void> {
     if (automaticCatalog) ownedHashes.push({ group: group.id, models, previous: hashes[group.id] })
   }
   if (!ops.length) return
-  await ctx.settings.mutate('llm-pi-ai', ops, descriptor.revision)
+  await mutateModelSettings(ctx, 'llm-pi-ai', ops, descriptor.revision)
   if (!ownedHashes.length || !suite) return
-  const updated = ctx.settings
-    .describe({ redactSecrets: true })
-    .find((item) => item.ns === 'opl-suite')
+  const updated = service.describe({ redactSecrets: true }).find((item) => item.ns === 'opl-suite')
   if (!updated) return
   const currentHashes = record(record(updated.value).gatewayCatalogHashes)
   const stillOwned = ownedHashes.filter(({ group, previous }) => currentHashes[group] === previous)
   if (!stillOwned.length) return
-  await ctx.settings.mutate(
+  await mutateModelSettings(
+    ctx,
     'opl-suite',
     stillOwned.map(({ group, models }) => ({
       op: 'set' as const,
@@ -172,7 +259,7 @@ async function migrateProtocolDefaults(ctx: Context): Promise<void> {
 }
 
 export async function gatewayModelSettings(ctx: Context): Promise<GatewayModelSettings> {
-  const settings = ctx.settings.describe({ redactSecrets: true })
+  const settings = modelSettingsService(ctx).describe({ redactSecrets: true })
   const account = await ctx.get('oplGatewayAccount')?.status()
   return {
     groups: GATEWAY_GROUPS.map((group) => {
@@ -218,6 +305,7 @@ export async function editGatewayModels(
     group = GATEWAY_GROUPS.find((item) => item.id === args.group)
   if (!group || !Array.isArray(args.models) || !Number.isSafeInteger(args.revision))
     throw Error('模型配置无效，请重新打开模型页')
+  const settings = modelSettingsService(ctx)
   const ids = new Set<string>()
   const models = args.models.map((value: unknown) => {
     const item = record(value)
@@ -244,15 +332,17 @@ export async function editGatewayModels(
       }),
   )
   if (group.id === 'deepseek') {
-    await ctx.settings.mutate(
+    await mutateModelSettings(
+      ctx,
       'opl-suite',
       [{ op: 'set', path: ['gateway', 'models'], value: activeModels }],
       args.revision,
+      group.id,
     )
   } else {
     if (!['openai-completions', 'openai-responses', 'anthropic-messages'].includes(args.api))
       throw Error('不支持的模型协议')
-    const descriptor = ctx.settings.describe().find((item) => item.ns === 'llm-pi-ai')
+    const descriptor = settings.describe().find((item) => item.ns === 'llm-pi-ai')
     const profile = providerSettings(descriptor, group.provider)
     const updateBaseURL =
       profile &&
@@ -297,7 +387,7 @@ export async function editGatewayModels(
         path: ['providers', group.provider, 'baseURL'],
         value: gatewayInferenceBaseURL(args.api),
       })
-    await ctx.settings.mutate('llm-pi-ai', ops, args.revision)
+    await mutateModelSettings(ctx, 'llm-pi-ai', ops, args.revision, group.id)
   }
   return gatewayModelSettings(ctx)
 }
@@ -313,10 +403,10 @@ export async function discoverGatewayModels(ctx: Context, input: unknown): Promi
   }
   try {
     if (!gatewayGroupEnabled(ctx, group.id)) fail('disabled')
-    const settings = ctx.get('settings') ?? ctx.settings
-    const credentials = ctx.get('credentials') ?? ctx.credentials
-    const llm = ctx.get('llm') ?? ctx.llm
-    if (!settings || !credentials || !llm) fail('service_unavailable')
+    const settings = modelSettingsService(ctx)
+    const credentials = ctx.get('credentials')
+    const llm = ctx.get('llm')
+    if (!credentials || !llm) fail('service_unavailable')
     const descriptors = settings.describe({ redactSecrets: true })
     const descriptor = descriptors.find(
       (item) => item.ns === (group.id === 'deepseek' ? 'opl-suite' : 'llm-pi-ai'),
@@ -394,16 +484,11 @@ export async function discoverGatewayModels(ctx: Context, input: unknown): Promi
 /** Refresh only catalogs whose user layer still equals the last automatic import. */
 export async function syncGatewayModels(ctx: Context): Promise<void> {
   await migrateGatewayProtocolDefaults(ctx)
+  const service = modelSettingsService(ctx)
   for (const group of GATEWAY_GROUPS) {
     if (!gatewayGroupEnabled(ctx, group.id)) continue
     try {
-      if (!ctx.get('settings'))
-        throw new GatewayModelDiscoveryError(
-          group.id,
-          group.name,
-          gatewayModelDiagnostic('service_unavailable'),
-        )
-      const settings = ctx.settings.describe({ redactSecrets: true })
+      const settings = service.describe({ redactSecrets: true })
       const suite = settings.find((item) => item.ns === 'opl-suite')
       const ns = group.id === 'deepseek' ? suite : settings.find((item) => item.ns === 'llm-pi-ai')
       if (!suite || !ns)
@@ -412,10 +497,15 @@ export async function syncGatewayModels(ctx: Context): Promise<void> {
           group.name,
           gatewayModelDiagnostic('service_unavailable'),
         )
-      const savedModels = savedModelCatalogs(ctx.settings)[group.id]
+      const { catalogs, copied } = modelCatalogState(ctx, service)
+      const savedModels = catalogs[group.id]
       const hashes = record(record(suite.value).gatewayCatalogHashes)
       // A pre-existing user model list is always preserved unless we can prove ownership.
-      if (savedModels !== undefined && hashes[group.id] !== catalogFingerprint(savedModels))
+      if (
+        savedModels !== undefined &&
+        hashes[group.id] !== catalogFingerprint(savedModels) &&
+        !copied.has(group.id)
+      )
         continue
       let candidates = await discoverGatewayModels(ctx, { group: group.id })
       // Do not make the default DeepSeek Flash route depend on the optional
@@ -437,10 +527,11 @@ export async function syncGatewayModels(ctx: Context): Promise<void> {
         api: current.api,
         revision: ns.revision,
       })
-      const updated = ctx.settings
+      const updated = service
         .describe({ redactSecrets: true })
         .find((item) => item.ns === 'opl-suite')!
-      await ctx.settings.mutate(
+      await mutateModelSettings(
+        ctx,
         'opl-suite',
         [
           {

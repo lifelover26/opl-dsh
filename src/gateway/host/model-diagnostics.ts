@@ -104,6 +104,7 @@ export function diagnoseGatewayModelFailure(
     if (code === 'MISSING_CREDENTIAL') return gatewayModelDiagnostic('missing_credentials')
     if (code === 'INVALID_CREDENTIAL') return gatewayModelDiagnostic('invalid_credentials')
     if (code === 'NO_DISCOVERY') return gatewayModelDiagnostic('service_unavailable')
+    if (code === 'SETTINGS_UNAVAILABLE') return gatewayModelDiagnostic('service_unavailable')
     if (code === 'SETTINGS_CONFLICT') return gatewayModelDiagnostic('settings_conflict')
     if (['INVALID_DISCOVERY', 'DISCOVERY_UNSUPPORTED'].includes(code))
       return gatewayModelDiagnostic('configuration')

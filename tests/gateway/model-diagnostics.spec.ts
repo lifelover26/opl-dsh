@@ -10,6 +10,10 @@ describe('safe model-listing diagnostics', () => {
     [new LlmError('private key details', 'MISSING_CREDENTIAL'), 'missing_credentials'],
     [new LlmError('private key details', 'INVALID_CREDENTIAL'), 'invalid_credentials'],
     [new LlmError('private service details', 'NO_DISCOVERY'), 'service_unavailable'],
+    [
+      Object.assign(Error('private service details'), { code: 'SETTINGS_UNAVAILABLE' }),
+      'service_unavailable',
+    ],
     [new LlmError('private config details', 'DISCOVERY_UNSUPPORTED'), 'configuration'],
     [
       new LlmError('private URL', 'DISCOVERY_FAILED', { cause: new TypeError('fetch failed') }),

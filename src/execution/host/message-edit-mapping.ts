@@ -246,7 +246,7 @@ export function externalRecordedChoices(
           ? [
               {
                 id: turn.native.userMessageId,
-                ...(turn.promptContent
+                ...(record.harnessRef !== 'grok-build' && turn.promptContent
                   ? {
                       imageCount: turn.promptContent.filter((part) => part.type === 'image').length,
                     }
