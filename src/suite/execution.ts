@@ -58,8 +58,10 @@ export const inject = [
 ]
 /** Keep admission, model selection, tools and permissions in the official Host.
  * @param ctx - Official Host context.
+ * @returns once wait facts and execution consumers are ready.
  */
-export function apply(ctx: Context, config: Config): void {
+export async function apply(ctx: Context, config: Config): Promise<void> {
+  await installSessionWaitProjection(ctx)
   ctx.effect(() => installPermissionMemory(ctx))
   const ofmOwner = createOfmOwnerApiReader(ctx, config.ofmConnectionTimeoutMs)
   const harness = createHarnessService(ctx, {
@@ -109,6 +111,5 @@ export function apply(ctx: Context, config: Config): void {
   installCollaborationTools(ctx, harness)
   installComputerUse(ctx)
   installLegacyHarnessChannel(ctx)
-  installSessionWaitProjection(ctx)
   installExternalCodex(ctx, harness)
 }

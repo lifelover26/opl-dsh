@@ -4,6 +4,8 @@ import type { HarnessSession } from '../../../src/execution/contracts/sessions.t
 import {
   externalEditChoices,
   externalEditedRecord,
+  externalRecordedChoices,
+  externalFreshFirstChoice,
 } from '../../../src/execution/host/message-edit-mapping.ts'
 function setup() {
   const record = {
@@ -37,7 +39,36 @@ it('does not infer an unbound turn from equal text or matching counts', () => {
   delete s.record.turns[0]!.native
   expect(
     externalEditChoices(s.record, s.history, s.events, s.active).map((x) => x.boundaryId),
-  ).toEqual(['b'])
+  ).toEqual([])
+})
+it('projects saved identities without a live vendor or model catalog', () => {
+  const s = setup()
+  expect(externalRecordedChoices(s.record, s.events, s.active).map((entry) => entry.seq)).toEqual([
+    1, 2,
+  ])
+  s.active.delete(1)
+  expect(externalRecordedChoices(s.record, s.events, s.active).map((entry) => entry.seq)).toEqual([
+    2,
+  ])
+})
+it('allows only the exact unbound first DSH input to allocate an empty vendor session', () => {
+  const s = setup()
+  delete s.record.turns[0]!.native!.userMessageId
+  expect(externalFreshFirstChoice(s.record, s.events, s.active)).toEqual({ seq: 1, text: 'same' })
+  expect(s.record.turns[0]!.native?.userMessageId).toBeUndefined()
+  s.active.delete(1)
+  expect(externalFreshFirstChoice(s.record, s.events, s.active)).toBeUndefined()
+})
+it('does not allocate from an ambiguous, attached, or unrelated first input', () => {
+  const s = setup()
+  delete s.record.turns[0]!.native!.userMessageId
+  s.record.turns[0]!.native!.officialSeq = 2
+  expect(externalFreshFirstChoice(s.record, s.events, s.active)).toBeUndefined()
+  s.record.turns[0]!.native!.officialSeq = 1
+  const event = s.events[0]!
+  if (event.type === 'user/message')
+    event.data.content.push({ type: 'image', attachment: { name: 'fixture.png' } } as never)
+  expect(externalFreshFirstChoice(s.record, s.events, s.active)).toBeUndefined()
 })
 it('does not expose superseded official events or duplicate identities', () => {
   const s = setup()

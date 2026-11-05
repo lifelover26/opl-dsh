@@ -16,11 +16,14 @@ async function main() {
   const requireRuntime = createRequire(join(runtime, 'package.json'))
   const load = (name) => import(pathToFileURL(requireRuntime.resolve(name)).href)
   process.env.DSH_HOME = home
-  const { initProfile, PROFILE_TEMPLATES } = await load('@deepseek-ai/dsh-app-boot')
+  const boot = await load('@deepseek-ai/dsh-app-boot')
+  const { initProfile } = boot
+  const templates =
+    boot.PROFILE_TEMPLATES ?? (await load('@deepseek-ai/dsh-official-bundles')).PROFILE_TEMPLATES
   const { runPluginCommand } = await load('@deepseek-ai/dsh-plugin-manager/operations')
   const dir = join(home, 'profiles/desktop')
   mkdirSync(dir, { recursive: true, mode: 0o700 })
-  initProfile(dir, PROFILE_TEMPLATES.web.bundles)
+  initProfile(dir, templates.web.bundles)
   const workspace = join(dir, 'pnpm-workspace.yaml')
   if (!existsSync(workspace))
     writeFileSync(workspace, 'packages:\n  - .\nnodeLinker: hoisted\nautoInstallPeers: false\n', {

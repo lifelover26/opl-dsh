@@ -25,7 +25,7 @@ import { z } from 'zod'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { Session, SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-session'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+import type { ProjectionDefinition, ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type { SessionWaitOutcome, SessionWaitRequest, SessionWaitValue } from '../contracts/wait.ts'
 
 /** Projection key carrying the facts one wait needs. */
@@ -64,10 +64,13 @@ const sessionWaitSchema: z.ZodType<SessionWaitState> = z.object({
   pendingApprovals: z.record(z.string(), z.string()),
 })
 
-declare module '@deepseek-ai/dsh-session-projection/types' {
-  interface SessionProjectionStateMap {
-    /** Turn and approval position one `session.wait` call settles on. */
-    sessionWait: SessionWaitState
+/** Ready read access to the Host's turn and approval facts. */
+export type SessionWaitReader = Pick<ProjectionHandle<SessionWaitState>, 'stateOf'>
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Ready wait facts, owned by the execution plugin. */
+    oplSessionWait: SessionWaitReader
   }
 }
 
@@ -116,11 +119,14 @@ export const sessionWaitProjectionDefinition = {
 } satisfies ProjectionDefinition<typeof SESSION_WAIT_PROJECTION_KEY, SessionWaitState>
 
 /**
- * Register the wait fold on one Host context.
+ * Register the wait fold and publish its reader once registration is ready.
  * @param ctx - Host context owning the projection registry.
+ * @returns once dependent consumers may read the wait facts.
  */
-export function installSessionWaitProjection(ctx: Context): void {
-  ctx.sessionProjections.register(sessionWaitProjectionDefinition)
+export async function installSessionWaitProjection(ctx: Context): Promise<void> {
+  const handle = await ctx.sessionProjections.register(sessionWaitProjectionDefinition)
+  const reader: SessionWaitReader = { stateOf: (session) => handle.stateOf(session) }
+  ctx.provide('oplSessionWait', reader)
 }
 
 /**
@@ -194,7 +200,15 @@ export function waitForSession(
       ),
     )
   }
-  return new SessionWait(ctx, session, request.turn).run(signal)
+  const reader: SessionWaitReader | undefined = ctx.get('oplSessionWait')
+  if (reader === undefined) {
+    return Promise.reject(
+      new Error(
+        `session.wait: the ${JSON.stringify(SESSION_WAIT_PROJECTION_KEY)} projection is not mounted on this Host`,
+      ),
+    )
+  }
+  return new SessionWait(ctx, session, request.turn, reader).run(signal)
 }
 
 /** Listener bookkeeping for one wait; resolves once and never re-subscribes. */
@@ -206,6 +220,7 @@ class SessionWait {
     private readonly ctx: Context,
     private readonly session: Session,
     private readonly requestedTurn: number | undefined,
+    private readonly reader: SessionWaitReader,
   ) {}
 
   /** Subscribe, evaluate the current position, and stay until a terminal fact. */
@@ -349,17 +364,7 @@ class SessionWait {
 
   /** The folded wait facts for this Session. */
   private state(): SessionWaitState {
-    const state = this.ctx.sessionProjections.stateOf(this.session, SESSION_WAIT_PROJECTION_KEY)
-    /* v8 ignore next 3 -- the owning SessionController registers this fold in its
-       constructor, before any Remote method can be reached, so the key is always
-       present; the guard turns an internal wiring defect into a named failure
-       instead of a TypeError on an undefined read. */
-    if (state === undefined) {
-      throw new Error(
-        `session.wait: the ${JSON.stringify(SESSION_WAIT_PROJECTION_KEY)} projection is not mounted on this Host`,
-      )
-    }
-    return state
+    return this.reader.stateOf(this.session)
   }
 
   /** Whether a `turn/end` number is the one being awaited. */
@@ -374,8 +379,8 @@ class SessionWait {
 
   /** The currently open turn number, from the loop's boundary projection. */
   private openTurn(): number | undefined {
-    const state = this.ctx.sessionProjections.stateOf(this.session, 'turnBoundary')
-    if (state === undefined || state.openTurnStartSeq === null) return undefined
+    const state = this.ctx.agents.turnBoundaryOf(this.session)
+    if (state.openTurnStartSeq === null) return undefined
     return state.lastTurn
   }
 

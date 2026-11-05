@@ -72,9 +72,11 @@ export interface VendorMessage {
   readonly parts: readonly Record<string, any>[]
 }
 
-/** Temporary authenticated control surface. Only read/fork/close are exposed. */
+/** Temporary authenticated control surface. Only observation/fork/close are exposed. */
 export interface VendorControl {
   readMessages(sessionId: string): Promise<VendorMessage[]>
+  /** Process-local status; an idle result does not certify a separate ACP process has exited. */
+  readStatus?(sessionId: string): Promise<'idle' | 'busy'>
   /** Optional public route metadata from the same local server lifecycle. */
   readProviders?(): Promise<unknown>
   fork(sessionId: string, messageID: string): Promise<{ sessionId: string }>
@@ -195,17 +197,66 @@ function asMessages(value: unknown): VendorMessage[] {
   })
 }
 
-function assertSettled(messages: readonly VendorMessage[]): void {
+function incompleteAssistant(messages: readonly VendorMessage[]): boolean {
+  let incomplete = false
   for (const message of messages) {
     if (message.info.role !== 'assistant') continue
     const completed = object(message.info.time).completed
-    if (typeof completed !== 'number' || !Number.isFinite(completed)) throw failure('busy')
+    if (completed === undefined || completed === null) incomplete = true
+    else if (typeof completed !== 'number' || !Number.isFinite(completed)) throw failure('protocol')
+  }
+  return incomplete
+}
+
+function assertSettled(messages: readonly VendorMessage[], quiescent = false): void {
+  if (!quiescent && incompleteAssistant(messages)) throw failure('busy')
+  for (const message of messages) {
     for (const part of message.parts) {
       if (part.type !== 'tool') continue
       const status = object(part.state).status
       if (status === 'pending' || status === 'running') throw failure('busy')
+      if (status !== 'completed' && status !== 'error') throw failure('protocol')
     }
   }
+}
+
+function assertTerminalTurns(context: ExternalEditContext): void {
+  if (
+    context.record.turns.some(
+      (turn) => !['completed', 'failed', 'cancelled', 'interrupted'].includes(turn.state),
+    )
+  )
+    throw failure('busy')
+}
+
+async function disconnectOwned(context: ExternalEditContext): Promise<void> {
+  assertTerminalTurns(context)
+  ensureActive(context.signal)
+  try {
+    await context.disconnect()
+  } catch (error) {
+    if (context.signal.aborted) throw failure('aborted')
+    throw failure('control-unavailable')
+  }
+  ensureActive(context.signal)
+  assertTerminalTurns(context)
+}
+
+async function readIdleMessages(
+  context: ExternalEditContext,
+  control: VendorControl,
+  sessionId: string,
+): Promise<VendorMessage[]> {
+  const assertIdle = async () => {
+    ensureActive(context.signal)
+    if (control.readStatus && (await control.readStatus(sessionId)) !== 'idle')
+      throw failure('busy')
+  }
+  await assertIdle()
+  const messages = asMessages(await control.readMessages(sessionId))
+  await assertIdle()
+  ensureActive(context.signal)
+  return messages
 }
 
 function nonSyntheticText(message: VendorMessage): string {
@@ -523,6 +574,26 @@ export async function startAuthenticatedControl(
   }
 
   return {
+    async readStatus(sessionId: string): Promise<'idle' | 'busy'> {
+      let result: { status: number; json: unknown }
+      try {
+        result = await request('/session/status')
+      } catch (error) {
+        if (context.signal.aborted) throw failure('aborted')
+        if (error instanceof ExternalMessageEditError) throw error
+        throw failure('control-unavailable')
+      }
+      if (result.status === 404 || result.status === 405) throw failure('unsupported')
+      if (result.status < 200 || result.status >= 300) throw failure('control-unavailable')
+      if (typeof result.json !== 'object' || result.json === null || Array.isArray(result.json))
+        throw failure('protocol')
+      const statuses = result.json as Record<string, unknown>
+      if (!Object.hasOwn(statuses, sessionId)) return 'idle'
+      const type = object(statuses[sessionId]).type
+      if (type === 'idle') return 'idle'
+      if (['busy', 'retry', 'offline', 'scheduled'].includes(type)) return 'busy'
+      throw failure('protocol')
+    },
     async readMessages(sessionId: string): Promise<VendorMessage[]> {
       let result: { status: number; json: unknown }
       try {
@@ -584,26 +655,80 @@ function asUncertain(error: unknown): ExternalMessageEditError {
   return failure('uncertain')
 }
 
+/** Identify the failed tail's reply without deriving a missing recorded input identity. */
+function failedReplyInput(
+  context: ExternalEditContext,
+  messages: readonly VendorMessage[],
+): string | undefined {
+  const turn = context.record.turns.at(-1)
+  if (!turn || !['failed', 'cancelled', 'interrupted'].includes(turn.state)) return
+  const inputIndex = messages.findLastIndex((message) => message.info.role === 'user')
+  const input = messages[inputIndex]
+  if (!input) return
+  const id = messageId(input)
+  const replies = messages.slice(inputIndex + 1)
+  if (
+    !replies.length ||
+    replies.some((reply) => reply.info.role !== 'assistant' || parentId(reply) !== id)
+  )
+    return
+  if (turn.native?.userMessageId) return turn.native.userMessageId === id ? id : undefined
+  // A single input in an empty fork can be abandoned explicitly. Its id is never
+  // assigned to the record; the owner allocates another empty session for that edit.
+  if (
+    context.record.turns.length === 1 &&
+    messages.filter((message) => message.info.role === 'user').length === 1
+  )
+    return id
+}
+
 async function readHistory(
   context: ExternalEditContext,
   startControl: StartVendorControl,
-): Promise<{ control: VendorControl; messages: VendorMessage[]; history: ExternalEditHistory }> {
+): Promise<{
+  control: VendorControl
+  messages: VendorMessage[]
+  history: ExternalEditHistory
+  quiescent: boolean
+}> {
   ensureActive(context.signal)
+  const modelId =
+    typeof context.snapshot === 'function'
+      ? string(object(context.snapshot().session.models).currentModelId)
+      : ''
   const control = await startControl(context)
   try {
-    const messages = await control.readMessages(context.record.acpSessionId)
-    ensureActive(context.signal)
-    assertSettled(messages)
-    const modelId =
-      typeof context.snapshot === 'function'
-        ? string(object(context.snapshot().session.models).currentModelId)
-        : ''
+    const sessionId = context.record.acpSessionId
+    const messages = await readIdleMessages(context, control, sessionId)
+    const quiescent = incompleteAssistant(messages)
+    const failedInput = failedReplyInput(context, messages)
+    let stopped = false
+    if (quiescent || (failedInput && control.readStatus)) {
+      assertSettled(messages, quiescent)
+      assertTerminalTurns(context)
+      if (
+        !context.record.turns.some((turn) =>
+          ['failed', 'cancelled', 'interrupted'].includes(turn.state),
+        )
+      )
+        throw failure('busy')
+      if (!control.readStatus) throw failure('unsupported')
+      // Status belongs to this temporary server. Only the owned ACP process exit plus
+      // a stable reread can establish that an unfinished failed request is abandoned.
+      await disconnectOwned(context)
+      const after = await readIdleMessages(context, control, sessionId)
+      if (historyToken(sessionId, after) !== historyToken(sessionId, messages))
+        throw failure('history-changed')
+      assertTerminalTurns(context)
+      stopped = true
+    }
+    assertSettled(messages, quiescent)
     let statistics = new Map<string, import('./usage-opencode-kilo.ts').ExternalUsageStatistics>()
     try {
       if (modelId && control.readProviders)
         statistics = summarizeOpenCodeKiloUsage(
           messages,
-          context.record.acpSessionId,
+          sessionId,
           modelId,
           await control.readProviders(),
         )
@@ -614,13 +739,19 @@ async function readHistory(
       const value = statistics.get(boundary.id)
       return value ? { ...boundary, statistics: value } : boundary
     })
+    ensureActive(context.signal)
+    if (context.record.acpSessionId !== sessionId) throw failure('stale')
     return {
       control,
       messages,
+      quiescent,
       history: {
-        sessionId: context.record.acpSessionId,
-        token: historyToken(context.record.acpSessionId, messages),
+        sessionId,
+        token: historyToken(sessionId, messages),
         boundaries,
+        ...(stopped && failedInput && boundaries.at(-1)?.id === failedInput
+          ? { settledInputId: failedInput }
+          : {}),
       },
     }
   } catch (error) {
@@ -649,7 +780,8 @@ function createDriver(
       if (!string(input.operationId) || !string(input.targetId)) throw failure('target-unknown')
       if (input.expected.sessionId !== context.record.acpSessionId) throw failure('stale')
 
-      const { control, messages, history } = await readHistory(context, startControl)
+      const { control, messages, history, quiescent } = await readHistory(context, startControl)
+      const sessionId = history.sessionId
       try {
         if (history.token !== input.expected.token) throw failure('history-changed')
         const targetIndex = messages.findIndex((message) => messageId(message) === input.targetId)
@@ -662,11 +794,17 @@ function createDriver(
         )
         if (!expectedBoundary) throw failure('target-unknown')
         if (expectedBoundary.text !== boundary.text) throw failure('history-changed')
+        if (!quiescent) await disconnectOwned(context)
+        const beforeFork = await readIdleMessages(context, control, sessionId)
+        if (historyToken(sessionId, beforeFork) !== history.token) throw failure('history-changed')
+        assertSettled(beforeFork, quiescent)
+        assertTerminalTurns(context)
+        if (context.record.acpSessionId !== sessionId) throw failure('stale')
         ensureActive(context.signal)
 
         let forked: { sessionId: string }
         try {
-          forked = await control.fork(context.record.acpSessionId, input.targetId)
+          forked = await control.fork(sessionId, input.targetId)
         } catch (error) {
           // A 4xx is a known rejection; anything else may have created a branch.
           if (error instanceof ExternalMessageEditError && error.code === 'fork-rejected')
@@ -674,18 +812,16 @@ function createDriver(
           if (error instanceof ExternalMessageEditError && error.code === 'uncertain') throw error
           throw failure('uncertain')
         }
-        if (!forked.sessionId || forked.sessionId === context.record.acpSessionId)
-          throw failure('uncertain')
+        if (!forked.sessionId || forked.sessionId === sessionId) throw failure('uncertain')
         if (context.signal.aborted) throw failure('uncertain')
 
         try {
           // The source must not have moved while the fork was being created. A concurrent
           // prompt/tool update invalidates the expected token even if the fork succeeded.
-          const sourceAfter = await control.readMessages(context.record.acpSessionId)
-          if (historyToken(context.record.acpSessionId, sourceAfter) !== history.token)
-            throw failure('uncertain')
-          const forkMessages = await control.readMessages(forked.sessionId)
-          assertSettled(forkMessages)
+          const sourceAfter = await readIdleMessages(context, control, sessionId)
+          if (historyToken(sessionId, sourceAfter) !== history.token) throw failure('uncertain')
+          const forkMessages = await readIdleMessages(context, control, forked.sessionId)
+          assertSettled(forkMessages, quiescent)
           const map = comparePrefix(messages.slice(0, targetIndex), forkMessages)
           const retained = retainedBoundaries(
             history.boundaries,
@@ -695,6 +831,8 @@ function createDriver(
             map,
           )
           if (context.signal.aborted) throw failure('uncertain')
+          if (context.record.acpSessionId !== sessionId) throw failure('uncertain')
+          assertTerminalTurns(context)
           return { sessionId: forked.sessionId, retained }
         } catch (error) {
           throw asUncertain(error)

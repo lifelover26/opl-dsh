@@ -65,6 +65,41 @@ function setup() {
 }
 
 describe('external edit admission', () => {
+  it('journals a fresh first input before allocating and does not repeat a lost response', async () => {
+    const s = setup()
+    const allocate = vi.fn(async () => {
+      expect(s.rows.get('dsh')?.phase).toBe('invoking')
+      throw Error('allocation response lost')
+    })
+    await expect(
+      s.tx.prepareFirst(s.context, { requestId: 'first-edit', targetSeq: 7 }, allocate),
+    ).rejects.toThrow('allocation response lost')
+    const restarted = new ExternalMessageEditTransactions(s.journal)
+    await expect(
+      restarted.prepareFirst(s.context, { requestId: 'first-edit', targetSeq: 7 }, allocate),
+    ).rejects.toThrow('尚未确认')
+    expect(allocate).toHaveBeenCalledTimes(1)
+  })
+
+  it('requires a fresh empty identity and preserves the original vendor binding', async () => {
+    const s = setup()
+    const result = await s.tx.prepareFirst(
+      s.context,
+      { requestId: 'first-edit', targetSeq: 7 },
+      async () => ({ sessionId: 'empty-fork', retained: [], ephemeral: true }),
+    )
+    expect(result).toEqual({ sessionId: 'empty-fork', retained: [], ephemeral: true })
+    expect(s.record.acpSessionId).toBe('vendor')
+    expect(s.tx.intent('dsh')).toMatchObject({ targetId: 'dsh-user:7', phase: 'ready' })
+    const other = setup()
+    await expect(
+      other.tx.prepareFirst(other.context, { requestId: 'first-edit', targetSeq: 7 }, async () => ({
+        sessionId: 'vendor',
+        retained: [],
+      })),
+    ).rejects.toThrow('未创建新的空会话')
+    expect(other.tx.pending('dsh')).toBe(true)
+  })
   it('settles a replacement on a terminal Harness error but keeps transport loss uncertain', async () => {
     const s = setup()
     await s.tx.prepare(s.context, s.driver, s.input)

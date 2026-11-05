@@ -51,28 +51,28 @@ function leakedToolSyntaxFamilies(
   )
 }
 
-/** Recorded request identities and final visible diagnostics needed after resume. */
-interface FeedbackSessionFacts {
+/** Original log position and tool of one unanswered approval. */
+export interface FeedbackApproval {
+  readonly seq: number
+  readonly toolName: string
+}
+
+/** Recorded request identities, pending approvals, and final visible diagnostics. */
+export interface FeedbackSessionFacts {
   readonly openTurn: number | null
   readonly pendingInstructions: readonly string[]
   readonly instructions: Readonly<
     Record<string, { readonly seq: number; readonly turn: number | null }>
   >
   readonly finalToolSyntax: Readonly<Record<string, readonly string[]>>
-  readonly pendingApprovals: Readonly<Record<string, true>>
+  readonly pendingApprovals: Readonly<Record<string, FeedbackApproval>>
   readonly lastApprovalSeq: number
-}
-
-declare module '@deepseek-ai/dsh-session-projection/types' {
-  interface SessionProjectionStateMap {
-    taskFeedbackFacts: FeedbackSessionFacts
-  }
 }
 
 export const feedbackSessionFacts: ProjectionDefinition<'taskFeedbackFacts', FeedbackSessionFacts> =
   {
     key: 'taskFeedbackFacts',
-    stateVersion: 2,
+    stateVersion: 3,
     stateSchema: stateSchema.object({
       openTurn: stateSchema.number().int().nonnegative().nullable(),
       pendingInstructions: stateSchema.array(stateSchema.string()),
@@ -87,7 +87,13 @@ export const feedbackSessionFacts: ProjectionDefinition<'taskFeedbackFacts', Fee
         stateSchema.string(),
         stateSchema.array(stateSchema.string()),
       ),
-      pendingApprovals: stateSchema.record(stateSchema.string(), stateSchema.literal(true)),
+      pendingApprovals: stateSchema.record(
+        stateSchema.string(),
+        stateSchema.object({
+          seq: stateSchema.number().int().nonnegative(),
+          toolName: stateSchema.string(),
+        }),
+      ),
       lastApprovalSeq: stateSchema.number().int().nonnegative(),
     }),
     init: (): FeedbackSessionFacts => ({
@@ -114,7 +120,10 @@ export const feedbackSessionFacts: ProjectionDefinition<'taskFeedbackFacts', Fee
         case 'approval/asked':
           return {
             ...state,
-            pendingApprovals: { ...state.pendingApprovals, [event.data.id]: true },
+            pendingApprovals: {
+              ...state.pendingApprovals,
+              [event.data.id]: { seq: Number(event.seq), toolName: event.data.toolName },
+            },
             lastApprovalSeq: Number(event.seq),
           }
         case 'approval/decided': {

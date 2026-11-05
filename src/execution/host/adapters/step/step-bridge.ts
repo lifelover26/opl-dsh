@@ -40,7 +40,8 @@
  * is scrubbed against it before anything returns to the host.
  */
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { StringDecoder } from 'node:string_decoder'
 import { join, resolve, sep } from 'node:path'
 import { commandLaunch } from '../../harness-registry.ts'
@@ -180,8 +181,26 @@ let cancelled = false
 let cancelLatched = false
 /** True from the moment a prompt is accepted until that turn has fully settled. */
 let turnActive = false
+/** Read/edit/configuration operations refuse overlap with prompts before their first await. */
+let controlActive = false
+/** An unverified native fork blocks further writes for this bridge's lifetime. */
+let editUncertain = false
+/** A first-message fork has no file until Step persists a subsequent assistant message. */
+let ephemeralFile = ''
 let resolveTurn: ((value: unknown) => void) | undefined
 let rejectTurn: ((error: Error) => void) | undefined
+interface StepInputReceipt {
+  sessionId: string
+  requestId: string
+  text: string
+  before: { entries: StepEntry[]; branch: StepEntry[] }
+  accepted: boolean
+  message?: Record<string, unknown>
+  inputId?: string
+  lookup?: Promise<void>
+}
+/** The active ACP prompt owns one official user-message event and its native entry lookup. */
+let inputReceipt: StepInputReceipt | undefined
 const turnOutcome = new RpcTurnOutcome()
 const turnUsage = new StepTurnUsage(provider, model)
 /** Permission asks currently with the host, keyed by the ACP request id. */
@@ -195,6 +214,7 @@ const emit = (update: object) => {
 /** Reject everything in flight so no caller waits on a process that is gone. */
 function failPending(reason: string) {
   turnActive = false
+  inputReceipt = undefined
   for (const entry of pending.values()) {
     clearTimeout(entry.timer)
     entry.reject(new StepBridgeError(reason, 'HARNESS_TRANSPORT'))
@@ -248,8 +268,12 @@ function stepRequest(
 }
 
 /** Issue a command that must be accepted; the official failure mode is `success: false`. */
-async function stepCommand(type: string, extra: Record<string, unknown> = {}): Promise<any> {
-  const response = await stepRequest(type, extra)
+async function stepCommand(
+  type: string,
+  extra: Record<string, unknown> = {},
+  timeoutMs = 60000,
+): Promise<any> {
+  const response = await stepRequest(type, extra, timeoutMs)
   if (response?.success !== true)
     throw configuration(`官方 StepCode 拒绝了 ${type}，已停止，未继续会话。`)
   return response.data
@@ -357,6 +381,12 @@ function handleOfficialLine(line: string): void {
     if (!entry) return
     pending.delete(message.id)
     entry.resolve(message)
+    return
+  }
+  try {
+    persistEphemeral()
+  } catch (error) {
+    releaseEverything('官方 StepCode 会话索引未能保存，连接已中断')
     return
   }
   if (message?.type === 'extension_ui_request') {
@@ -507,6 +537,27 @@ function handleEvent(event: any): void {
       })
       return
     case 'message_end':
+      if (event.message?.role === 'user' && inputReceipt && !inputReceipt.message) {
+        const message = editObject(event.message)
+        const content = message.content
+        const text =
+          typeof content === 'string'
+            ? content
+            : Array.isArray(content) &&
+                content.every((block) => block?.type === 'text' && typeof block.text === 'string')
+              ? content.map((block) => block.text).join('')
+              : undefined
+        if (
+          Number.isSafeInteger(message.timestamp) &&
+          Number(message.timestamp) > 0 &&
+          text === inputReceipt.text
+        ) {
+          inputReceipt.message = structuredClone(message)
+          captureInputReceipt(inputReceipt)
+        }
+      }
+      if (resolveTurn) turnOutcome.accept(event)
+      return
     case 'auto_retry_end':
       if (resolveTurn) turnOutcome.accept(event)
       return
@@ -546,8 +597,8 @@ function handleEvent(event: any): void {
 
 // ── Pinning and read-back ─────────────────────────────────────────────────────────
 
-async function readState(): Promise<any> {
-  const state = await stepRequest('get_state')
+async function readState(timeoutMs = 60000): Promise<any> {
+  const state = await stepRequest('get_state', {}, timeoutMs)
   if (state?.success !== true) throw configuration('官方 StepCode 未返回会话状态')
   return state.data
 }
@@ -712,6 +763,13 @@ function rememberSessionFile(file: string): void {
   })
 }
 
+/** Publish a lazy fork's index only after its verified native file exists. */
+function persistEphemeral(): void {
+  if (!ephemeralFile || !existsSync(ephemeralFile)) return
+  rememberSessionFile(ephemeralFile)
+  ephemeralFile = ''
+}
+
 /** Read a recorded session target, refusing anything the suite did not write itself. */
 function readSessionIndex(id: string): string {
   assertSessionIdSafe(id)
@@ -776,9 +834,375 @@ async function replayHistory(): Promise<void> {
   }
 }
 
+// ── Message editing over Step's official fork RPC ───────────────────────────────────
+
+const EDIT_RPC_TIMEOUT_MS = 5000
+const THINKING_LEVELS = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
+
+class EditRefusal extends Error {
+  constructor(readonly code: string) {
+    super(code)
+  }
+}
+
+function refuseEdit(code: string): never {
+  throw new EditRefusal(code)
+}
+
+function editObject(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
+}
+
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
+  if (value !== null && typeof value === 'object')
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`)
+      .join(',')}}`
+  return JSON.stringify(value) ?? 'null'
+}
+
+interface StepEntry extends Record<string, unknown> {
+  id: string
+  parentId: string | null
+  type: string
+}
+
+interface StepEditHistory {
+  sessionId: string
+  token: string
+  boundaries: { id: string; text?: string; unavailableReason?: string }[]
+  settledInputId?: string
+  file: string
+  ephemeral: boolean
+  thinkingLevel: string
+  model: unknown
+  fileHash: string | null
+  entries: StepEntry[]
+  branch: StepEntry[]
+}
+
+/** Stable ids and parent links select the active branch; append order also contains abandoned branches. */
+function editBranch(raw: unknown, leafId: unknown): { entries: StepEntry[]; branch: StepEntry[] } {
+  if (!Array.isArray(raw) || (leafId !== null && (typeof leafId !== 'string' || !leafId)))
+    refuseEdit('protocol')
+  const byId = new Map<string, StepEntry>()
+  const entries = raw.map((value) => {
+    const entry = editObject(value)
+    if (
+      typeof entry.id !== 'string' ||
+      !entry.id ||
+      byId.has(entry.id) ||
+      typeof entry.type !== 'string' ||
+      !entry.type ||
+      (entry.parentId !== null && (typeof entry.parentId !== 'string' || !entry.parentId))
+    )
+      refuseEdit('protocol')
+    const item = entry as StepEntry
+    if (item.type === 'message' && typeof editObject(item.message).role !== 'string')
+      refuseEdit('protocol')
+    byId.set(item.id, item)
+    return item
+  })
+  const branch: StepEntry[] = []
+  const seen = new Set<string>()
+  let id = leafId as string | null
+  while (id !== null) {
+    if (seen.has(id)) refuseEdit('protocol')
+    seen.add(id)
+    const entry = byId.get(id)
+    if (!entry) refuseEdit('protocol')
+    branch.push(entry)
+    id = entry.parentId
+  }
+  return { entries, branch: branch.reverse() }
+}
+
+/** Capture the native cursor before sending, without making optional edit support a prompt precondition. */
+async function prepareInputReceipt(
+  text: string,
+  requestId: unknown,
+): Promise<StepInputReceipt | undefined> {
+  if (typeof requestId !== 'string' || !requestId) return
+  try {
+    const response = await stepRequest('get_entries', {}, STATISTICS_TIMEOUT_MS)
+    if (response?.success !== true) return
+    return {
+      sessionId,
+      requestId,
+      text,
+      before: editBranch(response.data?.entries, response.data?.leafId),
+      accepted: false,
+    }
+  } catch (error) {
+    // The task can run without an edit receipt; unidentified inputs stay unavailable.
+    return undefined
+  }
+}
+
+/** Associate an accepted prompt with the unique full native event, including its timestamp and parent cursor. */
+function captureInputReceipt(receipt: StepInputReceipt): void {
+  if (!receipt.accepted || !receipt.message || receipt.lookup) return
+  receipt.lookup = (async () => {
+    try {
+      const response = await stepRequest('get_entries', {}, STATISTICS_TIMEOUT_MS)
+      if (
+        response?.success !== true ||
+        inputReceipt !== receipt ||
+        receipt.sessionId !== sessionId ||
+        !turnActive
+      )
+        return
+      const after = editBranch(response.data?.entries, response.data?.leafId)
+      const priorIds = new Set(receipt.before.entries.map((entry) => entry.id))
+      const candidates = after.branch.filter(
+        (entry) =>
+          entry.type === 'message' &&
+          !priorIds.has(entry.id) &&
+          canonical(entry.message) === canonical(receipt.message),
+      )
+      if (candidates.length !== 1) return
+      const candidate = candidates[0]!
+      if (
+        candidate.parentId !== (receipt.before.branch.at(-1)?.id ?? null) ||
+        after.branch[receipt.before.branch.length]?.id !== candidate.id ||
+        receipt.before.branch.some(
+          (entry, index) => canonical(entry) !== canonical(after.branch[index]),
+        ) ||
+        after.branch
+          .slice(receipt.before.branch.length)
+          .filter((entry) => entry.type === 'message' && editObject(entry.message).role === 'user')
+          .length !== 1
+      )
+        return
+      receipt.inputId = candidate.id
+      emit({
+        sessionUpdate: 'session_info_update',
+        _meta: {
+          'opl/stepInputId': candidate.id,
+          'opl/clientRequestId': receipt.requestId,
+        },
+      })
+    } catch (error) {
+      // Optional correlation failure cannot end or resend the official prompt.
+    }
+  })()
+}
+
+/** Exact message text, including repeated prompts; images and attachments remain unavailable for editing. */
+function editBoundary(entry: StepEntry): { id: string; text?: string; unavailableReason?: string } {
+  const message = editObject(entry.message)
+  const content = message.content
+  if (typeof content !== 'string' && !Array.isArray(content)) refuseEdit('protocol')
+  const blocks = Array.isArray(content) ? content.map(editObject) : []
+  if (blocks.some((block) => block.type === 'text' && typeof block.text !== 'string'))
+    refuseEdit('protocol')
+  const text =
+    typeof content === 'string'
+      ? content
+      : blocks
+          .filter((block) => block.type === 'text')
+          .map((block) => block.text)
+          .join('')
+  const attachments = message.attachments
+  const hasAttachments =
+    blocks.some((block) => block.type !== 'text') ||
+    (Array.isArray(attachments) && attachments.length > 0)
+  return {
+    id: entry.id,
+    ...(text.length ? { text } : {}),
+    ...(hasAttachments
+      ? { unavailableReason: '这条消息带有附件，暂不支持编辑' }
+      : !text.trim()
+        ? { unavailableReason: '这条消息没有可编辑文本' }
+        : {}),
+  }
+}
+
+function editStateFacts(state: unknown): Record<string, unknown> {
+  const live = editObject(state)
+  if (
+    typeof live.sessionId !== 'string' ||
+    !live.sessionId ||
+    typeof live.thinkingLevel !== 'string' ||
+    !THINKING_LEVELS.has(live.thinkingLevel)
+  )
+    refuseEdit('protocol')
+  if (live.isStreaming !== false || live.isCompacting !== false || live.pendingMessageCount !== 0)
+    refuseEdit('busy')
+  return {
+    sessionId: live.sessionId,
+    file: assertSessionFileContained(live.sessionFile),
+    model: live.model,
+    thinkingLevel: live.thinkingLevel,
+  }
+}
+
+/** Bracket the entry read with idle identity/configuration observations; the token covers all entry data. */
+async function readEditHistory(requirePinned = true): Promise<StepEditHistory> {
+  const state = editStateFacts(await readState(EDIT_RPC_TIMEOUT_MS))
+  if (state.sessionId !== sessionId) refuseEdit('stale')
+  const liveModel = editObject(state.model)
+  if (
+    requirePinned &&
+    (liveModel.id !== model ||
+      liveModel.provider !== provider ||
+      (thinking && state.thinkingLevel !== thinking))
+  )
+    refuseEdit('stale')
+  const response = await stepRequest('get_entries', {}, EDIT_RPC_TIMEOUT_MS)
+  if (response?.success !== true) refuseEdit('unsupported')
+  const { entries, branch } = editBranch(response.data?.entries, response.data?.leafId)
+  const confirmed = editStateFacts(await readState(EDIT_RPC_TIMEOUT_MS))
+  if (canonical(state) !== canonical(confirmed)) refuseEdit('history-changed')
+  const boundaries = branch
+    .filter((entry) => entry.type === 'message' && editObject(entry.message).role === 'user')
+    .map(editBoundary)
+  const file = state.file as string
+  const ephemeral = !existsSync(file)
+  if (ephemeral && boundaries.length) refuseEdit('stale')
+  const fileHash = ephemeral ? null : createHash('sha256').update(readFileSync(file)).digest('hex')
+  const lastMessage = [...branch].reverse().find((entry) => entry.type === 'message')
+  const terminal = editObject(lastMessage?.message)
+  const settledInputId =
+    terminal.role === 'assistant' &&
+    ['stop', 'error', 'aborted', 'length'].includes(String(terminal.stopReason))
+      ? boundaries.at(-1)?.id
+      : undefined
+  return {
+    sessionId,
+    token: `sha256:${createHash('sha256')
+      .update(canonical({ version: 1, state, entries, leafId: response.data.leafId, fileHash }))
+      .digest('hex')}`,
+    boundaries,
+    ...(settledInputId ? { settledInputId } : {}),
+    file,
+    ephemeral,
+    thinkingLevel: state.thinkingLevel as string,
+    model: state.model,
+    fileHash,
+    entries,
+    branch,
+  }
+}
+
+/** Step may append configuration metadata while restoring a fork; every other retained entry stays exact. */
+function verifyEditPrefix(before: StepEditHistory, after: StepEditHistory, targetId: string): void {
+  const target = before.branch.findIndex((entry) => entry.id === targetId)
+  if (target < 0 || after.branch.length < target || after.entries.length !== after.branch.length)
+    refuseEdit('uncertain')
+  const sourceIds = new Set(before.entries.map((entry) => entry.id))
+  for (let index = 0; index < target; index++)
+    if (canonical(before.branch[index]) !== canonical(after.branch[index])) refuseEdit('uncertain')
+  for (const entry of after.branch.slice(target)) {
+    if (sourceIds.has(entry.id) || typeof entry.timestamp !== 'string') refuseEdit('uncertain')
+    const keys = ['type', 'id', 'parentId', 'timestamp']
+    if (entry.type === 'model_change') {
+      if (typeof entry.provider !== 'string' || typeof entry.modelId !== 'string')
+        refuseEdit('uncertain')
+      keys.push('provider', 'modelId')
+    } else if (entry.type === 'thinking_level_change') {
+      if (typeof entry.thinkingLevel !== 'string' || !THINKING_LEVELS.has(entry.thinkingLevel))
+        refuseEdit('uncertain')
+      keys.push('thinkingLevel')
+    } else refuseEdit('uncertain')
+    if (Object.keys(entry).some((key) => !keys.includes(key))) refuseEdit('uncertain')
+  }
+  const prefix = before.boundaries.slice(
+    0,
+    before.boundaries.findIndex((item) => item.id === targetId),
+  )
+  if (canonical(prefix) !== canonical(after.boundaries)) refuseEdit('uncertain')
+}
+
+/** Native fork excludes the selected user entry. No replacement prompt, file rollback, or branch deletion is performed. */
+async function rewindEdit(targetId: string, expectedToken: string): Promise<object> {
+  if (!targetId || !expectedToken) refuseEdit('target-unknown')
+  if (editUncertain) refuseEdit('uncertain')
+  const before = await readEditHistory()
+  if (before.token !== expectedToken) refuseEdit('history-changed')
+  const boundary = before.boundaries.find((entry) => entry.id === targetId)
+  if (!boundary) refuseEdit('target-unknown')
+  if (boundary.unavailableReason) refuseEdit('target-unavailable')
+  const sourceHash = createHash('sha256').update(readFileSync(before.file)).digest('hex')
+  if (sourceHash !== before.fileHash) refuseEdit('history-changed')
+  editUncertain = true
+  try {
+    const fork = await stepRequest('fork', { entryId: targetId }, EDIT_RPC_TIMEOUT_MS)
+    if (fork?.success !== true || fork.data?.cancelled === true) {
+      const unchanged = await readEditHistory()
+      if (
+        unchanged.token !== before.token ||
+        createHash('sha256').update(readFileSync(before.file)).digest('hex') !== sourceHash
+      )
+        refuseEdit('uncertain')
+      editUncertain = false
+      refuseEdit('fork-rejected')
+    }
+    if (fork.data?.cancelled !== false) refuseEdit('uncertain')
+    const live = await readState(EDIT_RPC_TIMEOUT_MS)
+    const newId = typeof live?.sessionId === 'string' ? live.sessionId : ''
+    if (!newId || newId === before.sessionId) refuseEdit('uncertain')
+    assertSessionIdSafe(newId)
+    sessionId = newId
+    const forked = await readEditHistory(false)
+    if (forked.file === before.file) refuseEdit('uncertain')
+    verifyEditPrefix(before, forked, targetId)
+    await stepCommand('set_model', { provider, modelId: model }, EDIT_RPC_TIMEOUT_MS)
+    const levels = await stepRequest('get_available_thinking_levels', {}, EDIT_RPC_TIMEOUT_MS)
+    if (
+      levels?.success !== true ||
+      !Array.isArray(levels.data?.levels) ||
+      !levels.data.levels.includes(before.thinkingLevel)
+    )
+      refuseEdit('uncertain')
+    await stepCommand('set_thinking_level', { level: before.thinkingLevel }, EDIT_RPC_TIMEOUT_MS)
+    const after = await readEditHistory()
+    if (
+      after.file !== forked.file ||
+      after.thinkingLevel !== before.thinkingLevel ||
+      canonical(after.model) !== canonical(before.model)
+    )
+      refuseEdit('uncertain')
+    verifyEditPrefix(before, after, targetId)
+    if (createHash('sha256').update(readFileSync(before.file)).digest('hex') !== sourceHash)
+      refuseEdit('uncertain')
+    if (after.ephemeral) ephemeralFile = after.file
+    else rememberSessionFile(after.file)
+    editUncertain = false
+    const target = before.boundaries.findIndex((entry) => entry.id === targetId)
+    return {
+      ok: true,
+      sessionId,
+      retained: before.boundaries
+        .slice(0, target)
+        .map((entry) => ({ previousId: entry.id, nextId: entry.id })),
+      ...(after.ephemeral ? { ephemeral: true } : {}),
+    }
+  } catch (error) {
+    if (!editUncertain && error instanceof EditRefusal) throw error
+    refuseEdit('uncertain')
+  }
+}
+
+/** Prompt and edit requests are rejected immediately while another control operation owns the process. */
+async function withControl<T>(run: () => Promise<T>, requireNoDialogs = true): Promise<T> {
+  if (controlActive || turnActive || resolveTurn || (requireNoDialogs && asks.size))
+    refuseEdit('busy')
+  controlActive = true
+  try {
+    return await run()
+  } finally {
+    controlActive = false
+  }
+}
+
 // ── ACP request handling ───────────────────────────────────────────────────────────
 
-async function invoke(method: string, params: any): Promise<unknown> {
+async function invokeOwned(method: string, params: any): Promise<unknown> {
   if (method === 'initialize') {
     if (child) throw configuration('官方 StepCode 桥接器已经初始化')
     writeProviderConfig()
@@ -789,7 +1213,16 @@ async function invoke(method: string, params: any): Promise<unknown> {
     if (!state) throw configuration('官方 StepCode 未返回会话状态，无法确认 RPC 接口')
     return {
       protocolVersion: 1,
-      agentCapabilities: { loadSession: true },
+      agentCapabilities: {
+        loadSession: true,
+        _meta: {
+          'opl/message-edit': {
+            version: 1,
+            methods: ['opl/edit/read', 'opl/edit/rewind'],
+            ephemeralFirstFork: true,
+          },
+        },
+      },
       agentInfo: { name: 'step-code', version: `step-rpc ${api}`, model, provider },
     }
   }
@@ -801,6 +1234,7 @@ async function invoke(method: string, params: any): Promise<unknown> {
       // Read back the suite-owned index. An unknown id is refused rather than resolved by
       // scanning the session tree or by name similarity.
       const file = readSessionIndex(wanted)
+      if (!existsSync(file)) throw configuration('官方 StepCode 会话历史尚未保存，拒绝加载。')
       await stepCommand('switch_session', { sessionPath: file })
       // `switch_session` reports success even for a path that does not exist, so the
       // identity is confirmed from live state rather than from the response.
@@ -810,6 +1244,7 @@ async function invoke(method: string, params: any): Promise<unknown> {
           `官方 StepCode 恢复的会话身份不一致（实际 ${String(liveId ?? '未知')}，要求 ${wanted}）；已停止，未发送任务。`,
         )
       sessionId = wanted
+      ephemeralFile = ''
       await stepCommand('set_model', { provider, modelId: model })
       await assertModel()
       const pinned = await applyThinking(thinking)
@@ -831,7 +1266,9 @@ async function invoke(method: string, params: any): Promise<unknown> {
     if (!id) throw configuration('官方 StepCode 未返回会话标识')
     assertSessionIdSafe(id)
     sessionId = id
-    rememberSessionFile(String(state?.sessionFile ?? ''))
+    const file = assertSessionFileContained(state?.sessionFile)
+    if (existsSync(file)) rememberSessionFile(file)
+    else ephemeralFile = file
     // Model first: the tier is only meaningful once the model that owns it is selected.
     await stepCommand('set_model', { provider, modelId: model })
     await assertModel()
@@ -851,6 +1288,7 @@ async function invoke(method: string, params: any): Promise<unknown> {
     throw configuration('会话身份不匹配')
 
   if (method === 'session/cancel') {
+    if (controlActive) throw configuration('官方 StepCode 正在读取或编辑历史，暂时不能取消。')
     cancelled = turnActive
     cancelLatched = turnActive && !resolveTurn
     // A pending approval would otherwise keep the turn open forever.
@@ -891,12 +1329,15 @@ async function invoke(method: string, params: any): Promise<unknown> {
     // would still race: the model read-back below is asynchronous, so a second prompt
     // arriving in that window would replace the first prompt's resolvers and leave its
     // caller waiting forever.
-    if (turnActive) throw configuration('上一轮任务尚未结束，拒绝并发发送新任务。')
+    if (turnActive || controlActive)
+      throw configuration('上一轮任务或历史操作尚未结束，拒绝并发发送新任务。')
+    if (editUncertain) throw configuration('历史分支结果尚未确认，已停止，未发送任务。')
     turnActive = true
     startupPhase = false
     try {
       // Re-read the live identity before every send, so a drifted session cannot run.
       await assertModel()
+      inputReceipt = await prepareInputReceipt(text, params?._meta?.['opl/clientRequestId'])
     } catch (error) {
       // The turn was never dispatched, so the slot must be released for the next one.
       turnActive = false
@@ -914,9 +1355,17 @@ async function invoke(method: string, params: any): Promise<unknown> {
     cancelLatched = false
     try {
       await stepCommand('prompt', { message: text })
+      if (inputReceipt) {
+        inputReceipt.accepted = true
+        captureInputReceipt(inputReceipt)
+      }
+      persistEphemeral()
       const settled = (await done) as { stopReason: string }
+      await inputReceipt?.lookup
+      persistEphemeral()
       return {
         ...settled,
+        ...(inputReceipt?.inputId ? { userMessageId: inputReceipt.inputId } : {}),
         _meta: await turnMetadata(settled.stopReason === 'cancelled'),
       }
     } catch (error) {
@@ -928,6 +1377,7 @@ async function invoke(method: string, params: any): Promise<unknown> {
       throw error
     } finally {
       turnActive = false
+      inputReceipt = undefined
       cancelled = false
       cancelLatched = false
       turnOutcome.reset()
@@ -938,6 +1388,48 @@ async function invoke(method: string, params: any): Promise<unknown> {
   }
 
   throw configuration(`不支持的调用：${method}`)
+}
+
+async function invoke(method: string, params: any): Promise<unknown> {
+  if (method === 'opl/edit/read' || method === 'opl/edit/rewind') {
+    try {
+      return await withControl(async () => {
+        if (typeof params?.sessionId !== 'string' || !sessionId || params.sessionId !== sessionId)
+          refuseEdit('stale')
+        if (method === 'opl/edit/rewind') {
+          if (typeof params.operationId !== 'string' || !params.operationId)
+            refuseEdit('target-unknown')
+          return rewindEdit(
+            typeof params.targetId === 'string' ? params.targetId : '',
+            typeof params.expectedToken === 'string' ? params.expectedToken : '',
+          )
+        }
+        const history = await readEditHistory()
+        return {
+          ok: true,
+          sessionId: history.sessionId,
+          token: history.token,
+          boundaries: history.boundaries,
+          ...(history.settledInputId ? { settledInputId: history.settledInputId } : {}),
+        }
+      })
+    } catch (error) {
+      if (error instanceof EditRefusal) return { ok: false, code: error.code }
+      throw error
+    }
+  }
+  if (['session/new', 'session/load', 'session/set_config_option'].includes(method)) {
+    try {
+      return await withControl(async () => {
+        if (editUncertain) throw configuration('历史分支结果尚未确认，拒绝更改会话。')
+        return invokeOwned(method, params)
+      }, false)
+    } catch (error) {
+      if (error instanceof EditRefusal) throw configuration('官方 StepCode 正在执行其他会话操作。')
+      throw error
+    }
+  }
+  return invokeOwned(method, params)
 }
 
 // ── ACP stdio loop ─────────────────────────────────────────────────────────────────

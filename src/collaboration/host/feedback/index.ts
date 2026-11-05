@@ -45,13 +45,12 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Session, SessionEvent, SessionId, TurnEndReason } from '@deepseek-ai/dsh-session'
+import type { ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
 import type { DomainGlobal, KvTable } from '@deepseek-ai/dsh-storage-domain'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
-// Type-only bindings: each of these modules publishes the session-event or
-// projection declarations this watcher consumes, so importing the binding is
-// what merges them into the maps read below.
+// Type-only bindings publish the Session event and Host service declarations this watcher consumes.
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller'
-import type { SessionWaitState } from '../../../execution/host/session-wait.ts'
+import type {} from '../../../execution/host/session-wait.ts'
 import type { ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
 import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions'
 import type {
@@ -68,7 +67,11 @@ import {
 import { codexQueueWakeAdapter, composeDeliveryReview, unconnectedWakeAdapter } from './wake.ts'
 import { DeliveryPump } from './delivery.ts'
 import { ReceiptLedger } from './receipts.ts'
-import { feedbackSessionFacts } from './session-facts.ts'
+import {
+  feedbackSessionFacts,
+  type FeedbackApproval,
+  type FeedbackSessionFacts,
+} from './session-facts.ts'
 import {
   OPEN_STATES,
   DEFAULT_NOTIFY_STATES,
@@ -222,7 +225,7 @@ export interface Config {
  * success.
  */
 export default class TaskFeedbackService extends TypertRemoteService {
-  static inject = ['storageDomain', 'sessions', 'sessionProjections']
+  static inject = ['storageDomain', 'sessions', 'sessionProjections', 'agents', 'oplSessionWait']
 
   static Config: z<Partial<Config>, Config> = z.object({
     summaryMaxChars: z.number().step(1).min(1).default(500),
@@ -261,6 +264,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
   private outboxTable?: KvTable<string, DeliveryRecordState>
   private receiptTable?: KvTable<string, ReceiptRecordState>
   private receiptLedger!: ReceiptLedger
+  private sessionFacts!: ProjectionHandle<FeedbackSessionFacts>
   private counters?: DomainGlobal<{ deliveryCount: number }>
   /** Replaced from Config during init; the refusing default keeps `wake()` honest before then. */
   private adapter: WakeAdapter = unconnectedWakeAdapter()
@@ -300,7 +304,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
 
   /** Open the domain, install the model-free watcher, and recover prior state. */
   protected async [Service.init](): Promise<void> {
-    this.ctx.sessionProjections.register(feedbackSessionFacts)
+    this.sessionFacts = await this.ctx.sessionProjections.register(feedbackSessionFacts)
     const domain = await this.ctx.storageDomain.open(taskFeedbackDomainSpec)
     this.ctx.effect(
       () => async () => {
@@ -448,8 +452,8 @@ export default class TaskFeedbackService extends TypertRemoteService {
         } else {
           const session = this.boundSession(task)
           if (session !== undefined && notice.approval !== null && notice.seq !== null) {
-            const facts = this.ctx.sessionProjections.stateOf(session, 'taskFeedbackFacts')
-            if (facts !== undefined && facts.lastApprovalSeq >= notice.seq) {
+            const facts = this.sessionFacts.stateOf(session)
+            if (facts.lastApprovalSeq >= notice.seq) {
               resolved ||= !Object.hasOwn(facts.pendingApprovals, notice.approval.approvalId)
             }
           }
@@ -1261,8 +1265,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
     session: Session,
     requestId: string,
   ): { seq: number; turn: number | null } | undefined {
-    const state = this.ctx.sessionProjections.stateOf(session, 'taskFeedbackFacts')
-    if (state === undefined) throw new Error('task-feedback session projection is not registered')
+    const state = this.sessionFacts.stateOf(session)
     return state.instructions[requestId]
   }
 
@@ -1476,16 +1479,13 @@ export default class TaskFeedbackService extends TypertRemoteService {
     // already right, or the binding is lost again on the next restart.
     const rebound = bound === record ? undefined : bound
     if (bound.turn === null) return rebound
-    const wait: SessionWaitState | undefined = this.ctx.sessionProjections.stateOf(
-      session,
-      'sessionWait',
-    )
-    const closed = wait?.closedTurns[String(bound.turn)]
+    const wait = this.ctx.oplSessionWait.stateOf(session)
+    const closed = wait.closedTurns[String(bound.turn)]
     if (closed !== undefined) {
       return this.settleRecord(bound, session, bound.turn, closed, rebound)
     }
     if (this.openTurnOf(session) !== bound.turn) return rebound
-    const pending = Object.entries(wait?.pendingApprovals ?? {})
+    const pending = Object.entries(wait.pendingApprovals)
     const ask = pending[pending.length - 1]
     if (ask !== undefined) {
       return (
@@ -1586,18 +1586,15 @@ export default class TaskFeedbackService extends TypertRemoteService {
         reason: 'a newer user message is already queued for the Session',
       }
     }
-    const wait: SessionWaitState | undefined = this.ctx.sessionProjections.stateOf(
-      session,
-      'sessionWait',
-    )
-    const lastEnd = wait?.lastEndReason ?? null
+    const wait = this.ctx.oplSessionWait.stateOf(session)
+    const lastEnd = wait.lastEndReason
     if (!isReasoningTextProtocolFailure(lastEnd)) {
       return {
         decision: 'superseded',
         reason: 'the Session no longer records this failure as its last turn end',
       }
     }
-    if (delivery.payload.turn !== null && wait?.lastEndTurn !== delivery.payload.turn) {
+    if (delivery.payload.turn !== null && wait.lastEndTurn !== delivery.payload.turn) {
       return { decision: 'superseded', reason: 'a newer turn already ended on the Session' }
     }
     return null
@@ -1798,13 +1795,12 @@ export default class TaskFeedbackService extends TypertRemoteService {
       case 'approval/asked':
         if (this.awaitingResumeInstruction(record)) return
         if (record.turn !== null && this.openTurnOf(session) !== record.turn) return
-        // The deciding event's position is the approval's stable identity.
-        this.transition(
-          { ...record, needsInput: this.approvalNotice(session, event) },
-          'waiting_approval',
-          `waiting for an approval on ${event.data.toolName}`,
+        this.pauseForApproval(
+          record,
+          session,
+          String(event.data.id),
+          { seq: Number(event.seq), toolName: event.data.toolName },
           event,
-          String(event.seq),
         )
         return
       case 'approval/decided':
@@ -1905,25 +1901,55 @@ export default class TaskFeedbackService extends TypertRemoteService {
   }
 
   /**
+   * Publish one unanswered approval using its original event position as the pause identity.
+   * @param record - task tracking the approval's turn.
+   * @param session - Session waiting for the decision.
+   * @param approvalId - identity of the unanswered ask.
+   * @param approval - recorded position and tool of the ask.
+   * @param event - deciding event for live observation; absent during recovery.
+   */
+  private pauseForApproval(
+    record: TaskRecordState,
+    session: Session,
+    approvalId: string,
+    approval: FeedbackApproval,
+    event?: SessionEvent<'approval/asked'>,
+  ): void {
+    this.transition(
+      {
+        ...record,
+        evidence: { ...record.evidence, seq: approval.seq },
+        needsInput: this.approvalNotice(session, approvalId, approval),
+      },
+      'waiting_approval',
+      `waiting for an approval on ${approval.toolName}`,
+      event,
+      String(approval.seq),
+    )
+  }
+
+  /**
    * The bounded notice of one approval pause.
    * @param session - the Session waiting for the decision.
-   * @param event - the recorded `approval/asked` event.
+   * @param approvalId - identity of the unanswered ask.
+   * @param approval - recorded position and tool of the ask.
    * @returns the bounded pause notice.
    */
   private approvalNotice(
     session: Session,
-    event: SessionEvent<'approval/asked'>,
+    approvalId: string,
+    approval: FeedbackApproval,
   ): NeedsInputNoticeState {
     return {
       kind: 'approval',
       sessionId: session.id,
       turn: this.openTurnOf(session),
-      seq: Number(event.seq),
-      pauseId: String(event.seq),
+      seq: approval.seq,
+      pauseId: String(approval.seq),
       questions: [],
       approval: {
-        approvalId: String(event.data.id),
-        toolName: boundedLine(event.data.toolName, this.config.needsInputMaxChars),
+        approvalId,
+        toolName: boundedLine(approval.toolName, this.config.needsInputMaxChars),
       },
     }
   }
@@ -2122,8 +2148,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
    * @returns the marker families found, empty when the turn left none.
    */
   private completedTurnLeakage(session: Session, turn: number): string[] {
-    const state = this.ctx.sessionProjections.stateOf(session, 'taskFeedbackFacts')
-    if (state === undefined) throw new Error('task-feedback session projection is not registered')
+    const state = this.sessionFacts.stateOf(session)
     return [...(state.finalToolSyntax[String(turn)] ?? [])]
   }
 
@@ -2300,15 +2325,15 @@ export default class TaskFeedbackService extends TypertRemoteService {
   }
 
   /**
-   * Settle one open task from the Session state a restart or attach edge loaded.
+   * Recover one open task's recorded outcome or pending approvals.
    *
    * An automatic-resume attempt settles only on the turn its own instruction
    * was recorded in; every other open task settles when the Session recorded a
-   * matching turn end. Recovery and the attach edge share this step so both
-   * observe the same settlement.
+   * matching turn end or reports an unanswered approval from its open turn.
+   * Recovery and the attach edge share these recorded observations.
    * @param record - the open task being reconciled.
    * @param session - the attached Session whose recorded end is folded in.
-   * @returns whether the task settled, so the caller skips its own fallback.
+   * @returns whether a recorded outcome or pause supersedes the caller's fallback.
    */
   private settleRecordedCatchUp(record: TaskRecordState, session: Session): boolean {
     if (record.resumeRequestId !== null) {
@@ -2316,25 +2341,36 @@ export default class TaskFeedbackService extends TypertRemoteService {
       return true
     }
     const catchUp = this.recordedEnd(session, record)
-    if (catchUp === undefined) return false
-    this.settleTurn(record, session, catchUp.turn, catchUp.reason, undefined)
-    return true
+    if (catchUp !== undefined) {
+      this.settleTurn(record, session, catchUp.turn, catchUp.reason, undefined)
+      return true
+    }
+    const turn = this.openTurnOf(session)
+    if (turn === null || (record.turn !== null && record.turn !== turn)) return false
+    const pending = Object.entries(this.sessionFacts.stateOf(session).pendingApprovals).sort(
+      ([, left], [, right]) => left.seq - right.seq,
+    )
+    let paused = false
+    for (const [approvalId, approval] of pending) {
+      if (approval.seq < record.fromSeq) continue
+      const current = this.live.get(record.taskId) ?? record
+      this.pauseForApproval({ ...current, turn }, session, approvalId, approval)
+      paused = true
+    }
+    return paused
   }
 
   /** The turn open on one Session, from the loop's boundary fold. */
   private openTurnOf(session: Session): number | null {
-    const projections = this.ctx.sessionProjections
-    const state = projections.stateOf(session, 'turnBoundary')
-    if (state === undefined || state.openTurnStartSeq === null) return null
+    const state = this.ctx.agents.turnBoundaryOf(session)
+    if (state.openTurnStartSeq === null) return null
     return state.lastTurn
   }
 
   /** The last turn end already on one Session, or null when none ended yet. */
   private lastEndTurnOf(session: Session | undefined): number | null {
     if (session === undefined) return null
-    const projections = this.ctx.sessionProjections
-    const state: SessionWaitState | undefined = projections.stateOf(session, 'sessionWait')
-    return state?.lastEndTurn ?? null
+    return this.ctx.oplSessionWait.stateOf(session).lastEndTurn
   }
 
   /**
@@ -2353,9 +2389,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
     session: Session,
     record: TaskRecordState,
   ): { turn: number; reason: TurnEndReason } | undefined {
-    const projections = this.ctx.sessionProjections
-    const state: SessionWaitState | undefined = projections.stateOf(session, 'sessionWait')
-    if (state === undefined) return undefined
+    const state = this.ctx.oplSessionWait.stateOf(session)
     if (record.turn !== null) {
       const reason = state.closedTurns[String(record.turn)]
       return reason === undefined ? undefined : { turn: record.turn, reason }

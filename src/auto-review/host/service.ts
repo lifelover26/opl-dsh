@@ -112,6 +112,12 @@ import {
 import type { AutoReviewMaintenance } from '../contracts/maintenance.ts'
 import type { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
 
+declare module '@deepseek-ai/dsh-llm/types' {
+  interface LlmRequestPurposeMap {
+    'auto-review': true
+  }
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     oplAutoReview: OplAutoReviewService
@@ -1087,6 +1093,8 @@ export class OplAutoReviewService extends TypertRemoteService {
       stage = 'read'
       const options: GenerateOptions = {
         ...prepared.config,
+        sessionId: agent.session.id,
+        purpose: 'auto-review',
         system: REVIEW_POLICY,
         messages: [{ role: 'user', content: [{ type: 'text', text: factsText }] }],
         signal,
@@ -1362,6 +1370,8 @@ export class OplAutoReviewService extends TypertRemoteService {
       const prepared = await this.prepare(route, maxOutputTokens, signal)
       const options: GenerateOptions = {
         ...prepared.config,
+        sessionId: agent.session.id,
+        purpose: 'auto-review',
         system: REVIEW_POLICY,
         messages: [{ role: 'user', content: [{ type: 'text', text: factsText }] }],
         signal,

@@ -1,6 +1,7 @@
 import { createInterface } from 'node:readline'
 import { writeFile, readFile, appendFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 let sessionId = 'test-native',
   running,
   completeOnCancel = false
@@ -18,7 +19,11 @@ const configOptions = () => [
 ]
 const approvals = new Map()
 const editHistory = []
-const editHistoryFile = () => join(process.cwd(), 'edit-history.json')
+const editHistoryFile = () =>
+  join(
+    process.cwd(),
+    process.env.OPL_FIXTURE_FRESH_EDIT === '1' ? `edit-${sessionId}.json` : 'edit-history.json',
+  )
 const persistEditHistory = async () => {
   if (process.env.OPL_FIXTURE_EDIT_PERSIST === '1')
     await writeFile(editHistoryFile(), JSON.stringify(editHistory))
@@ -56,7 +61,11 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
     answer(m.id, { protocolVersion: 1, agentCapabilities: { loadSession: true } })
   else if (m.method === 'session/new' || m.method === 'session/load') {
     await appendFile(join(process.cwd(), 'connections.txt'), m.method + '\n')
-    sessionId = m.params.sessionId ?? 'test-native'
+    sessionId =
+      m.params.sessionId ??
+      (process.env.OPL_FIXTURE_FRESH_EDIT === '1' ? randomUUID() : 'test-native')
+    if (process.env.OPL_FIXTURE_FRESH_EDIT === '1' && m.method === 'session/new')
+      editHistory.length = 0
     if (process.env.OPL_FIXTURE_EDIT_PERSIST === '1') {
       try {
         const saved = JSON.parse(await readFile(editHistoryFile(), 'utf8'))

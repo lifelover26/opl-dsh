@@ -1,15 +1,19 @@
-/** Admit the exact official request before the LLM resolves provider reasoning controls. */
+/** Prepare the Agent's selection, then admit its exact frozen official request. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { HarnessService } from './harness.ts'
 
 /**
- * Keep native model-selection listeners inside the request admission check.
+ * Normalize selections before step preparation and validate requests before edit admission.
  * @param ctx - Host effect scope.
  * @param harness - Owner of execution combinations and edit transactions.
- * @returns Disposer for the request listener.
+ * @returns Disposer for the initialization and request listeners.
  */
 export function installConversationRequest(ctx: Context, harness: HarnessService): () => void {
-  return ctx.on(
+  const disposeModel = ctx.on('agent/created', async ({ agent, signal }) => {
+    await harness.prepareConversationModel(agent, signal)
+    return undefined
+  })
+  const disposeRequest = ctx.on(
     'agent/request',
     async (payload, next) => {
       harness.assertRuntimeAvailable()
@@ -32,4 +36,8 @@ export function installConversationRequest(ctx: Context, harness: HarnessService
     },
     { prepend: true },
   )
+  return () => {
+    disposeRequest()
+    disposeModel()
+  }
 }

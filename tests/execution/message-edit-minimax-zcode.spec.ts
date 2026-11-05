@@ -59,7 +59,7 @@ function fakeContext(input: {
   const reconnect = vi.fn(async () => undefined)
   const requests: string[] = []
   const context: ExternalEditContext = {
-    record: { acpSessionId: input.sessionId ?? 'session-1' } as any,
+    record: { acpSessionId: input.sessionId ?? 'session-1', turns: [] } as any,
     launch: {} as any,
     signal: controller.signal,
     transport: () => ({

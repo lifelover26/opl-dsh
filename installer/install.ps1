@@ -99,8 +99,9 @@ try {
     $expected = [BitConverter]::ToString([Convert]::FromBase64String($sha512)).Replace('-', '')
     if ((Get-HashHex $archive 'SHA512') -ne $expected.ToLowerInvariant()) { throw '官方安装文件校验失败。' }
     Assert-OfficialSignature $archive
+    Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
     $process = Start-Process -FilePath $archive -ArgumentList @('/S', "/D=$app") -Wait -PassThru
-    if ($process.ExitCode -ne 0) { throw '官方运行环境安装失败。' }
+    if ($process.ExitCode -ne 0) { throw ('官方运行环境安装失败（退出码 ' + $process.ExitCode + '）。') }
     if ((Get-Item -LiteralPath $exe).VersionInfo.FileVersion -ne $officialVersion) { throw '官方版本与清单不符。' }
   }
   Assert-OfficialSignature $exe

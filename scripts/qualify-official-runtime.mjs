@@ -71,7 +71,21 @@ const evidence = {
   enhancementSha256: artifact.sha256,
   suiteSha256: artifact.suiteSha256,
   sourceDirty: artifact.sourceDirty !== false || runnerSourceDirty,
-  qualificationRunner: { sourceCommit: runnerSourceCommit, sourceDirty: runnerSourceDirty },
+  qualificationRunner: {
+    sourceCommit: runnerSourceCommit,
+    sourceDirty: runnerSourceDirty,
+    ...(runnerSourceDirty
+      ? {
+          changedTrackedFiles: execFileSync('git', ['diff', '--name-only', 'HEAD'], {
+            cwd: repo,
+            encoding: 'utf8',
+          })
+            .trim()
+            .split('\n')
+            .filter(Boolean),
+        }
+      : {}),
+  },
   protocolProbe: 'local-fixture',
   checks: {},
 }

@@ -121,7 +121,7 @@ export async function apply(ctx: Context): Promise<void> {
       else Reflect.deleteProperty(llm, 'discoverModels')
     }
   })
-  const configuration = () => entry.fiber!.config as ExtraConfig
+  const configuration = () => entry.fiber!.effectiveConfig as ExtraConfig
   const keyringMigrationNeeded = configuration().providerKeyringMigration.get() < 1
   if (keyringMigrationNeeded) {
     await keyringOverlay.migratePlaintext()

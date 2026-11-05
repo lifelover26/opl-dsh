@@ -4,7 +4,7 @@
 
 Linux CI 继续运行 Host / Client 类型检查、构建与全部自动测试。官方桌面兼容工作流在 macOS arm64 与 Windows 上下载并运行未修改的官方桌面，用独立数据目录验证增强包；它不需要模型账号，不访问实际用户 profile。
 
-开发依赖统一固定为 DSH `0.2.1-rc.5` API cohort，具体版本以 `package.json` 与锁文件为准。官方桌面以两个安装 feed 的实时版本为准，联合稳定 Release 同时记录实际官方版本与 OPL 增强版本。官方版本带 `-rc` 时仍属于上游候选阶段。macOS arm64 与 Windows 分别验收同一份交付增强包，任一平台未通过均不公开本次 Release；最终资格以该 Release 的双平台证据 JSON 为准。
+开发依赖统一固定为 DSH `0.2.2-rc.1`、Cordis `4.1.0` API cohort，具体版本以 `package.json` 与锁文件为准。官方桌面以两个安装 feed 的实时版本为准，联合稳定 Release 同时记录实际官方版本与 OPL 增强版本。官方版本带 `-rc` 时仍属于上游候选阶段。macOS arm64 与 Windows 分别验收同一份交付增强包，任一平台未通过均不公开本次 Release；最终资格以该 Release 的双平台证据 JSON 为准。
 
 ## 本机验证
 
@@ -15,6 +15,8 @@ node scripts/qualify-official-runtime.mjs --app "$HOME/Applications/DeepSeek Har
 ```
 
 Windows 的 `--app` 指向包含 `DeepSeek Harness.exe` 的目录。runner 校验官方签名与版本，通过官方插件管理接口向新建的临时 `opl-dsh-accept-*` profile 安装增强包，并指定独立 Electron user-data 目录。它只关闭自己启动的进程树；Suite、Skill 与安装回执均落在该临时根目录；不改用户 Skill 或快捷方式、不停止已有用户桌面。旧数据迁移固定读取临时空目录，避免导入真实账号和会话。
+
+Windows 安装器为版本比较与增强安装脚本设置 `ELECTRON_RUN_AS_NODE`，运行官方安装程序前清除此标记。官方程序安装失败时保留实际退出码，不继续安装增强层。
 
 隔离根目录由脚本使用 Node 的真实 `os.tmpdir()` 创建。macOS 的 `/tmp` 可能是指向 `/private/var/...` 的符号链接；不要手写 `/tmp/opl-dsh-accept-*`，否则会被隔离检查拒绝。
 

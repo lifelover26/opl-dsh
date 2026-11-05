@@ -1,7 +1,11 @@
 /** Exceptional edit controls; the message action owns normal selection. */
 import { useEffect, useSyncExternalStore } from 'react'
 import { IconCloseOutlineRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
-import { messageEditCopy, type MessageEditSession } from './message-edit-session.ts'
+import {
+  messageEditCopy,
+  messageEditUnavailableCopy,
+  type MessageEditSession,
+} from './message-edit-session.ts'
 import css from './StopEditControl.module.css'
 
 export interface MessageEditProps {
@@ -12,10 +16,7 @@ export interface MessageEditProps {
   onActiveChange?: (active: boolean) => void
 }
 
-/**
- * The normal entry sits on each user message. This composer seat retains only
- * actions that need a wider explanation: unconfirmed recovery and failures.
- */
+/** Composer controls for cancelling an edit, retrying history, and confirming recovery. */
 export function MessageEditControl({
   session,
   inputActions,
@@ -25,8 +26,12 @@ export function MessageEditControl({
 }: MessageEditProps) {
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const selection = snapshot.selection
-  const recovery = !locked && !snapshot.state?.busy ? snapshot.state?.recovery : undefined
-  const visible = selection !== undefined || recovery !== undefined || snapshot.error !== undefined
+  const unavailable = snapshot.unavailable
+  const recovery =
+    !locked && !snapshot.state?.busy && !unavailable ? snapshot.state?.recovery : undefined
+  const expanded = selection !== undefined || recovery !== undefined || snapshot.error !== undefined
+  const visible = expanded || unavailable !== undefined
+  const retryable = unavailable?.retryable === true
 
   useEffect(() => {
     void session.load()
@@ -35,9 +40,30 @@ export function MessageEditControl({
   }, [session, subscribeSession])
 
   useEffect(() => {
-    onActiveChange?.(visible)
+    if (!retryable) return
+    let stopped = false
+    let attempt = 0
+    let timer: ReturnType<typeof setTimeout>
+    const delays = [300, 1000]
+    const schedule = () => {
+      if (stopped || attempt >= delays.length) return
+      timer = setTimeout(async () => {
+        attempt++
+        await session.retry()
+        if (session.getSnapshot().unavailable?.retryable) schedule()
+      }, delays[attempt])
+    }
+    schedule()
+    return () => {
+      stopped = true
+      clearTimeout(timer)
+    }
+  }, [session, retryable])
+
+  useEffect(() => {
+    onActiveChange?.(expanded)
     return () => onActiveChange?.(false)
-  }, [visible, onActiveChange])
+  }, [expanded, onActiveChange])
 
   if (!visible) return null
   return (
@@ -66,6 +92,23 @@ export function MessageEditControl({
           >
             <IconCloseOutlineRegular />
           </button>
+        </Tooltip>
+      ) : null}
+      {unavailable ? (
+        <Tooltip label={messageEditUnavailableCopy[unavailable.reason]} side="top">
+          {retryable ? (
+            <button
+              type="button"
+              className={css.trigger}
+              disabled={locked}
+              data-opl-message-edit-retry=""
+              onClick={() => void session.retry()}
+            >
+              {messageEditCopy.retry}
+            </button>
+          ) : (
+            <span className={css.status}>{messageEditCopy.unavailable}</span>
+          )}
         </Tooltip>
       ) : null}
       {snapshot.error ? (

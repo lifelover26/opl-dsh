@@ -36,7 +36,7 @@ it('accepts ZCode tool identity remapping only when each toolCallId equals its r
 
 it('refuses a MiniMax success receipt when the old tail remains', async () => {
   const context = {
-    record: { acpSessionId: 'm' },
+    record: { acpSessionId: 'm', turns: [] },
     signal: new AbortController().signal,
     snapshot: () => ({
       agent: {

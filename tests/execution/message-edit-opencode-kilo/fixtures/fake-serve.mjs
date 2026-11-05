@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Local keyless stand-in for `opencode serve` / `kilo serve` used by the driver's focused
- * control-path test. It never calls a provider; it only serves the two public endpoints the
- * driver uses and enforces the same Basic-auth shape as the official CLI.
+ * control-path test. It never calls a provider; it serves public status/history/fork routes
+ * and enforces the same Basic authentication as the official CLI.
  */
 import { createServer } from 'node:http'
 import { writeFileSync } from 'node:fs'
@@ -21,6 +21,10 @@ const next = (prefix) => `${prefix}_${sequence++}`
 const sessions = new Map()
 const initial = process.env.FAKE_VENDOR_MESSAGES ? JSON.parse(process.env.FAKE_VENDOR_MESSAGES) : []
 sessions.set('ses_current', initial)
+// The official process-local status list omits idle sessions.
+const statuses = process.env.FAKE_VENDOR_STATUSES
+  ? JSON.parse(process.env.FAKE_VENDOR_STATUSES)
+  : {}
 
 function remap(prefix, sessionId) {
   const ids = new Map(
@@ -58,6 +62,11 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && url.pathname === '/doc') {
     response.writeHead(200, { 'content-type': 'application/json' })
     response.end('{}')
+    return
+  }
+  if (request.method === 'GET' && url.pathname === '/session/status') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify(statuses))
     return
   }
   const messageMatch = url.pathname.match(/^\/session\/([^/]+)\/message$/)

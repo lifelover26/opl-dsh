@@ -24,9 +24,8 @@ export async function sessionPermissions(ctx: Context, input: unknown, change: b
   if ('error' in resolved) throw resolved.error
   const { agent } = resolved
   const session = agent.session
-  const turn = ctx.sessionProjections.stateOf(session, 'turnBoundary')
-  const running =
-    agent.status === 'running' || (turn !== undefined && turn.openTurnStartSeq !== null)
+  const turn = ctx.agents.turnBoundaryOf(session)
+  const running = agent.status === 'running' || turn.openTurnStartSeq !== null
   if (change) {
     if (running) throw Error('session/permissions-busy: permission changes require an idle Session')
     owner.set(session, request.preset!)
@@ -39,7 +38,7 @@ export async function sessionPermissions(ctx: Context, input: unknown, change: b
     available: owner.names,
     defaultPreset: owner.defaultPreset,
     running,
-    turn: turn?.openTurnStartSeq == null ? null : turn.lastTurn,
+    turn: turn.openTurnStartSeq === null ? null : turn.lastTurn,
   }
   return change ? { permissions: permission, appliesFrom: 'next-confined-call' } : permission
 }

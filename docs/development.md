@@ -59,7 +59,7 @@ Issue 在实现前记录这些判断，PR 在合并前核对实现与用户目�
 
 ## 构建与契约
 
-开发使用 Node.js 24。
+开发使用 Node.js 24.9.0 或更新版本。
 
 SuperAgent 原型以固定源码快照保存在 `vendor/dsh-superagent`，通过同一 npm workspace 和锁文件安装开发依赖。根类型检查和测试同时覆盖它；构建生成独立 bundle 并把摘要写入套件清单。官方服务仍为运行时 peer，原版面板与存储保持自身 owner；适配范围见其 `UPSTREAM.md` 和[使用说明](superagent.md)。
 

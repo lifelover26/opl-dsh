@@ -202,6 +202,63 @@ it('starts execution catalog while the official model catalog is still pending',
 })
 
 describe('external completion observations', () => {
+  it('does not let an old history observation close a replacement connection', async () => {
+    const { service, root } = await setup()
+    const session = await start(service, root)
+    const owner = service as unknown as {
+      records: Map<string, HarnessSession>
+      active: Map<string, { acp: AcpProcess }>
+      externalContext(record: HarnessSession, signal: AbortSignal): ExternalEditContext
+    }
+    const original = owner.active.get(session.id)!
+    const observation = owner.externalContext(
+      owner.records.get(session.id)!,
+      new AbortController().signal,
+    )
+    const dispose = vi.fn(async () => {})
+    owner.active.set(session.id, { ...original, acp: { dispose } as unknown as AcpProcess })
+    try {
+      await expect(observation.disconnect()).rejects.toThrow('连接已变化')
+      expect(dispose).not.toHaveBeenCalled()
+    } finally {
+      owner.active.set(session.id, original)
+    }
+  })
+
+  it.each(['opencode', 'kilo'])(
+    'persists %s result input identity even when final history is unavailable',
+    async (harness) => {
+      const { service, root, options } = await setup()
+      const session = await start(service, root)
+      const owner = service as unknown as {
+        records: Map<string, HarnessSession>
+        active: Map<string, { acp: AcpProcess }>
+        pinSession(): Promise<void>
+        observeEditHistory(): Promise<ExternalEditHistory | undefined>
+        connectAdmitted(): Promise<void>
+      }
+      owner.records.get(session.id)!.harnessRef = harness
+      vi.spyOn(owner, 'pinSession').mockResolvedValue()
+      vi.spyOn(owner, 'observeEditHistory').mockResolvedValue(undefined)
+      vi.spyOn(owner, 'connectAdmitted').mockResolvedValue()
+      const acp = owner.active.get(session.id)!.acp
+      const request = acp.request.bind(acp)
+      vi.spyOn(acp, 'request').mockImplementation((method, ...args) =>
+        method === 'session/prompt'
+          ? Promise.resolve({ stopReason: 'refusal', userMessageId: 'exact-provider-input' })
+          : request(method, ...args),
+      )
+      await service.prompt({ sessionId: session.id, text: 'one', operationId: 'one' })
+      const settled = await wait(service, session.id)
+      expect(settled.turns[0]?.native?.userMessageId).toBe('exact-provider-input')
+      await service.dispose()
+      const stored = await new HarnessSessionStore(options.home).load()
+      expect(stored.find((row) => row.id === session.id)?.turns[0]?.native?.userMessageId).toBe(
+        'exact-provider-input',
+      )
+    },
+  )
+
   it.each([false, true])(
     'finishes history reconnection before completion (history read fails=%s)',
     async (fails) => {
@@ -527,6 +584,41 @@ async function nativeSetup(
     },
   }
 }
+
+it('reads saved edit choices while the original model is absent without launching a CLI', async () => {
+  const { Session, SessionId } = await import('@deepseek-ai/dsh-session')
+  const f = await nativeSetup([])
+  const real = Session.create(SessionId('saved-edit-session'))
+  real.append(
+    'user/message',
+    createUserMessage({
+      source: { kind: 'user', rpcId: 'original' },
+      content: [{ type: 'text', text: 'saved input' }],
+    }),
+    { surfaceOp: 'append' },
+  )
+  const record = {
+    id: 'saved-pi-record',
+    nativeSessionId: real.id,
+    acpSessionId: 'vendor-exact',
+    harnessRef: 'pi',
+    turns: [{ operationId: 'original', native: { userMessageId: 'vendor-input', officialSeq: 0 } }],
+  } as HarnessSession
+  const owner = f.service as unknown as {
+    stopEditTarget(): { record: HarnessSession; harness: string }
+    connectAdmitted(): Promise<void>
+  }
+  Object.assign(f.ctx, { sessions: { get: () => real }, agents: { get: () => undefined } })
+  vi.spyOn(owner, 'stopEditTarget').mockReturnValue({ record, harness: 'pi' })
+  const connect = vi.spyOn(owner, 'connectAdmitted').mockRejectedValue(Error('catalog removed'))
+  expect(await f.service.messageEditState({ sessionId: real.id })).toMatchObject({
+    supported: true,
+    busy: false,
+    pending: false,
+    choices: [{ seq: 0, text: 'saved input' }],
+  })
+  expect(connect).not.toHaveBeenCalled()
+})
 describe('native conversation combinations', () => {
   it('reads a cold Session from official projections instead of the profile default without activating an Agent', async () => {
     const { service, ctx, session } = await nativeSetup()
@@ -2333,6 +2425,8 @@ it.each([
   'ephemeral-ready-restart',
   'unsent',
   'ephemeral-unsent',
+  'legacy-unbound-first',
+  'driver-disconnect',
 ] as const)(
   'edits an external conversation with recovery mode=%s',
   async (mode) => {
@@ -2359,6 +2453,9 @@ it.each([
         ...systemEnvironment(),
         OPL_FIXTURE_EDIT: '1',
         OPL_FIXTURE_EDIT_PERSIST: '1',
+        ...(['legacy-unbound-first', 'quota'].includes(String(mode))
+          ? { OPL_FIXTURE_FRESH_EDIT: '1' }
+          : {}),
         ...(quota
           ? { OPL_FIXTURE_EDIT_FAILURE: mode === 'quota-restart' ? 'quota-recorded' : 'quota' }
           : {}),
@@ -2447,8 +2544,47 @@ it.each([
       real.append('step/end', { turn: number, step: 1 })
       real.append('turn/end', { turn: number, reason: { kind: 'completed' } })
     }
+    const initialRecord = (await f.service.list()).sessions.find(
+      (row) => row.nativeSessionId === real.id,
+    )!
+    const initialVendorId = initialRecord.acpSessionId
+    let originalHistory: string | undefined
+    if (mode === 'legacy-unbound-first') {
+      originalHistory = await readFile(join(f.root, `edit-${initialVendorId}.json`), 'utf8')
+      const owner = f.service as unknown as {
+        records: Map<string, HarnessSession>
+        save(record: HarnessSession): Promise<void>
+      }
+      const row = owner.records.get(initialRecord.id)!
+      delete row.turns[0]!.native!.userMessageId
+      await owner.save(row)
+    }
     const before = await f.service.messageEditState({ sessionId: real.id })
-    expect(before.choices.map((item) => item.text)).toEqual(initialRequests.map(() => 'same'))
+    expect(before.choices.map((item) => item.text)).toEqual(
+      mode === 'legacy-unbound-first' ? ['same'] : initialRequests.map(() => 'same'),
+    )
+    if (mode === 'legacy-unbound-first') {
+      const activeUsers = real.snapshotEvents().filter((entry) => entry.type === 'user/message')
+      await expect(
+        f.service.messageEditSend({
+          targetSeq: Number(activeUsers[1]!.seq),
+          head: before.head,
+          prompt: {
+            sessionId: real.id,
+            requestId: 'must-not-fork' as never,
+            mode: 'queue',
+            content: [{ type: 'text', text: 'rejected' }],
+          },
+        }),
+      ).rejects.toThrow('消息已变化')
+      const owner = f.service as unknown as {
+        externalMessageEdits: ExternalMessageEditTransactions
+      }
+      expect(owner.externalMessageEdits.intent(real.id)).toBeUndefined()
+      expect(await readFile(join(f.root, `edit-${initialVendorId}.json`), 'utf8')).toBe(
+        originalHistory,
+      )
+    }
     if (mode === 'cached-disconnected') {
       const owner = f.service as unknown as {
         active: Map<string, { acp: AcpProcess; bridgeStop?: () => Promise<void> }>
@@ -2482,6 +2618,18 @@ it.each([
           const result = await driver.rewind(context, input)
           await context.transport().request('session/new', { sessionId: 'ephemeral-fork' })
           return { ...result, sessionId: 'ephemeral-fork', ephemeral: true }
+        },
+      })
+    }
+    if (mode === 'driver-disconnect') {
+      const driver = createGrokMessageEditDriver()
+      const owner = f.service as unknown as { externalDriver(): ExternalMessageEditDriver }
+      vi.spyOn(owner, 'externalDriver').mockReturnValue({
+        read: driver.read,
+        rewind: async (context, input) => {
+          const result = await driver.rewind(context, input)
+          await context.disconnect()
+          return { ...result, sessionId: 'disconnected-fork' }
         },
       })
     }
@@ -2598,7 +2746,20 @@ it.each([
     expect(rows[0]!.turns).toHaveLength(1)
     const finalText = rejected ? 'final' : 'replacement'
     expect(rows[0]!.turns[0]!.prompt).toBe('user: ' + finalText)
-    expect(rows[0]!.acpSessionId).toBe(mode === true ? 'ephemeral-fork' : 'test-native')
+    if (mode === 'legacy-unbound-first') {
+      expect(rows[0]!.acpSessionId).not.toBe(initialVendorId)
+      expect(await readFile(join(f.root, `edit-${initialVendorId}.json`), 'utf8')).toBe(
+        originalHistory,
+      )
+    } else if (mode === 'quota') expect(rows[0]!.acpSessionId).not.toBe(initialVendorId)
+    else
+      expect(rows[0]!.acpSessionId).toBe(
+        mode === 'driver-disconnect'
+          ? 'disconnected-fork'
+          : mode === true
+            ? 'ephemeral-fork'
+            : 'test-native',
+      )
     expect(
       real
         .deriveMessages()

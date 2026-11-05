@@ -21,10 +21,13 @@ import { join, resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import Storage, { type KvUnit, type StorageBackend } from '@deepseek-ai/dsh-storage'
 import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import { AgentRegistry } from '@deepseek-ai/dsh-agent'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import TaskFeedbackService from '../../src/collaboration/host/feedback/index.ts'
 import { harnessTaskIdOf } from '../../src/collaboration/host/feedback/state.ts'
 import type { WakeDelivery } from '../../src/collaboration/host/feedback/types.ts'
+import { installSessionWaitProjection } from '../../src/execution/host/session-wait.ts'
 import {
   GROK_COMBINATION,
   HarnessService,
@@ -199,11 +202,12 @@ function deployment(root: string, initial: DeploymentOptions = {}) {
     next.set('storageDomain', new DomainFacility(next, { backend: 'fixture' }))
     next.provide('sessions')
     next.set('sessions', { get: () => undefined } as unknown as Context['sessions'])
-    next.provide('sessionProjections')
-    next.set('sessionProjections', {
-      register: () => {},
-      stateOf: () => undefined,
-    } as unknown as Context['sessionProjections'])
+    await next.plugin(SessionProjectionRegistry)
+    await next.plugin(AgentRegistry)
+    await next.plugin({
+      inject: ['sessionProjections'],
+      apply: installSessionWaitProjection,
+    })
     await next.plugin(TaskFeedbackService, {
       autoDeliver: options.autoDeliver ?? true,
       claimLeaseMs: 10_000,

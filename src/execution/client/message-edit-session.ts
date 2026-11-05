@@ -1,6 +1,10 @@
 /** One Session's message-edit selection, shared by message actions and recovery UI. */
 import type { ExecutionCall } from '../../shared/client/remote-call.ts'
-import type { MessageEditChoice, MessageEditState } from '../contracts/message-edit.ts'
+import type {
+  MessageEditChoice,
+  MessageEditState,
+  MessageEditUnavailable,
+} from '../contracts/message-edit.ts'
 
 export interface EditSelection {
   seq: number
@@ -12,6 +16,8 @@ export interface MessageEditSnapshot {
   state?: MessageEditState | undefined
   selection?: EditSelection | undefined
   error?: string | undefined
+  /** Latest read status; unavailable choices cannot acquire a selection. */
+  unavailable?: MessageEditUnavailable | undefined
 }
 
 export const messageEditCopy = {
@@ -21,7 +27,16 @@ export const messageEditCopy = {
   storage: '无法保存编辑状态，请重试',
   stop: '请先停止当前对话',
   recover: '重试未确认的编辑',
+  retry: '重试编辑',
+  unavailable: '暂不可编辑',
 } as const
+
+export const messageEditUnavailableCopy: Record<MessageEditUnavailable['reason'], string> = {
+  'history-unavailable': '无法读取可编辑消息',
+  'history-busy': '消息历史尚未就绪',
+  'mapping-unavailable': '消息身份尚未确认，请新建会话继续',
+  'model-unavailable': '当前模型不可用于编辑',
+}
 
 const keyFor = (sessionId: string) => `opl-message-edit-v1:${sessionId}`
 
@@ -65,6 +80,8 @@ export class MessageEditSession {
   private loadFlight: Promise<void> | undefined
   private loadGeneration = 0
   private loadAgain = false
+  private lastChoices: MessageEditChoice[] = []
+  private recoveryFlight: Promise<boolean> | undefined
 
   constructor(
     readonly sessionId: string,
@@ -81,7 +98,13 @@ export class MessageEditSession {
   }
 
   choice(seq: number): MessageEditChoice | undefined {
-    return this.snapshot.state?.choices.find((choice) => choice.seq === seq)
+    const choices = this.snapshot.unavailable ? this.lastChoices : this.snapshot.state?.choices
+    return choices?.find((choice) => choice.seq === seq)
+  }
+
+  /** Retry a read without queuing another copy of a read already in progress. */
+  retry(): Promise<void> {
+    return this.loadFlight ?? this.load()
   }
 
   async load(): Promise<void> {
@@ -96,15 +119,29 @@ export class MessageEditSession {
         const selection = this.snapshot.selection
         if (
           selection &&
+          !state.busy &&
           !state.pending &&
+          !state.unavailable &&
           !state.choices.some((choice) => choice.seq === selection.seq)
         )
           this.removeSelection()
-        this.publish({ ...this.snapshot, state, error: undefined })
+        if (!state.unavailable) this.lastChoices = state.choices
+        this.publish({
+          ...this.snapshot,
+          state,
+          unavailable: state.unavailable,
+          error: undefined,
+        })
       })
       .catch(() => {
         if (generation === this.loadGeneration && !this.loadAgain)
-          this.publish({ ...this.snapshot, error: messageEditCopy.failed })
+          this.publish({
+            ...this.snapshot,
+            unavailable:
+              this.snapshot.state?.supported === false && !this.snapshot.unavailable?.retryable
+                ? undefined
+                : { reason: 'history-unavailable', retryable: true },
+          })
       })
       .finally(() => {
         if (this.loadFlight === flight) this.loadFlight = undefined
@@ -123,6 +160,7 @@ export class MessageEditSession {
       return false
     }
     if (!this.snapshot.state) await this.load()
+    if (this.snapshot.unavailable) return false
     const state = this.snapshot.state
     const choice = state?.choices.find((candidate) => candidate.seq === seq)
     if (!state || !choice || !state.supported) {
@@ -161,18 +199,26 @@ export class MessageEditSession {
     this.removeSelection()
   }
 
-  async recover(): Promise<boolean> {
+  recover(): Promise<boolean> {
+    if (this.recoveryFlight) return this.recoveryFlight
     const recovery = this.snapshot.state?.recovery
-    if (!recovery) return false
-    try {
-      await this.call('message-edit-send', recovery)
-      this.publish({ ...this.snapshot, error: undefined })
-      await this.load()
-      return true
-    } catch {
-      this.publish({ ...this.snapshot, error: messageEditCopy.failed })
-      return false
-    }
+    if (!recovery || this.snapshot.state?.busy || this.snapshot.unavailable)
+      return Promise.resolve(false)
+    const flight = this.call('message-edit-send', recovery)
+      .then(async () => {
+        this.publish({ ...this.snapshot, error: undefined })
+        await this.load()
+        return true
+      })
+      .catch(() => {
+        this.publish({ ...this.snapshot, error: messageEditCopy.failed })
+        return false
+      })
+      .finally(() => {
+        if (this.recoveryFlight === flight) this.recoveryFlight = undefined
+      })
+    this.recoveryFlight = flight
+    return flight
   }
 
   dismissError(): void {

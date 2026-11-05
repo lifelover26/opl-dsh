@@ -5,6 +5,11 @@ export interface MessageEditChoice {
   seq: number
   text: string
 }
+/** A history observation failed without changing the selected message or sending a prompt. */
+export interface MessageEditUnavailable {
+  reason: 'history-unavailable' | 'history-busy' | 'mapping-unavailable' | 'model-unavailable'
+  retryable: boolean
+}
 export interface MessageEditState {
   sessionId: string
   supported: boolean
@@ -13,6 +18,8 @@ export interface MessageEditState {
   pending: boolean
   /** Exact durable input for an explicit retry; never submitted by a state read. */
   recovery?: MessageEditSend
+  /** A supported engine can temporarily lack a verified editable history. */
+  unavailable?: MessageEditUnavailable
   choices: MessageEditChoice[]
 }
 export interface MessageEditSend {

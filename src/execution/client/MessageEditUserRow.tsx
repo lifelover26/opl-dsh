@@ -10,12 +10,66 @@ import type {
   ChatNodeViewProps,
   UserContentAttachment,
 } from '@deepseek-ai/dsh-client-ui-chat/client'
+import type { PropsRenderSlots, SessionIdOf, StoredEntry } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { MessageEditSession } from './message-edit-session.ts'
 import { MessageEditAction } from './MessageEditAction.tsx'
 import css from './MessageEditUserRow.module.css'
 
-export type MessageEditUserRowProps = ChatNodeViewProps<'user'> & {
-  edit: MessageEditSession
+export type MessageEditUserRowProps = ChatNodeViewProps<'user'> &
+  PropsRenderSlots<'conversation.chat.user.before'> & {
+    readonly sessionId: SessionIdOf
+    edit: MessageEditSession
+  }
+
+/**
+ * Decorate the official user row while retaining its message-source child slot.
+ * @param slots - official registration inspection and change subscription.
+ * @param messageEditFor - edit state belonging to the rendered Session.
+ * @returns disposer restoring the resident row unless another plugin replaced it.
+ */
+export function installMessageEditUserRows(
+  slots: Pick<SlotRegistry, 'entries' | 'subscribe'>,
+  messageEditFor: (sessionId: string) => MessageEditSession,
+): () => void {
+  type ResidentProps = Omit<MessageEditUserRowProps, 'edit'>
+  let resident:
+    | {
+        entry: StoredEntry
+        original: unknown
+        decorated: (props: ResidentProps) => ReturnType<typeof MessageEditUserRow>
+      }
+    | undefined
+  const restore = () => {
+    if (resident === undefined) return
+    const { entry, original, decorated } = resident
+    resident = undefined
+    if (entry.component === decorated) entry.component = original
+  }
+  const reconcile = () => {
+    const entry = slots
+      .entries('conversation.chat.node')
+      .find(
+        (entry) =>
+          entry.options.key === 'user' &&
+          entry.children?.['conversation.chat.user.before'] !== undefined,
+      )
+    if (entry === resident?.entry) return
+    restore()
+    if (entry === undefined) return
+    const original = entry.component
+    const decorated = (props: ResidentProps) => (
+      <MessageEditUserRow {...props} edit={messageEditFor(props.sessionId)} />
+    )
+    entry.component = decorated
+    resident = { entry, original, decorated }
+  }
+  const off = slots.subscribe('conversation.chat.node', reconcile)
+  reconcile()
+  return () => {
+    off()
+    restore()
+  }
 }
 
 /** Use the official prepared-content Factory and keep the official row geometry. */
@@ -23,6 +77,7 @@ export function MessageEditUserRow({
   node,
   loadImage,
   renderFactorySlot,
+  renderSlotChain,
   edit,
   useInput,
   inputActions,
@@ -57,6 +112,11 @@ export function MessageEditUserRow({
   const time = formatMessageClock(node.data.time, t, day)
   return (
     <div className={css.row}>
+      {renderSlotChain(
+        'conversation.chat.user.before',
+        { source: node.data.source, kind: node.kind },
+        { fallback: null },
+      )}
       {renderFactorySlot('conversation.chat.user.content', {
         content,
         loadImage,

@@ -10,6 +10,12 @@ const THREAD = `feishu:${CHAT}:om_1`
 const followup = (id: string, text: string, overrides: Record<string, unknown> = {}) => feishu(id, text, { mentions: [], root_id: 'om_1',
   ...overrides })
 const notices = (host: Host) => host.relays(host.runtime.masterId).filter(item => item.kind === 'follow_up')
+const decides = /its worker decides whether it belongs there/
+const settle = async (host: Host, id: string, text: string, sender?: string) => {
+  const message = followup(id, text, sender ? { sender_id: sender } : {})
+  host.runtime.receive(message); await host.runtime.idle()
+  return message.id
+}
 
 it('delivers a follow-up to the worker and tells the main Session with a card, without an Eval', async () => {
   h = await startRuntime()
@@ -44,47 +50,48 @@ it('sends a person\'s message that reaches no ticket, such as only one a person 
   expect(h.candidates()).toEqual([message.id])
 })
 
-it('leaves a delivered follow-up to its ticket\'s worker: the main Session may stop the ticket on it, and route it only once handed back',
-  async () => {
+it('keeps an inferred follow-up with its worker until a person requeues it from the panel', async () => {
   h = await startRuntime()
-  const { ticket, sessionId } = await h.acceptedTicket(feishu('1', '@bot 修一下回归'))
-  const other = await h.acceptedTicket(feishu('3', '@bot 另一件事'))
-  const settle = async (id: string, text: string, sender?: string) => {
-    const message = followup(id, text, sender ? { sender_id: sender } : {})
-    h!.runtime.receive(message); await h!.runtime.idle()
-    return message.id
-  }
-  const master = (name: string, args: Record<string, unknown>) => h!.runTool(h!.runtime.masterId, name, args)
-  const decides = /its worker decides whether it belongs there/
+  const { ticket } = await h.acceptedTicket(feishu('1', '@bot 修一下回归'))
   // A guest's follow-up stays inferred, so its stop does not stop the work; the main Session cannot route or requeue it.
-  const guest = await settle('4', '别做了', 'ou_guest')
-  expect(await h!.route({ kind: 'stop', ticket_id: ticket.id, trigger_id: guest })).toMatchObject({ decision: 'ignore' })
-  await expect(h!.route({ kind: 'accept', trigger_id: guest, title: 'More', worktree_name: 'more', acknowledgement: 'ok' }))
+  const guest = await settle(h, '4', '别做了', 'ou_guest')
+  expect(await h.route({ kind: 'stop', ticket_id: ticket.id, trigger_id: guest })).toMatchObject({ decision: 'ignore' })
+  await expect(h.route({ kind: 'accept', trigger_id: guest, title: 'More', worktree_name: 'more', acknowledgement: 'ok' }))
     .rejects.toThrow(decides)
-  await expect(master('orchestrator_trigger_requeue', { trigger_id: guest })).rejects.toThrow(decides)
+  await expect(h.runTool(h.runtime.masterId, 'orchestrator_trigger_requeue', { trigger_id: guest })).rejects.toThrow(decides)
   // A person may still send it to Eval from the panel.
   expect(await h.api('POST', `triggers/${encodeURIComponent(guest)}/requeue`)).toMatchObject({ status: 200, body: { queued: true } })
   await h.runtime.pump(); await h.runtime.idle()
   expect(h.candidates()).toContain(guest)
+})
+
+it('routes a delivered follow-up only after every worker that owns it hands it back', async () => {
+  h = await startRuntime()
+  const { sessionId } = await h.acceptedTicket(feishu('1', '@bot 修一下回归'))
+  const other = await h.acceptedTicket(feishu('3', '@bot 另一件事'))
   // Alice's follow-ups carry her authority once the worker hands them back: one goes to the other ticket, one becomes new work.
-  const attach = await settle('5', '这个其实是另一件事的')
-  await expect(h!.route({ kind: 'attach', ticket_id: other.ticket.id, trigger_id: attach })).rejects.toThrow(decides)
+  const attach = await settle(h, '5', '这个其实是另一件事的')
+  await expect(h.route({ kind: 'attach', ticket_id: other.ticket.id, trigger_id: attach })).rejects.toThrow(decides)
   await h.runTool(sessionId, 'orchestrator_trigger_handback', { trigger_id: attach, reason: 'It is about the other request.' })
-  expect(await h!.route({ kind: 'attach', ticket_id: other.ticket.id, trigger_id: attach }))
+  expect(await h.route({ kind: 'attach', ticket_id: other.ticket.id, trigger_id: attach }))
     .toMatchObject({ ticket: expect.objectContaining({ ticket_id: other.ticket.id }) })
-  const work = await settle('6', '另外把导出按钮也加上')
+  const work = await settle(h, '6', '另外把导出按钮也加上')
   const request = { trigger_id: work, title: '导出按钮', worktree_name: 'export', acknowledgement: '收到，加导出按钮。' }
-  await expect(h!.route({ kind: 'accept', ...request })).rejects.toThrow(decides)
+  await expect(h.route({ kind: 'accept', ...request })).rejects.toThrow(decides)
   // The attach subscribed the other ticket to this thread, so its worker decides the message too; it is new work once both
   // hand it back.
   await h.runTool(sessionId, 'orchestrator_trigger_handback', { trigger_id: work, reason: 'It asks for an export button.' })
-  await expect(h!.route({ kind: 'accept', ...request })).rejects.toThrow(decides)
+  await expect(h.route({ kind: 'accept', ...request })).rejects.toThrow(decides)
   await h.runTool(other.sessionId, 'orchestrator_trigger_handback', { trigger_id: work, reason: 'Not this ticket either.' })
-  const accepted = await h!.route({ kind: 'accept', ...request })
+  const accepted = await h.route({ kind: 'accept', ...request })
   expect(h.runtime.store.tickets.get((accepted.ticket as { ticket_id: string }).ticket_id)!.mandate).toMatchObject({ strength: 'explicit' })
-  // A stop on a person's request needs no hand-back.
-  const stop = await settle('7', '先停一下')
-  expect(await h!.route({ kind: 'stop', ticket_id: ticket.id, trigger_id: stop })).toMatchObject({ decision: 'stop' })
+})
+
+it('lets the main Session stop a ticket on a person\'s delivered follow-up without handback', async () => {
+  h = await startRuntime()
+  const { ticket } = await h.acceptedTicket(feishu('1', '@bot 修一下回归'))
+  const stop = await settle(h, '7', '先停一下')
+  expect(await h.route({ kind: 'stop', ticket_id: ticket.id, trigger_id: stop })).toMatchObject({ decision: 'stop' })
   expect(h.runtime.store.tickets.get(ticket.id)!.ended).toMatchObject({ by: 'human', outcome: 'stopped' })
 })
 

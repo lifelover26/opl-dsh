@@ -11,7 +11,8 @@ export const inject = ['sessionProjections']
 /**
  * Register the count projection for this plugin's lifetime.
  * @param ctx - Host context with the official session-projection service.
+ * @returns once the registry can publish current conversation counts.
  */
-export function apply(ctx: Context): void {
-  ctx.sessionProjections.register(conversationCountsProjection)
+export async function apply(ctx: Context): Promise<void> {
+  await ctx.sessionProjections.register(conversationCountsProjection)
 }

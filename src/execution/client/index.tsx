@@ -11,7 +11,7 @@ import { SETTINGS_ORDER } from '../../shared/client/settings-navigation.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import { watchStopEditSession } from './stop-edit-session-watch.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { ModelSelectionProjection } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { ModelSelectionProjection } from '@deepseek-ai/dsh-agent/types'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -25,7 +25,7 @@ import { DeliverAssetsRow } from './DeliverAssetsRow.tsx'
 import { deliverAssetsDefinition, DELIVER_ASSETS_KIND } from './deliver-assets.ts'
 import { MessageEditControl } from './MessageEditControl.tsx'
 import { MessageEditSession, type EditSelection } from './message-edit-session.ts'
-import { MessageEditUserRow } from './MessageEditUserRow.tsx'
+import { installMessageEditUserRows } from './MessageEditUserRow.tsx'
 import {
   installMessageEditViews,
   installMessageEditNavigation,
@@ -91,7 +91,7 @@ function modelSelectionFace(ctx: Context, sessionId: string) {
 function sessionChanges(ctx: Context, sessionId: string, listener: () => void): () => void {
   const binding = ctx.sessions.binding(sessionId as SessionId)
   if (!binding) return () => {}
-  const off = watchStopEditSession(binding.session, listener)
+  const off = watchStopEditSession(binding.session, listener, binding.eventSource)
   const offModel = modelSelectionFace(ctx, sessionId)?.subscribe(listener)
   return () => {
     off()
@@ -202,22 +202,7 @@ export function apply(ctx: Context, config: ClientConfig = {}): void {
       LiveTranscriptRow,
     ),
   )
-  ctx.slots.inject('conversation.chat.node', () => {
-    const dispose = ctx.slots.register(
-      {
-        name: 'conversation.chat.node',
-        key: 'user',
-        priority: -1,
-        locale: 'chat',
-        inject: (sessionId) => {
-          const edit = messageEditFor(sessionId)
-          return { edit }
-        },
-      },
-      MessageEditUserRow,
-    )
-    return dispose
-  })
+  ctx.effect(() => installMessageEditUserRows(ctx.slots, messageEditFor))
   ctx.slots.inject('conversation.chat.node', () =>
     ctx.slots.register(
       { name: 'conversation.chat.node', key: DELIVER_ASSETS_KIND, locale: 'chat' },

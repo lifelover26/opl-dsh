@@ -413,10 +413,27 @@ try {
       operationId: crypto.randomUUID(),
     })
     const result = await rpc('harness', 'wait', { sessionId: s.id })
+    const failures = []
+    if (result.state !== 'completed') {
+      const history = await rpc('session', 'snapshot', {
+        request: {
+          address: { kind: 'session', sessionId: s.acpSessionId },
+          maxMessages: 50,
+        },
+      })
+      for (const { event } of history.records) {
+        if (event?.type !== 'turn/end' || event.data.reason.kind !== 'error') continue
+        const { code, message } = event.data.reason.error
+        failures.push({ code, message })
+      }
+    }
     assert.equal(
       result.state,
       'completed',
-      JSON.stringify(result.turns.map((t) => ({ state: t.state, error: t.error }))),
+      JSON.stringify({
+        turns: result.turns.map((t) => ({ state: t.state, error: t.error })),
+        failures,
+      }),
     )
   }
   assert(requests.some((r) => r.path.endsWith('/messages') && r.key === 'fixture-deepseek'))

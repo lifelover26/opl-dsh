@@ -19,7 +19,7 @@ export interface ExternalEditHistory {
   sessionId: string
   token: string
   boundaries: ExternalEditBoundary[]
-  /** Latest input whose terminal reply and idle engine state were both read from the vendor. */
+  /** Latest input with a verified terminal reply or owned engine exit and stable idle history. */
   settledInputId?: string
 }
 
@@ -42,7 +42,7 @@ export interface ExternalEditContext {
 export interface ExternalEditResult {
   sessionId: string
   retained: { previousId: string; nextId: string }[]
-  /** Pi can allocate an empty identity that becomes durable only after the next prompt. */
+  /** The new empty session is already active and need not support loading before its first prompt. */
   ephemeral?: boolean
 }
 

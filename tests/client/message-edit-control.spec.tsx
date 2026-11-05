@@ -1,15 +1,19 @@
 import { createTestDom } from './dom.ts'
-import { act, createElement } from 'react'
+import { act, createElement, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { ExecutionCall } from '../../src/shared/client/remote-call.ts'
 import { MessageEditControl } from '../../src/execution/client/MessageEditControl.tsx'
 import { MessageEditSession } from '../../src/execution/client/message-edit-session.ts'
-import type { MessageEditSend } from '../../src/execution/contracts/message-edit.ts'
+import type {
+  MessageEditSend,
+  MessageEditState,
+} from '../../src/execution/contracts/message-edit.ts'
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconCloseOutlineRegular: () => null,
-  Tooltip: ({ children }: { children: unknown }) => children,
+  Tooltip: ({ children, label }: { children: ReactNode; label: string }) =>
+    createElement('span', { title: label }, children),
 }))
 
 type ShimNode = {
@@ -82,6 +86,7 @@ Object.defineProperty(globalThis, 'localStorage', {
 let root: Root
 afterEach(async () => {
   await act(async () => root?.unmount())
+  vi.useRealTimers()
 })
 
 function buttons(scope: ShimNode): ShimNode[] {
@@ -204,4 +209,174 @@ it('hides recovery during a running edit and clears a stale read after a session
   expect(seen).not.toContain(recovery)
   expect(session.getSnapshot().state?.pending).toBe(false)
   expect(container.textContent).not.toContain('重试未确认的编辑')
+})
+
+function availableState(sessionId = 'retry-session'): MessageEditState {
+  return {
+    sessionId,
+    supported: true,
+    busy: false,
+    pending: false,
+    head: 5,
+    choices: [{ seq: 3, text: '编辑原文' }],
+  }
+}
+
+it('offers a compact read retry with the failure in a tooltip and retains model controls', async () => {
+  const call = vi
+    .fn()
+    .mockRejectedValueOnce(Error('private transport failure'))
+    .mockResolvedValueOnce(availableState())
+  const session = new MessageEditSession('retry-session', call as ExecutionCall)
+  const onActiveChange = vi.fn()
+  const setDraft = vi.fn()
+  const container = dom.container()
+  root = createRoot(container as unknown as HTMLElement)
+  await act(async () =>
+    root.render(
+      createElement(MessageEditControl, {
+        session,
+        inputActions: { setDraft },
+        onActiveChange,
+      }),
+    ),
+  )
+  expect(container.textContent).toBe('重试编辑')
+  expect(buttons(container)[0]?.parentNode?.getAttribute?.('title')).toBe('无法读取可编辑消息')
+  expect(onActiveChange).not.toHaveBeenCalledWith(true)
+  await act(async () => {
+    buttons(container)[0]!.click!()
+    buttons(container)[0]!.click!()
+  })
+  expect(call).toHaveBeenCalledTimes(2)
+  expect(container.textContent).toBe('')
+  expect(setDraft).not.toHaveBeenCalled()
+})
+
+it('bounds automatic history retries and leaves further retries explicit', async () => {
+  vi.useFakeTimers()
+  const state: MessageEditState = {
+    ...availableState(),
+    choices: [],
+    unavailable: { reason: 'history-busy', retryable: true },
+  }
+  const call = vi.fn().mockResolvedValue(state)
+  const session = new MessageEditSession(state.sessionId, call as ExecutionCall)
+  const container = dom.container()
+  root = createRoot(container as unknown as HTMLElement)
+  await act(async () =>
+    root.render(
+      createElement(MessageEditControl, { session, inputActions: { setDraft: vi.fn() } }),
+    ),
+  )
+  expect(call).toHaveBeenCalledTimes(1)
+  await act(async () => vi.advanceTimersByTimeAsync(300))
+  expect(call).toHaveBeenCalledTimes(2)
+  await act(async () => vi.advanceTimersByTimeAsync(1000))
+  expect(call).toHaveBeenCalledTimes(3)
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  expect(call).toHaveBeenCalledTimes(3)
+  await act(async () => buttons(container)[0]!.click!())
+  expect(call).toHaveBeenCalledTimes(4)
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  expect(call).toHaveBeenCalledTimes(4)
+  expect(call.mock.calls.every(([method]) => method === 'message-edit-state')).toBe(true)
+})
+
+it.each(['mapping-unavailable', 'model-unavailable'] as const)(
+  'does not retry %s automatically or reserve the model picker width',
+  async (reason) => {
+    vi.useFakeTimers()
+    const call = vi.fn().mockResolvedValue({
+      ...availableState(),
+      choices: [],
+      unavailable: { reason, retryable: false },
+    })
+    const session = new MessageEditSession('retry-session', call as ExecutionCall)
+    const onActiveChange = vi.fn()
+    const container = dom.container()
+    root = createRoot(container as unknown as HTMLElement)
+    await act(async () =>
+      root.render(
+        createElement(MessageEditControl, {
+          session,
+          inputActions: { setDraft: vi.fn() },
+          onActiveChange,
+        }),
+      ),
+    )
+    await act(async () => vi.advanceTimersByTimeAsync(60_000))
+    expect(call).toHaveBeenCalledTimes(1)
+    expect(buttons(container)).toHaveLength(0)
+    expect(container.textContent).toBe('暂不可编辑')
+    if (reason === 'mapping-unavailable')
+      expect(
+        (container as ShimNode).childNodes?.[0]?.childNodes?.[0]?.getAttribute?.('title'),
+      ).toBe('消息身份尚未确认，请新建会话继续')
+    expect(onActiveChange).not.toHaveBeenCalledWith(true)
+  },
+)
+
+it('releases the old session subscription and prevents an old retry from rearming after switching', async () => {
+  vi.useFakeTimers()
+  const unavailable: MessageEditState = {
+    ...availableState('old-session'),
+    choices: [],
+    unavailable: { reason: 'history-unavailable', retryable: true },
+  }
+  let resolveOld!: (state: MessageEditState) => void
+  const oldCall = vi
+    .fn()
+    .mockResolvedValueOnce(unavailable)
+    .mockImplementationOnce(
+      () =>
+        new Promise<MessageEditState>((resolve) => {
+          resolveOld = resolve
+        }),
+    )
+  const oldSession = new MessageEditSession('old-session', oldCall as ExecutionCall)
+  const nextCall = vi.fn().mockResolvedValue(availableState('next-session'))
+  const nextSession = new MessageEditSession('next-session', nextCall as ExecutionCall)
+  const offOld = vi.fn()
+  const offNext = vi.fn()
+  const subscribeSession = vi.fn((id: string) => (id === 'old-session' ? offOld : offNext))
+  const setDraft = vi.fn()
+  const container = dom.container()
+  root = createRoot(container as unknown as HTMLElement)
+  const render = (session: MessageEditSession) =>
+    root.render(
+      createElement(MessageEditControl, { session, inputActions: { setDraft }, subscribeSession }),
+    )
+  await act(async () => render(oldSession))
+  await act(async () => vi.advanceTimersByTimeAsync(300))
+  expect(oldCall).toHaveBeenCalledTimes(2)
+  await act(async () => render(nextSession))
+  expect(offOld).toHaveBeenCalledTimes(1)
+  await act(async () => resolveOld(unavailable))
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  expect(oldCall).toHaveBeenCalledTimes(2)
+  expect(nextCall).toHaveBeenCalledTimes(1)
+  expect(container.textContent).toBe('')
+  expect(setDraft).not.toHaveBeenCalled()
+  await act(async () => root.unmount())
+  expect(offNext).toHaveBeenCalledTimes(1)
+})
+
+it('cancels a pending history retry on unmount', async () => {
+  vi.useFakeTimers()
+  const call = vi.fn().mockResolvedValue({
+    ...availableState(),
+    choices: [],
+    unavailable: { reason: 'history-unavailable', retryable: true },
+  })
+  const session = new MessageEditSession('retry-session', call as ExecutionCall)
+  root = createRoot(dom.container() as unknown as HTMLElement)
+  await act(async () =>
+    root.render(
+      createElement(MessageEditControl, { session, inputActions: { setDraft: vi.fn() } }),
+    ),
+  )
+  await act(async () => root.unmount())
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  expect(call).toHaveBeenCalledTimes(1)
 })

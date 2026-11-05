@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { Context } from '@deepseek-ai/cordis'
+import { Session, SessionId, SessionLogOffset, type SessionEvent } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import { ApprovalRequestId } from '@deepseek-ai/dsh-user-approval'
 import { feedbackSessionFacts } from '../../src/collaboration/host/feedback/session-facts.ts'
 import { isReasoningTextProtocolFailure } from '../../src/collaboration/host/feedback/state.ts'
 
@@ -12,6 +15,62 @@ function fold(events: unknown[]) {
 }
 
 describe('feedback session recovery facts', () => {
+  it('retains each unanswered ask at its original position and drops decided or abandoned asks', () => {
+    const events = [
+      { type: 'turn/start', seq: 1, data: { turn: 1 } },
+      { type: 'approval/asked', seq: 2, data: { id: 'a', toolName: 'Bash' } },
+      { type: 'approval/asked', seq: 3, data: { id: 'b', toolName: 'Read' } },
+      { type: 'approval/decided', seq: 4, data: { id: 'a', outcome: 'allowed-once' } },
+    ]
+    expect(fold(events)).toMatchObject({
+      pendingApprovals: { b: { seq: 3, toolName: 'Read' } },
+      lastApprovalSeq: 4,
+    })
+    expect(
+      fold([
+        ...events,
+        {
+          type: 'turn/end',
+          seq: 5,
+          data: { turn: 1, reason: { kind: 'aborted', reason: { kind: 'user' } } },
+        },
+      ]).pendingApprovals,
+    ).toEqual({})
+  })
+
+  it('refolds a version 2 approval cache from the durable log', async () => {
+    const ctx = new Context()
+    try {
+      const registry = new SessionProjectionRegistry(ctx)
+      const handle = await registry.register(feedbackSessionFacts)
+      const session = Session.create(SessionId('feedback-cache'))
+      session.append('turn/start', { turn: 1 })
+      const ask = session.append('approval/asked', { id: ApprovalRequestId('a'), toolName: 'Bash' })
+      const current = handle.stateOf(session)
+      const old = {
+        taskFeedbackFacts: {
+          ...registry.checkpoint(session).taskFeedbackFacts!,
+          ver: 2,
+          val: { ...current, pendingApprovals: { a: true } },
+        },
+      }
+      expect(registry.restoreFloor(old)).toBe(0)
+      const restored = registry.restore(
+        old,
+        session.snapshotEvents(),
+        SessionLogOffset(0),
+        session.header,
+        session.inheritedEventCount,
+      )
+      expect(restored.checkpoint.taskFeedbackFacts).toMatchObject({
+        ver: 3,
+        val: { pendingApprovals: { a: { seq: Number(ask.seq), toolName: 'Bash' } } },
+      })
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('binds an instruction queued between turns to the consuming turn and ignores duplicate request IDs', () => {
     const instruction = {
       type: 'user/message',

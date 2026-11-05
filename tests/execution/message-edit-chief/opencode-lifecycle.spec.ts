@@ -1,10 +1,11 @@
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { createOpenCodeMessageEditDriver } from '../../../src/execution/host/message-edit-opencode.ts'
 import type { ExternalEditContext } from '../../../src/execution/host/message-edit-driver.ts'
 
 const context = {
-  record: { harnessRef: 'opencode', acpSessionId: 'old' },
+  record: { harnessRef: 'opencode', acpSessionId: 'old', turns: [] },
   signal: new AbortController().signal,
+  disconnect: async () => {},
 } as unknown as ExternalEditContext
 const message = {
   info: { id: 'u', role: 'user', sessionID: 'old' },
@@ -22,9 +23,10 @@ it('refuses successful history read when the owned control process cannot close'
 })
 it('does not report successful fork when control cleanup fails after mutation', async () => {
   let failingClose = false
+  const fork = vi.fn(async () => ({ sessionId: 'new' }))
   const driver = createOpenCodeMessageEditDriver(async () => ({
     readMessages: async (id) => (id === 'old' ? [message] : []),
-    fork: async () => ({ sessionId: 'new' }),
+    fork,
     close: async () => {
       if (failingClose) throw Error('owned control still running')
     },
@@ -34,4 +36,5 @@ it('does not report successful fork when control cleanup fails after mutation', 
   await expect(
     driver.rewind(context, { operationId: 'edit', targetId: 'u', expected }),
   ).rejects.toThrow()
+  expect(fork).toHaveBeenCalledOnce()
 })

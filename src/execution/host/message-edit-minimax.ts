@@ -173,9 +173,71 @@ async function readHistory(context: ExternalEditContext): Promise<{
   }
 }
 
+/** A failed native input is eligible only when the complete stored history matches. */
+function failedInput(
+  context: ExternalEditContext,
+  history: ExternalEditHistory,
+): string | undefined {
+  const turns = context.record.turns
+  const last = turns.at(-1)
+  const inputId = last?.native?.userMessageId
+  if (
+    last?.state !== 'failed' ||
+    !inputId ||
+    turns.some(
+      (turn) => !['completed', 'failed', 'cancelled', 'interrupted'].includes(turn.state),
+    ) ||
+    turns.length !== history.boundaries.length ||
+    turns.some((turn, index) => turn.native?.userMessageId !== history.boundaries[index]?.id)
+  )
+    return undefined
+  return inputId
+}
+
+/** ACP load can omit its requested id; an explicit conflicting id must still fail. */
+function assertSameSession(context: ExternalEditContext, sessionId: string): void {
+  const loadedSessionId = context.snapshot().session?.sessionId
+  if (
+    sessionIdOf(context) !== sessionId ||
+    (loadedSessionId !== undefined && loadedSessionId !== sessionId)
+  )
+    throw new MinimaxEditError(MINIMAX_EDIT_ERRORS.historyChanged)
+}
+
 export const minimaxMessageEditDriver: ExternalMessageEditDriver = {
   async read(context) {
-    return (await readHistory(context)).history
+    const { history } = await readHistory(context)
+    const inputId = failedInput(context, history)
+    if (!inputId) return history
+    // A failed RPC alone does not establish that the native prompt has stopped.
+    try {
+      await context.disconnect()
+    } catch {
+      assertIdle(context)
+      throw new MinimaxEditError(MINIMAX_EDIT_ERRORS.vendorUncertain)
+    }
+    assertIdle(context)
+    if (sessionIdOf(context) !== history.sessionId || failedInput(context, history) !== inputId)
+      throw new MinimaxEditError(MINIMAX_EDIT_ERRORS.historyChanged)
+    try {
+      await context.reconnect(history.sessionId)
+    } catch {
+      assertIdle(context)
+      throw new MinimaxEditError(MINIMAX_EDIT_ERRORS.vendorUncertain)
+    }
+    assertIdle(context)
+    assertSameSession(context, history.sessionId)
+    const after = (await readHistory(context)).history
+    const confirmed = (await readHistory(context)).history
+    assertSameSession(context, history.sessionId)
+    if (
+      history.token !== after.token ||
+      after.token !== confirmed.token ||
+      failedInput(context, confirmed) !== inputId
+    )
+      throw new MinimaxEditError(MINIMAX_EDIT_ERRORS.historyChanged)
+    assertIdle(context)
+    return { ...confirmed, settledInputId: inputId }
   },
 
   async rewind(context, input): Promise<ExternalEditResult> {

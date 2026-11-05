@@ -339,6 +339,17 @@ function humanMessage(id: string, text: string, rpcId = 'rpc-1'): unknown {
 /** The `user/message` payload type accepted by `Session.append`. */
 type UserMessagePayload = Parameters<Session['append']>[1]
 
+/** Live fields read by the official permission initializer and review activity gate. */
+interface AgentFixture {
+  id: SessionId
+  session: Session
+  status: 'idle' | 'running'
+}
+
+function liveAgent(session: Session, status: AgentFixture['status'] = 'idle'): AgentFixture {
+  return { id: session.id, session, status }
+}
+
 interface MountOptions {
   session?: Session
   extraSessions?: Session[]
@@ -347,7 +358,7 @@ interface MountOptions {
   ledger?: LedgerStub
   maintenance?: MaintenanceStub
   withoutMaintenance?: boolean
-  agents?: { status?: string }[]
+  agents?: AgentFixture[]
   config?: Partial<FlatConfig>
   /** Optional composition-supplied binding port for external permission asks. */
   bindingPort?: ExternalReviewBindingPort
@@ -365,7 +376,11 @@ async function mount(options: MountOptions = {}) {
   const llm = createLlm(options.routes ?? DEFAULT_ROUTES)
   ctx.provide('llm', llm)
   ctx.provide('shell', { sandboxMode: 'workspace-write' })
-  ctx.provide('agents', { list: () => options.agents ?? [] })
+  const agents = options.agents ?? []
+  ctx.provide('agents', {
+    get: (id: SessionId) => agents.find((agent) => agent.id === id),
+    list: () => agents,
+  })
   // The gate is only effective with the tools pipeline mounted, so the service
   // injects it; the substituted face is never called by the tests.
   ctx.provide('tools', {})
@@ -409,6 +424,17 @@ async function mount(options: MountOptions = {}) {
       permissionPresets: PermissionPresetService
     }
   ).permissionPresets
+  for (const current of all) {
+    let agent = agents.find((entry) => entry.session === current)
+    if (!agent) {
+      agent = liveAgent(current)
+      agents.push(agent)
+    }
+    await ctx.serial('agent/created', {
+      agent: agent as Agent,
+      source: 'resume',
+    })
+  }
   return {
     ctx,
     service,
@@ -843,7 +869,8 @@ describe('auto review settings and routes', () => {
   })
 
   it('refuses a save that changes the selection while a native agent is running', async () => {
-    const { service } = await mount({ agents: [{ status: 'running' }] })
+    const session = createSession('session-running')
+    const { service } = await mount({ session, agents: [liveAgent(session, 'running')] })
     const read = await statusOf(service)
 
     const result = await service.save({
@@ -933,8 +960,10 @@ describe('auto review decision gate', () => {
     })
     const request = llm.probe.requests[0]!
     expect(request['tools']).toBeUndefined()
-    expect(request['sessionId']).toBeUndefined()
-    expect(request['purpose']).toBeUndefined()
+    expect(request['sessionId']).toBe(session.id)
+    expect(request['purpose']).toBe('auto-review')
+    expect(llm.probe.prepares[0]).not.toHaveProperty('sessionId')
+    expect(llm.probe.prepares[0]).not.toHaveProperty('purpose')
     expect(String(request['system'])).toContain('REVIEW_POLICY')
   })
 
@@ -1608,7 +1637,7 @@ describe('auto review settings publication transaction', () => {
   })
 
   it('refuses the save when native activity begins during catalog resolution', async () => {
-    const agents: { status?: string }[] = []
+    const agents: AgentFixture[] = []
     const settings = createSettings()
     const { ctx, service } = await mount({ settings, agents })
     const read = await statusOf(service)
@@ -1632,7 +1661,7 @@ describe('auto review settings publication transaction', () => {
     })
     await until(() => entered)
     // The agent starts while the exclusion is already held for validation.
-    agents.push({ status: 'running' })
+    agents[0]!.status = 'running'
     release()
     const result = await pending
 
@@ -1642,7 +1671,11 @@ describe('auto review settings publication transaction', () => {
   })
 
   it('keeps an unchanged save working inside the exclusion', async () => {
-    const { service, maintenance } = await mount({ agents: [{ status: 'running' }] })
+    const session = createSession('session-running')
+    const { service, maintenance } = await mount({
+      session,
+      agents: [liveAgent(session, 'running')],
+    })
     const read = await statusOf(service)
 
     const result = await service.save({
@@ -2241,13 +2274,17 @@ describe('auto review unload window', () => {
     session.append('permission/preset', { preset: AUTO_PRESET })
     session.append('sandbox/mode', { mode: 'danger-full-access' })
     setApprovalPolicy(session, 'never')
+    const before = session.snapshotEvents()
+    const ledger = createLedger()
 
     // The official preset service refuses to publish a stored `auto` Session
     // without its live integration; that refusal is the expected fail-closed
     // behaviour, not something to work around.
-    await expect(mount({ session, config: { enabled: false } })).rejects.toThrow(
-      /cannot restore preset/,
+    await expect(mount({ session, ledger, config: { enabled: false } })).rejects.toThrow(
+      /permission: cannot restore preset "auto" without its active integration/,
     )
+    expect(session.snapshotEvents()).toEqual(before)
+    expect(ledger.entries).toHaveLength(0)
   })
 })
 
@@ -2388,8 +2425,10 @@ describe('auto review native route policy', () => {
     expect(llm.probe.prepares[0]!.reasoningEffort).toBeUndefined()
     const request = llm.probe.requests[0]!
     expect(request['tools']).toBeUndefined()
-    expect(request['sessionId']).toBeUndefined()
-    expect(request['purpose']).toBeUndefined()
+    expect(request['sessionId']).toBe(session.id)
+    expect(request['purpose']).toBe('auto-review')
+    expect(llm.probe.prepares[0]).not.toHaveProperty('sessionId')
+    expect(llm.probe.prepares[0]).not.toHaveProperty('purpose')
     // The durable record names both the exact route and the rule that chose it.
     expect(ledger.entries[0]).toMatchObject({
       kind: 'begin',
@@ -2702,7 +2741,12 @@ describe('auto review external Harness permission bridge', () => {
       model: 'codex::codex-auto-review',
       temperature: 0,
     })
+    expect(llm.probe.requests[0]).toMatchObject({
+      sessionId: session.id,
+      purpose: 'auto-review',
+    })
     expect(llm.probe.requests[0]!['tools']).toBeUndefined()
+    expect(llm.probe.prepares[0]).not.toHaveProperty('sessionId')
     expect(ledger.entries[0]).toMatchObject({
       kind: 'begin',
       pending: { mode: 'external-approval', name: 'bash', callId: 'external-call-1' },

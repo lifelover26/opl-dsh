@@ -99,6 +99,8 @@ export interface StepAgentOptions {
   env: Record<string, string>
   /** Extra environment for the RPC stub, for negative tests. */
   stubEnv?: Record<string, string>
+  /** Forward real bridge notifications to a Host owner under test. */
+  onUpdate?(value: unknown): void
 }
 
 export interface StepAgent {
@@ -154,6 +156,7 @@ export async function startStepAgent(options: StepAgentOptions): Promise<StepAge
     env,
     (value) => {
       updates.push(value)
+      options.onUpdate?.(value)
       for (const waiter of textWaiters.splice(0))
         if (JSON.stringify(value).includes(waiter.text)) waiter.resolve()
       for (const waiter of toolWaiters.splice(0))

@@ -16,11 +16,8 @@
  * a freshly opened Session.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type {
-  ModelCatalog,
-  ModelSelection,
-  ModelSelectionProjection,
-} from '@deepseek-ai/dsh-api-session-controller/types'
+import type { ModelCatalog, ModelSelection } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { ModelSelectionProjection } from '@deepseek-ai/dsh-agent/types'
 
 /** One finished official model-selection projection; `next` already falls back to `lastUsed`. */
 export type ModelSelectionSnapshot = {

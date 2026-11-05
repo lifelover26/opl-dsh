@@ -162,6 +162,14 @@ export function externalEditRecovery(
   const inputId = turn.native?.userMessageId
   if (
     ['prompting', 'settled'].includes(intent.phase) &&
+    !inputId &&
+    !prefix.length &&
+    history.boundaries.length === 1 &&
+    history.settledInputId === history.boundaries[0]!.id
+  )
+    return { kind: 'settled' }
+  if (
+    ['prompting', 'settled'].includes(intent.phase) &&
     inputId &&
     history.boundaries.length === prefix.length + 1 &&
     history.boundaries.at(-1)?.id === inputId &&
@@ -188,6 +196,17 @@ export function externalEditChoices(
     const id = turn.native?.userMessageId
     const boundary = id ? boundaries.get(id) : undefined
     if (!boundary || boundary.unavailableReason) continue
+    if (
+      history.boundaries[turnIndex]?.id !== id ||
+      record.turns
+        .slice(0, turnIndex)
+        .some(
+          (prior, index) =>
+            !prior.native?.userMessageId ||
+            prior.native.userMessageId !== history.boundaries[index]?.id,
+        )
+    )
+      continue
     const requestIds = turnRequestIds(record, turn)
     const matches = messages.filter((message) =>
       turn.native?.officialSeq !== undefined
@@ -202,6 +221,46 @@ export function externalEditChoices(
   const counts = new Map<number, number>()
   for (const choice of choices) counts.set(choice.seq, (counts.get(choice.seq) ?? 0) + 1)
   return choices.filter((choice) => counts.get(choice.seq) === 1)
+}
+
+/** Display saved exact input identities without launching a CLI or admitting a model request. */
+export function externalRecordedChoices(
+  record: HarnessSession,
+  events: readonly SessionEvent[],
+  activeSeqs: ReadonlySet<number>,
+): ExternalEditChoice[] {
+  return externalEditChoices(
+    record,
+    {
+      sessionId: record.acpSessionId,
+      token: 'recorded-inputs',
+      boundaries: record.turns.flatMap((turn) =>
+        turn.native?.userMessageId ? [{ id: turn.native.userMessageId }] : [],
+      ),
+    },
+    events,
+    activeSeqs,
+  )
+}
+
+/** An unbound first input can start a fresh vendor session because it retains no vendor prefix. */
+export function externalFreshFirstChoice(
+  record: HarnessSession,
+  events: readonly SessionEvent[],
+  activeSeqs: ReadonlySet<number>,
+): { seq: number; text: string } | undefined {
+  const turn = record.turns[0]
+  if (!record.acpSessionId || !turn || turn.native?.userMessageId) return
+  const messages = readNativeUserMessages(events).filter((message) => activeSeqs.has(message.seq))
+  const first = messages[0]
+  if (!first || first.attachments.length) return
+  const matches = messages.filter((message) =>
+    turn.native?.officialSeq !== undefined
+      ? message.seq === turn.native.officialSeq
+      : message.rpcId !== undefined && turnRequestIds(record, turn).includes(message.rpcId),
+  )
+  if (matches.length !== 1 || matches[0]!.seq !== first.seq) return
+  return { seq: first.seq, text: first.text }
 }
 
 /** Prepare a new binding in memory; the owner persists it only after the vendor result journal. */

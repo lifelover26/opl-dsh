@@ -7,7 +7,7 @@
  * official account does not serve, and how an execution combination is paired
  * with the official `mcode` account. The fixtures are the real projection paths
  * — the real `LlmRuntime`, the real `MiniMaxCodeModelAdapter`, the real
- * `ExecutionCatalogStore`, `ExecutionModelResolver` and `buildModelCatalog` —
+ * `ExecutionCatalogStore`, `ExecutionModelResolver` and `SessionController.modelCatalog()` —
  * so a wrong product decision fails here rather than in a hand-built echo.
  *
  * Deliberately out of scope: the ACP `configureSession`/transport handshake
@@ -21,7 +21,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { Context as CordisContext } from '@deepseek-ai/cordis'
 import LlmRuntime, { LlmError, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
-import { buildModelCatalog } from '@deepseek-ai/dsh-api-session-controller'
+import { SessionController } from '@deepseek-ai/dsh-api-session-controller'
+import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import {
   MINIMAX_CODE_HARNESS,
@@ -262,7 +263,10 @@ describe('MiniMax Code native model adapter', () => {
 
   it('serves the native model catalog, which is the list a selection is gated on', async () => {
     const ctx = await llmSurface()
-    const catalog = await buildModelCatalog(ctx, { provider: PROVIDER, model: M3 })
+    await ctx.plugin(AgentDefaultModelConfig, { provider: PROVIDER, model: M3 })
+    const controller = new SessionController(ctx, { nativeOpen: false })
+    const catalog = await controller.modelCatalog()
+    expect(catalog.default).toEqual({ provider: PROVIDER, model: M3 })
     expect(catalog.failures).toEqual([])
     expect(catalog.routableProviders).toEqual([PROVIDER])
     const group = catalog.groups.find((item) => item.id === PROVIDER)

@@ -123,6 +123,25 @@ describe('external message-edit driver real control path', () => {
     },
   )
 
+  it.each(['opencode', 'kilo'] as const)(
+    '%s refuses a busy vendor and closes the owned serve without forking',
+    async (kind) => {
+      const dir = mkdtempSync(join(TMP_ROOT, `${kind}-busy-`))
+      const pidFile = join(dir, 'pid')
+      const enteredFile = join(dir, 'fork-entered')
+      const context = contextFor(kind, {
+        FAKE_VENDOR_KIND: kind,
+        FAKE_VENDOR_MESSAGES: JSON.stringify(messages()),
+        FAKE_VENDOR_STATUSES: JSON.stringify({ ses_current: { type: 'busy' } }),
+        FAKE_PID_FILE: pidFile,
+        FAKE_FORK_ENTERED_FILE: enteredFile,
+      })
+      await expect(driverFor(kind).read(context)).rejects.toMatchObject({ code: 'busy' })
+      expect(existsSync(enteredFile)).toBe(false)
+      expect(() => process.kill(Number(readFileSync(pidFile, 'utf8')), 0)).toThrow()
+    },
+  )
+
   it('fails closed when the owned serve exits before listening', async () => {
     const dir = mkdtempSync(join(TMP_ROOT, 'early-exit-'))
     const context = contextFor('opencode', {

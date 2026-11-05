@@ -4,10 +4,19 @@ import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import Storage, { type KvUnit, type StorageBackend } from '@deepseek-ai/dsh-storage'
 import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
-import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { Session, SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
+import { AgentRegistry } from '@deepseek-ai/dsh-agent'
+import {
+  createAssistantMessage,
+  createSystemMessage,
+  createUserMessage,
+} from '@deepseek-ai/dsh-llm'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import { ApprovalRequestId } from '@deepseek-ai/dsh-user-approval'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import TaskFeedbackService from '../../src/collaboration/host/feedback/index.ts'
 import { feedbackSessionFacts } from '../../src/collaboration/host/feedback/session-facts.ts'
+import { installSessionWaitProjection } from '../../src/execution/host/session-wait.ts'
 import type { WakeDelivery } from '../../src/collaboration/host/feedback/types.ts'
 
 const cleanups: (() => Promise<unknown>)[] = []
@@ -76,33 +85,52 @@ async function fixture() {
       },
     },
   }
-  async function mount(autoDeliver = false) {
+  async function mount(
+    autoDeliver = false,
+    options: {
+      seed?: readonly SessionEvent[]
+      beforeMount?: (ctx: Context, session: Session) => Promise<void>
+      whileStarting?: (ctx: Context, session: Session) => void
+    } = {},
+  ) {
     const ctx = new Context()
+    cleanups.push(() => ctx.fiber.dispose())
     await ctx.plugin(Storage)
     ctx.storage.backend.register('fixture', backend)
     ctx.provide('storageDomain')
     ctx.set('storageDomain', new DomainFacility(ctx, { backend: 'fixture' }))
-    const session = { id: 'source-session' as SessionId, seq: 0 } as Session
-    ctx.provide('sessions')
-    ctx.set('sessions', {
-      get: (id: SessionId) => (id === session.id ? session : undefined),
-    } as Context['sessions'])
-    let facts = feedbackSessionFacts.init()
-    ctx.provide('sessionProjections')
-    ctx.set('sessionProjections', {
-      register: () => {},
-      stateOf: (_session: Session, key: string) =>
-        key === 'taskFeedbackFacts'
-          ? facts
-          : key === 'turnBoundary'
-            ? {
-                lastTurn: facts.openTurn ?? 1,
-                openTurnStartSeq: facts.openTurn === null ? null : 1,
-              }
-            : undefined,
-    } as unknown as Context['sessionProjections'])
-    await ctx.plugin(TaskFeedbackService, { autoDeliver, claimLeaseMs: 10_000, retryBaseMs: 1 })
-    cleanups.push(() => ctx.fiber.dispose())
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(SessionStore)
+    const waitOwner = await ctx.plugin({
+      inject: ['sessionProjections'],
+      apply: installSessionWaitProjection,
+    })
+    const session = ctx.sessions.create(SessionId('source-session'), {
+      ...(options.seed === undefined ? {} : { seed: options.seed }),
+    })
+    if (options.seed === undefined) {
+      session.append(
+        'system/message',
+        { turn: 0, step: 0, message: createSystemMessage('fixture instructions') },
+        { surfaceOp: 'append' },
+      )
+    }
+    vi.spyOn(ctx.sessionProjections, 'stateOf').mockImplementation(() => {
+      throw Error('A domain reader must use its ready projection handle')
+    })
+    await options.beforeMount?.(ctx, session)
+    const mounting = ctx.plugin(TaskFeedbackService, {
+      autoDeliver,
+      claimLeaseMs: 10_000,
+      retryBaseMs: 1,
+    })
+    if (options.whileStarting !== undefined) {
+      // Cordis begins activation on its next microtask; the registry's own handoff follows it.
+      await Promise.resolve()
+      options.whileStarting(ctx, session)
+    }
+    await mounting
     const service = ctx.taskFeedback
     async function complete(taskId = 'task') {
       await service.register({
@@ -112,20 +140,12 @@ async function fixture() {
         target: { kind: 'codex-thread', threadId: 'target-thread' },
         acceptance: 'verified outcome',
       })
-      const event = {
-        type: 'turn/end',
-        seq: 1,
-        data: { turn: 1, reason: { kind: 'completed' } },
-      } as SessionEvent
-      facts = feedbackSessionFacts.apply(facts, event)
-      ctx.emit('session/event', session, event)
+      session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
       await service.settled()
       return service.deliveries()[0]!
     }
     async function emit(event: SessionEvent) {
-      facts = feedbackSessionFacts.apply(facts, event)
-      session.seq = event.seq
-      ctx.emit('session/event', session, event)
+      session.append(event.type, event.data)
       await service.settled()
     }
     async function start(taskId = 'task') {
@@ -138,7 +158,7 @@ async function fixture() {
       })
       await emit({ type: 'turn/start', seq: 1, data: { turn: 1 } } as SessionEvent)
     }
-    return { ctx, service, complete, emit, start }
+    return { ctx, session, waitOwner, service, complete, emit, start }
   }
   return {
     mount,
@@ -155,6 +175,274 @@ const accepting = () => ({
 })
 
 describe('feedback service durable lifecycle', () => {
+  it('propagates a facts registration failure before opening its storage domain', async () => {
+    const disk = await fixture()
+    let opened: ReturnType<typeof vi.spyOn> | undefined
+    await expect(
+      disk.mount(false, {
+        beforeMount: async (ctx) => {
+          await ctx.sessionProjections.register({ ...feedbackSessionFacts, stateVersion: 4 })
+          opened = vi.spyOn(ctx.storageDomain, 'open')
+        },
+      }),
+    ).rejects.toThrow('already registered at stateVersion 4')
+    expect(opened).not.toHaveBeenCalled()
+  })
+
+  it('recovers a terminal event and final assistant diagnostics committed during registration', async () => {
+    const disk = await fixture()
+    const first = await disk.mount()
+    await first.service.register({
+      taskId: 'task',
+      sessionId: first.session.id,
+      turn: 1,
+      target: { kind: 'codex-thread', threadId: 'target-thread' },
+      acceptance: 'verified outcome',
+    })
+    const seed = first.session.snapshotEvents()
+    await first.ctx.fiber.dispose()
+    const restarted = await disk.mount(false, {
+      seed,
+      whileStarting: (ctx, session) => {
+        expect(ctx.get('taskFeedback')).toBeUndefined()
+        session.append('turn/start', { turn: 1 })
+        session.append(
+          'assistant/message',
+          {
+            turn: 1,
+            step: 1,
+            message: createAssistantMessage({
+              source: { provider: 'fixture', model: 'fixture' },
+              content: [{ type: 'text', text: '<invoke name="search" />' }],
+            }),
+            stream: [],
+          },
+          { surfaceOp: 'append' },
+        )
+        session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+      },
+    })
+    expect(restarted.service.task({ taskId: 'task' })).toMatchObject({
+      state: 'completed',
+      turn: 1,
+      leakedToolSyntax: ['invoke-tag'],
+    })
+    expect(restarted.service.deliveries()).toMatchObject([{ deliveryId: 'task@completed' }])
+  })
+
+  it('recovers each pending startup approval once for matching turns and registration cursors', async () => {
+    const disk = await fixture()
+    const first = await disk.mount()
+    for (const task of [
+      { taskId: 'matching', turn: 1 },
+      { taskId: 'unnamed' },
+      { taskId: 'other-turn', turn: 2 },
+      { taskId: 'future-cursor', turn: 1, fromSeq: 100 },
+    ]) {
+      await first.service.register({
+        ...task,
+        sessionId: first.session.id,
+        target: { kind: 'codex-thread', threadId: 'target-thread' },
+        acceptance: 'verified outcome',
+      })
+    }
+    const seed = first.session.snapshotEvents()
+    await first.ctx.fiber.dispose()
+    const pending: { approvalId: string; toolName: string; seq: number }[] = []
+    let registering: ReturnType<typeof vi.spyOn> | undefined
+    const restarted = await disk.mount(false, {
+      seed,
+      beforeMount: async (ctx) => {
+        registering = vi.spyOn(ctx.sessionProjections, 'register')
+      },
+      whileStarting: (ctx, session) => {
+        expect(registering).toHaveBeenCalledWith(feedbackSessionFacts)
+        expect(ctx.get('taskFeedback')).toBeUndefined()
+        session.append('turn/start', { turn: 1 })
+        session.append('approval/asked', { id: ApprovalRequestId('decided'), toolName: 'Write' })
+        for (const ask of [
+          { approvalId: 'pending-1', toolName: 'Bash' },
+          { approvalId: 'pending-2', toolName: 'Read' },
+        ]) {
+          const event = session.append('approval/asked', {
+            id: ApprovalRequestId(ask.approvalId),
+            toolName: ask.toolName,
+          })
+          pending.push({ ...ask, seq: Number(event.seq) })
+        }
+        session.append('approval/decided', {
+          id: ApprovalRequestId('decided'),
+          outcome: 'allowed-once',
+        })
+      },
+    })
+    const expectedIds = ['matching', 'unnamed']
+      .flatMap((taskId) => pending.map((ask) => `${taskId}@waiting_approval@${String(ask.seq)}`))
+      .sort()
+    for (const taskId of ['matching', 'unnamed']) {
+      expect(restarted.service.task({ taskId })).toMatchObject({
+        turn: 1,
+        state: 'waiting_approval',
+      })
+    }
+    for (const taskId of ['other-turn', 'future-cursor']) {
+      expect(restarted.service.task({ taskId }).state).toBe('accepted')
+    }
+    const deliveries = restarted.service.deliveries()
+    expect(deliveries.map((delivery) => delivery.deliveryId).sort()).toEqual(expectedIds)
+    for (const delivery of deliveries) {
+      const ask = pending.find((candidate) => candidate.seq === delivery.payload.needsInput?.seq)!
+      expect(delivery.payload).toMatchObject({
+        turn: 1,
+        needsInput: {
+          turn: 1,
+          seq: ask.seq,
+          pauseId: String(ask.seq),
+          approval: { approvalId: ask.approvalId, toolName: ask.toolName },
+        },
+      })
+    }
+    const transport = accepting()
+    restarted.service.setWakeAdapter(transport)
+    await restarted.service.flush()
+    expect(transport.send.mock.calls.map(([delivery]) => delivery.deliveryId).sort()).toEqual(
+      expectedIds,
+    )
+    restarted.ctx.emit('session/created', restarted.session)
+    await restarted.service.settled()
+    expect(
+      restarted.service
+        .deliveries()
+        .map((delivery) => delivery.deliveryId)
+        .sort(),
+    ).toEqual(expectedIds)
+    const restoredSeed = restarted.session.snapshotEvents()
+    await restarted.ctx.fiber.dispose()
+    const restored = await disk.mount(false, { seed: restoredSeed })
+    expect(
+      restored.service
+        .deliveries()
+        .map((delivery) => delivery.deliveryId)
+        .sort(),
+    ).toEqual(expectedIds)
+    restored.service.setWakeAdapter(transport)
+    await expect(restored.service.flush()).resolves.toMatchObject({ attempted: 0 })
+    expect(transport.send).toHaveBeenCalledTimes(expectedIds.length)
+  })
+
+  it.each(['decided', 'cancelled'] as const)(
+    'does not restore an approval that was %s before the watcher became ready',
+    async (resolution) => {
+      const disk = await fixture()
+      const first = await disk.mount()
+      await first.service.register({
+        taskId: 'task',
+        sessionId: first.session.id,
+        turn: 1,
+        target: { kind: 'codex-thread', threadId: 'target-thread' },
+        acceptance: 'verified outcome',
+      })
+      const seed = first.session.snapshotEvents()
+      await first.ctx.fiber.dispose()
+      const restarted = await disk.mount(false, {
+        seed,
+        whileStarting: (_ctx, session) => {
+          session.append('turn/start', { turn: 1 })
+          session.append('approval/asked', { id: ApprovalRequestId('ask'), toolName: 'Bash' })
+          if (resolution === 'decided') {
+            session.append('approval/decided', {
+              id: ApprovalRequestId('ask'),
+              outcome: 'allowed-once',
+            })
+          } else {
+            session.append('turn/end', {
+              turn: 1,
+              reason: { kind: 'aborted', reason: { kind: 'user' } },
+            })
+          }
+        },
+      })
+      expect(restarted.service.task({ taskId: 'task' }).state).toBe(
+        resolution === 'cancelled' ? 'cancelled' : 'accepted',
+      )
+      expect(
+        restarted.service
+          .deliveries()
+          .some((delivery) => delivery.payload.state === 'waiting_approval'),
+      ).toBe(false)
+    },
+  )
+
+  it('unloads the watcher before its required wait reader is released', async () => {
+    const first = await (await fixture()).mount()
+    await first.start()
+    const before = first.ctx.events._hooks['session/event']!.length
+    await first.waitOwner.dispose()
+    expect(first.ctx.get('taskFeedback')).toBeUndefined()
+    expect(first.ctx.events._hooks['session/event']!.length).toBe(before - 1)
+    first.session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    expect(() => first.service.deliveries()).toThrow("domain 'task_feedback' is closed")
+  })
+
+  it.each(['completed', 'failed', 'waiting_approval'] as const)(
+    'catches up a resumed turn that reaches %s before task registration and preserves it after restore',
+    async (state) => {
+      const disk = await fixture()
+      const first = await disk.mount()
+      await first.start()
+      const failure = {
+        kind: 'error' as const,
+        error: {
+          code: 'INVALID_REQUEST',
+          status: 400,
+          message: 'reasoning_text must be passed back',
+        },
+      }
+      first.session.append('turn/end', { turn: 1, reason: failure })
+      await first.service.settled()
+      const prompt = vi.fn(async (request: { requestId: string }) => {
+        first.session.append('turn/start', { turn: 2 })
+        first.session.append(
+          'user/message',
+          createUserMessage({
+            source: { kind: 'user', rpcId: request.requestId },
+            content: [{ type: 'text', text: 'resume instruction' }],
+          }),
+          { surfaceOp: 'append' },
+        )
+        if (state === 'waiting_approval') {
+          first.session.append('approval/asked', {
+            id: ApprovalRequestId('resume-approval'),
+            toolName: 'Bash',
+          })
+        } else {
+          first.session.append('turn/end', {
+            turn: 2,
+            reason: state === 'failed' ? failure : { kind: 'completed' },
+          })
+          first.session.append('turn/start', { turn: 3 })
+          first.session.append('turn/end', { turn: 3, reason: { kind: 'completed' } })
+        }
+      })
+      first.ctx.provide('sessionController', { prompt })
+      const request = { taskId: 'task', deliveryId: 'task@failed', consumerId: 'reviewer' }
+      const resumed = await first.service.resumeFailed(request)
+      expect(resumed).toMatchObject({ decision: 'resumed', attempt: { taskId: 'task#r1' } })
+      expect(first.service.task({ taskId: 'task#r1' })).toMatchObject({ turn: 2, state })
+      expect(prompt).toHaveBeenCalledOnce()
+      const seed = first.session.snapshotEvents()
+      await first.ctx.fiber.dispose()
+      const restarted = await disk.mount(false, { seed })
+      expect(restarted.service.task({ taskId: 'task#r1' })).toMatchObject({ turn: 2, state })
+      await expect(restarted.service.resumeFailed(request)).resolves.toMatchObject({
+        decision: 'resumed',
+        attempt: resumed.attempt,
+      })
+      expect(restarted.service.tasks()).toHaveLength(2)
+      expect(prompt).toHaveBeenCalledOnce()
+    },
+  )
+
   it('queues only a short pointer and retrieves full native review details after restart', async () => {
     const disk = await fixture()
     const first = await disk.mount()

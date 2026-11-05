@@ -65,12 +65,6 @@ const stateSchema: z.ZodType<ConversationCountsState> = z
       context.addIssue({ code: 'custom', message: 'Pending edit request identities repeat' })
   })
 
-declare module '@deepseek-ai/dsh-session-projection/types' {
-  interface SessionProjectionStateMap {
-    oplConversationCounts: ConversationCountsState
-  }
-}
-
 /**
  * Whole-log current-history counts, with the official closed-step counting semantics.
  *

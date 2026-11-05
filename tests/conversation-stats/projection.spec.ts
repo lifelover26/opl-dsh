@@ -324,6 +324,14 @@ async function registry() {
 }
 
 describe('official projection lifecycle', () => {
+  it('fails plugin activation when asynchronous registration rejects', async () => {
+    const ctx = new Context()
+    cleanups.push(() => ctx.fiber.dispose())
+    const projections = new SessionProjectionRegistry(ctx)
+    await projections.register({ ...projection, stateVersion: projection.stateVersion + 1 })
+    await expect(ctx.plugin(plugin)).rejects.toThrow('already registered at stateVersion 2')
+  })
+
   it('publishes count changes only and refolds the log after plugin disposal and reload', async () => {
     const r = await registry()
     const changes: unknown[] = []

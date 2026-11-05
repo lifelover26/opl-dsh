@@ -83,6 +83,54 @@ export class ExternalMessageEditTransactions {
       expected: ExternalEditHistory
     },
   ): Promise<ExternalEditResult> {
+    return this.prepareAction(context, input, () =>
+      driver.rewind(context, {
+        operationId: input.requestId,
+        targetId: input.targetId,
+        expected: structuredClone(input.expected),
+      }),
+    )
+  }
+
+  /** Journal a fresh session for an exact first DSH input without guessing a legacy vendor id. */
+  async prepareFirst(
+    context: Pick<ExternalEditContext, 'record' | 'signal'>,
+    input: { requestId: string; targetSeq: number },
+    createEmpty: () => Promise<ExternalEditResult>,
+  ): Promise<ExternalEditResult> {
+    if (!Number.isSafeInteger(input.targetSeq) || input.targetSeq < 0)
+      throw Error('首条编辑消息身份无效')
+    const targetId = 'dsh-user:' + input.targetSeq
+    return this.prepareAction(
+      context,
+      {
+        ...input,
+        targetId,
+        expected: {
+          sessionId: context.record.acpSessionId,
+          token: externalEditRecordFingerprint(context.record),
+          boundaries: [{ id: targetId }],
+        },
+      },
+      async () => {
+        const result = await createEmpty()
+        if (result.sessionId === context.record.acpSessionId)
+          throw Error('首条消息编辑未创建新的空会话')
+        return result
+      },
+    )
+  }
+
+  private async prepareAction(
+    context: Pick<ExternalEditContext, 'record' | 'signal'>,
+    input: {
+      requestId: string
+      targetId: string
+      targetSeq?: number
+      expected: ExternalEditHistory
+    },
+    invoke: () => Promise<ExternalEditResult>,
+  ): Promise<ExternalEditResult> {
     const sessionId = context.record.nativeSessionId
     if (!sessionId || !input.requestId || this.active.has(sessionId))
       throw Error('编辑消息正在处理或会话身份缺失')
@@ -126,11 +174,7 @@ export class ExternalMessageEditTransactions {
       context.signal.throwIfAborted()
       await this.journal.save(intent)
       context.signal.throwIfAborted()
-      const result = await driver.rewind(context, {
-        operationId: input.requestId,
-        targetId: input.targetId,
-        expected: structuredClone(input.expected),
-      })
+      const result = await invoke()
       context.signal.throwIfAborted()
       if (externalEditRecordFingerprint(context.record) !== fingerprint)
         throw Error('编辑期间会话绑定已变化')
@@ -223,6 +267,11 @@ export class ExternalMessageEditTransactions {
   /** Only an observed terminal vendor turn can release the edit's send guard. */
   async settle(sessionId: string, requestId: string): Promise<void> {
     await this.transition(sessionId, requestId, 'prompting', 'settled')
+  }
+
+  /** Keep sends blocked when a settled edit cannot be verified against live history. */
+  async retainUncertainty(sessionId: string, requestId: string): Promise<void> {
+    await this.transition(sessionId, requestId, 'settled', 'uncertain')
   }
 
   private async transition(
