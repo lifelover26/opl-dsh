@@ -20,6 +20,8 @@ export interface AdapterLaunch {
   command: string
   args: string[]
   env: NodeJS.ProcessEnv
+  /** Resolved source explicitly supports image input; absence refuses image prompts. */
+  promptImageSupport?: boolean
   /** Private bridge requests explicitly bound by this adapter, never a generic credential API. */
   clientRequests?: ReadonlyMap<string, () => Promise<unknown>>
   /**
@@ -29,6 +31,15 @@ export interface AdapterLaunch {
    */
   windowsVerbatimArguments?: boolean
 }
+/** Ordered, resolved ACP input; image URIs are references, never instructions to read a file. */
+export type AcpPromptPart =
+  | { readonly type: 'text'; readonly text: string }
+  | {
+      readonly type: 'image'
+      readonly data: string
+      readonly mimeType: string
+      readonly uri?: string
+    }
 /** The subset of the ACP transport an adapter may drive to pin its session. */
 export interface AcpRequestSurface {
   request(method: string, params: object, timeoutMs?: number): Promise<unknown>
@@ -100,6 +111,12 @@ export interface HarnessAdapter {
    * writing. Runs before every prompt so a session that drifted fails closed.
    */
   verifySession?(record: HarnessSession, snapshot: AcpSessionSnapshot): void
+  /** Refuse unsupported prompt content before the shared transport sends session/prompt. */
+  verifyPrompt?(
+    record: HarnessSession,
+    snapshot: AcpSessionSnapshot,
+    prompt: readonly AcpPromptPart[],
+  ): void
   /**
    * Adjudicate one turn whose stop reason the transport mapped to success.
    *

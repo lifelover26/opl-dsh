@@ -96,7 +96,7 @@ function buttons(scope: ShimNode): ShimNode[] {
   ]
 }
 
-it('keeps unconfirmed edit recovery reachable without offering a normal composer trigger', async () => {
+it('keeps unconfirmed edit recovery out of the composer and never submits it on load', async () => {
   const recovery: MessageEditSend = {
     prompt: {
       sessionId: 'failed-prepare' as MessageEditSend['prompt']['sessionId'],
@@ -121,6 +121,7 @@ it('keeps unconfirmed edit recovery reachable without offering a normal composer
       : { accepted: true },
   )
   const session = new MessageEditSession('failed-prepare', call as ExecutionCall)
+  const onActiveChange = vi.fn()
   const container = dom.container()
   root = createRoot(container as unknown as HTMLElement)
   await act(async () =>
@@ -128,13 +129,16 @@ it('keeps unconfirmed edit recovery reachable without offering a normal composer
       createElement(MessageEditControl, {
         session,
         inputActions: { setDraft: vi.fn() },
+        onActiveChange,
       }),
     ),
   )
-  expect(container.textContent).not.toContain('编辑消息')
-  expect(container.textContent).toContain('重试未确认的编辑')
-  await act(async () => buttons(container)[0]!.click!())
-  expect(call).toHaveBeenNthCalledWith(2, 'message-edit-send', recovery)
+  expect(container.textContent).toBe('')
+  expect(buttons(container)).toHaveLength(0)
+  expect(onActiveChange).not.toHaveBeenCalledWith(true)
+  expect(call).toHaveBeenCalledExactlyOnceWith('message-edit-state', {
+    sessionId: 'failed-prepare',
+  })
 })
 
 it('selects one message in shared state without opening a second message list', async () => {
@@ -160,6 +164,36 @@ it('selects one message in shared state without opening a second message list', 
   })
   expect(await session.select(3, '已有草稿')).toBe(false)
   expect(session.getSnapshot().error).toContain('草稿')
+})
+
+it('keeps only cancellation in the composer after selecting a message', async () => {
+  const session = new MessageEditSession(
+    'cancel-selection',
+    vi.fn().mockResolvedValue(availableState('cancel-selection')) as ExecutionCall,
+  )
+  await session.load()
+  await session.select(3, '')
+  const setDraft = vi.fn()
+  const onActiveChange = vi.fn()
+  const container = dom.container()
+  root = createRoot(container as unknown as HTMLElement)
+  await act(async () =>
+    root.render(
+      createElement(MessageEditControl, {
+        session,
+        inputActions: { setDraft },
+        onActiveChange,
+      }),
+    ),
+  )
+  expect(buttons(container)).toHaveLength(1)
+  expect(buttons(container)[0]?.getAttribute?.('aria-label')).toBe('取消编辑')
+  expect(onActiveChange).toHaveBeenCalledWith(true)
+  await act(async () => buttons(container)[0]!.click!())
+  expect(session.getSnapshot().selection).toBeUndefined()
+  expect(setDraft).toHaveBeenCalledExactlyOnceWith('')
+  expect(buttons(container)).toHaveLength(0)
+  expect(onActiveChange).toHaveBeenLastCalledWith(false)
 })
 
 it('hides recovery during a running edit and clears a stale read after a session change', async () => {
@@ -222,7 +256,8 @@ function availableState(sessionId = 'retry-session'): MessageEditState {
   }
 }
 
-it('offers a compact read retry with the failure in a tooltip and retains model controls', async () => {
+it('silently retries a failed history read without adding a composer entry or changing the draft', async () => {
+  vi.useFakeTimers()
   const call = vi
     .fn()
     .mockRejectedValueOnce(Error('private transport failure'))
@@ -241,13 +276,10 @@ it('offers a compact read retry with the failure in a tooltip and retains model 
       }),
     ),
   )
-  expect(container.textContent).toBe('重试编辑')
-  expect(buttons(container)[0]?.parentNode?.getAttribute?.('title')).toBe('无法读取可编辑消息')
+  expect(container.textContent).toBe('')
+  expect(buttons(container)).toHaveLength(0)
   expect(onActiveChange).not.toHaveBeenCalledWith(true)
-  await act(async () => {
-    buttons(container)[0]!.click!()
-    buttons(container)[0]!.click!()
-  })
+  await act(async () => vi.advanceTimersByTimeAsync(300))
   expect(call).toHaveBeenCalledTimes(2)
   expect(container.textContent).toBe('')
   expect(setDraft).not.toHaveBeenCalled()
@@ -276,7 +308,9 @@ it('bounds automatic history retries and leaves further retries explicit', async
   expect(call).toHaveBeenCalledTimes(3)
   await act(async () => vi.advanceTimersByTimeAsync(60_000))
   expect(call).toHaveBeenCalledTimes(3)
-  await act(async () => buttons(container)[0]!.click!())
+  expect(buttons(container)).toHaveLength(0)
+  expect(container.textContent).toBe('')
+  await act(async () => session.retry())
   expect(call).toHaveBeenCalledTimes(4)
   await act(async () => vi.advanceTimersByTimeAsync(60_000))
   expect(call).toHaveBeenCalledTimes(4)
@@ -308,11 +342,7 @@ it.each(['mapping-unavailable', 'model-unavailable'] as const)(
     await act(async () => vi.advanceTimersByTimeAsync(60_000))
     expect(call).toHaveBeenCalledTimes(1)
     expect(buttons(container)).toHaveLength(0)
-    expect(container.textContent).toBe('暂不可编辑')
-    if (reason === 'mapping-unavailable')
-      expect(
-        (container as ShimNode).childNodes?.[0]?.childNodes?.[0]?.getAttribute?.('title'),
-      ).toBe('消息身份尚未确认，请新建会话继续')
+    expect(container.textContent).toBe('')
     expect(onActiveChange).not.toHaveBeenCalledWith(true)
   },
 )

@@ -152,6 +152,13 @@ export const grokAdapter: HarnessAdapter = {
     autoReview: 'unsupported',
   },
   matches: (ref) => ref.provider === 'opl-gateway' && ref.model === 'grok::grok-4.7',
+  verifyPrompt(_record, snapshot, prompt) {
+    if (
+      prompt.some((part) => part.type === 'image') &&
+      snapshot.agent?.agentCapabilities?.promptCapabilities?.image !== true
+    )
+      throw new HarnessConfigurationError('当前 Grok CLI 未声明图片输入能力；未发送提示词。')
+  },
   async configureSession(acp, record, snapshot) {
     const effort = record.reasoningEffort ?? 'high'
     if (!['low', 'medium', 'high', 'xhigh'].includes(effort))
@@ -188,6 +195,8 @@ export const grokAdapter: HarnessAdapter = {
     // written: a request this host cannot honour must leave no state behind and
     // must not touch the credential path at all.
     const permissions = grokPermissionPlan(record.sandbox)
+    const command = await executablePath(options.command || options.grokCommand, 'grok-build')
+    if (!command) throw Error('未找到官方 Grok Build CLI')
     const route = options.modelSources
       ? await options.modelSources.resolve('grok-build', record.modelRef, 'responses')
       : await resolveGatewayExecution(ctx, record.modelRef, options.resolveKey)
@@ -213,7 +222,7 @@ export const grokAdapter: HarnessAdapter = {
         current.endsWith(GROK_CLI_MARKER) ? grokConfigurationWithCliMarker(route.baseURL) : bytes,
         { mode: 0o600 },
       )
-    const launch = commandLaunch(options.command || options.grokCommand, [
+    const launch = commandLaunch(command, [
       ...(options.prefix ?? []),
       '--cwd',
       record.cwd,
@@ -234,6 +243,7 @@ export const grokAdapter: HarnessAdapter = {
     return {
       home,
       ...launch,
+      promptImageSupport: route.imageInput === true,
       env: {
         ...env,
         GROK_HOME: home,

@@ -7,6 +7,7 @@
  */
 import { createHash } from 'node:crypto'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
+import type { UserMessage } from '@deepseek-ai/dsh-llm'
 import type { HarnessSession, HarnessTurn } from '../contracts/sessions.ts'
 import type { StopEditBoundary } from '../contracts/stop-edit.ts'
 import {
@@ -17,6 +18,7 @@ import {
   type StopEditTail,
 } from './stop-edit.ts'
 import { harnessRequestId } from './native-conversations.ts'
+import { validPromptContent } from './multimodal-prompt.ts'
 
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 
@@ -30,6 +32,8 @@ export interface NativeUserMessage {
   prevSeq: number | undefined
   rpcId?: string
   text: string
+  /** Exact immutable blocks retained for in-place text editing with the original images. */
+  content?: UserMessage['content']
   /** 随消息一起持久化的附件；官方没有公开的“放回草稿”接口，因此只能据此拒绝。 */
   attachments: { name?: string }[]
   index: number
@@ -65,6 +69,7 @@ export function readNativeUserMessages(events: readonly SessionEvent[]): NativeU
           prevSeq: previousSeq,
           ...(rpcId === undefined ? {} : { rpcId }),
           text,
+          content: event.data.content,
           attachments,
           index: messages.length,
         })
@@ -74,6 +79,11 @@ export function readNativeUserMessages(events: readonly SessionEvent[]): NativeU
     previousSeq = seq
   }
   return messages
+}
+
+/** Only image references can be retained by message editing; file attachments remain excluded. */
+export function editableNativeMessage(message: NativeUserMessage): boolean {
+  return !message.attachments.length || validPromptContent(message.content)
 }
 
 /** 官方会话日志与控制器的最小接入面，便于按边界独立验证。 */

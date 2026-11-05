@@ -352,6 +352,18 @@ describe('external message-edit driver', () => {
     ])
   })
 
+  it('allows text editing of an image message with the exact vendor boundary', async () => {
+    const f = fixture()
+    f.state.sessions.set(f.state.current, [
+      user('msg_a', [
+        text('describe this'),
+        part('file', { mime: 'image/png', url: 'data:image/png;base64,cG5n' }),
+      ]),
+    ])
+    const history = await f.driver.read(f.context)
+    expect(history.boundaries).toEqual([{ id: 'msg_a', text: 'describe this', imageCount: 1 }])
+  })
+
   it('rejects a running tool as busy', async () => {
     const f = fixture()
     f.state.sessions.set(f.state.current, [

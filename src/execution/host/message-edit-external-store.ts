@@ -13,6 +13,7 @@ const nonempty = z.string().min(1)
 const boundary = z.object({
   id: nonempty,
   text: z.string().optional(),
+  imageCount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
   unavailableReason: nonempty.optional(),
 })
 const schema = z
@@ -68,6 +69,7 @@ export function parseExternalEditIntent(value: unknown): ExternalEditIntent {
       boundaries: item.expected.boundaries.map((entry) => ({
         id: entry.id,
         ...(entry.text !== undefined ? { text: entry.text } : {}),
+        ...(entry.imageCount !== undefined ? { imageCount: entry.imageCount } : {}),
         ...(entry.unavailableReason !== undefined
           ? { unavailableReason: entry.unavailableReason }
           : {}),

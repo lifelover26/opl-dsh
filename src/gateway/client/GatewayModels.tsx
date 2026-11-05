@@ -99,10 +99,17 @@ export function GatewayModels({ call }: { call: Call }) {
                           return {
                             group,
                             models: gatewayModelChoices(fetched, group.models),
-                            failed: false,
+                            failure: undefined,
                           }
-                        } catch {
-                          return { group, models: group.models, failed: true }
+                        } catch (error) {
+                          return {
+                            group,
+                            models: group.models,
+                            failure:
+                              error instanceof Error
+                                ? error.message.slice(0, 320)
+                                : `${group.name}：目录获取失败。`,
+                          }
                         }
                       }),
                   )
@@ -110,21 +117,27 @@ export function GatewayModels({ call }: { call: Call }) {
                     available.push(
                       ...result.models.map((model) => ({ group: result.group.id, model })),
                     )
-                    if (result.failed) failures.push(result.group.name)
+                    if (result.failure) failures.push(result.failure)
                   }
                   setCandidates(available)
                   setSelectedGroup(data.groups.find((g) => g.ready)?.id ?? '')
                   setSelected(
                     new Set(data.groups.flatMap((g) => g.models.map((m) => ref(g.id, m.id)))),
                   )
-                  if (failures.length)
-                    setError(failures.join('、') + ' 目录获取失败，保留已配置模型。')
+                  if (failures.length) setError(failures.join('；') + ' 保留已配置模型。')
                 })
               }
             >
               {busy ? '正在获取…' : '选择模型'}
             </Button>
           </div>
+          {data.groups
+            .filter((group) => group.enabled !== false && group.catalog?.diagnostic)
+            .map((group) => (
+              <p key={group.id} role="status" className={css.error}>
+                {group.name}：{group.catalog!.diagnostic!.message}
+              </p>
+            ))}
           <div className={css.modelRows}>
             {grouped([...models.values()]).map(([id, channels]) => (
               <div className={css.modelRow} key={id}>
@@ -221,6 +234,7 @@ export function GatewayModels({ call }: { call: Call }) {
                         const current = latest.groups.find((g) => g.id === group.id)!
                         if (JSON.stringify(current.models) !== JSON.stringify(original.models))
                           throw Error('模型已被其他操作修改，请重新选择')
+                        if (JSON.stringify(chosen) === JSON.stringify(current.models)) continue
                         latest = await call('edit', {
                           group: group.id,
                           models: chosen,

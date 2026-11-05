@@ -1,11 +1,7 @@
-/** Exceptional edit controls; the message action owns normal selection. */
+/** Composer edit cancellation and the shared history subscription. */
 import { useEffect, useSyncExternalStore } from 'react'
 import { IconCloseOutlineRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
-import {
-  messageEditCopy,
-  messageEditUnavailableCopy,
-  type MessageEditSession,
-} from './message-edit-session.ts'
+import { messageEditCopy, type MessageEditSession } from './message-edit-session.ts'
 import css from './StopEditControl.module.css'
 
 export interface MessageEditProps {
@@ -16,7 +12,7 @@ export interface MessageEditProps {
   onActiveChange?: (active: boolean) => void
 }
 
-/** Composer controls for cancelling an edit, retrying history, and confirming recovery. */
+/** Keep read retries mounted while message actions own all edit and recovery entries. */
 export function MessageEditControl({
   session,
   inputActions,
@@ -26,12 +22,8 @@ export function MessageEditControl({
 }: MessageEditProps) {
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const selection = snapshot.selection
-  const unavailable = snapshot.unavailable
-  const recovery =
-    !locked && !snapshot.state?.busy && !unavailable ? snapshot.state?.recovery : undefined
-  const expanded = selection !== undefined || recovery !== undefined || snapshot.error !== undefined
-  const visible = expanded || unavailable !== undefined
-  const retryable = unavailable?.retryable === true
+  const expanded = selection !== undefined || snapshot.error !== undefined
+  const retryable = snapshot.unavailable?.retryable === true
 
   useEffect(() => {
     void session.load()
@@ -65,19 +57,9 @@ export function MessageEditControl({
     return () => onActiveChange?.(false)
   }, [expanded, onActiveChange])
 
-  if (!visible) return null
+  if (!expanded) return null
   return (
     <div className={css.root} data-opl-message-edit-state="">
-      {recovery ? (
-        <button
-          type="button"
-          className={css.trigger}
-          disabled={locked || snapshot.state?.busy}
-          onClick={() => void session.recover()}
-        >
-          {messageEditCopy.recover}
-        </button>
-      ) : null}
       {selection ? (
         <Tooltip label={messageEditCopy.cancel} side="top">
           <button
@@ -92,23 +74,6 @@ export function MessageEditControl({
           >
             <IconCloseOutlineRegular />
           </button>
-        </Tooltip>
-      ) : null}
-      {unavailable ? (
-        <Tooltip label={messageEditUnavailableCopy[unavailable.reason]} side="top">
-          {retryable ? (
-            <button
-              type="button"
-              className={css.trigger}
-              disabled={locked}
-              data-opl-message-edit-retry=""
-              onClick={() => void session.retry()}
-            >
-              {messageEditCopy.retry}
-            </button>
-          ) : (
-            <span className={css.status}>{messageEditCopy.unavailable}</span>
-          )}
         </Tooltip>
       ) : null}
       {snapshot.error ? (

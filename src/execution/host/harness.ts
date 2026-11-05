@@ -5,7 +5,7 @@ import { executionLimitsSchema } from '../contracts/limits.ts'
 import { openCodeStreamFailure } from './adapters/opencode/stream-failure.ts'
 import { hostPeer, invokeHostRemote } from '../../compat/host/remote-invocation.ts'
 import { gatewayGroupEnabled } from '../../gateway/host/group-settings.ts'
-import { inspectHarness } from './harness-registry.ts'
+import { inspectHarness, inspectInstalledHarness } from './harness-registry.ts'
 import { maintainHarness } from './harness-maintenance.ts'
 import type { HarnessInstallation } from '../contracts/installations.ts'
 import { modelRefKey } from '../contracts/catalog.ts'
@@ -47,6 +47,19 @@ import type {
   ExternalMessageEditDriver,
 } from './message-edit-driver.ts'
 import type { AdapterLaunch } from './adapters/types.ts'
+import type { HarnessPromptPart } from '../contracts/prompt.ts'
+import {
+  currentHarnessInputText,
+  harnessInputError,
+  requireHarnessInputText,
+} from './harness-input.ts'
+import {
+  HISTORY_NOTICE,
+  conversationInput,
+  promptContentText,
+  resolvePromptContent,
+  assertPromptImages,
+} from './multimodal-prompt.ts'
 import { codexMessageEditDriver } from './message-edit-codex.ts'
 import { claudeMessageEditDriver } from './message-edit-claude.ts'
 import { grokMessageEditDriver } from './message-edit-grok.ts'
@@ -164,6 +177,7 @@ import { StopEditIntentStore } from './stop-edit-intent.ts'
 import type { StopEditBoundary, StopEditResult } from '../contracts/stop-edit.ts'
 import {
   nativeStopEditRuntime,
+  readNativeUserMessages,
   type NativeReviewFacts,
   type NativeSessionSource,
 } from './stop-edit-native.ts'
@@ -189,6 +203,7 @@ import type {
 } from '../contracts/views.ts'
 import {
   catalogView,
+  defaultExecutionCatalog,
   ExecutionCatalogStore,
   normalizeCatalog,
   type ExecutionCatalog,
@@ -198,57 +213,6 @@ export { GROK_COMBINATION, DSH_COMBINATION } from '../contracts/sessions.ts'
 export const HARNESS_NAMESPACE = 'harness'
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const now = () => new Date().toISOString()
-const HISTORY_NOTICE = '以下是先前会话记录，仅用于理解上下文，不要重新执行历史任务或工具调用。'
-const conversationPrompt = (
-  messages: GenerateOptions['messages'],
-  user: GenerateOptions['messages'][number],
-) => {
-  const history = messages
-    .filter((message) => ['user', 'assistant', 'tool'].includes(message.role))
-    .map((message) => {
-      const text = message.content
-        .map((part) => {
-          switch (part.type) {
-            case 'text':
-              return part.text
-            case 'reasoning':
-              return ''
-            case 'tool-call':
-              return `历史工具调用 ${part.name} (${part.id}): ${part.arguments}`
-            case 'image':
-            case 'file':
-              throw new LlmError(
-                '该 Harness 会话暂不支持直接附件，请提供项目内文件路径',
-                'HARNESS_INPUT',
-              )
-            default:
-              throw new LlmError(`该 Harness 暂不支持 ${part.type} 内容`, 'HARNESS_INPUT')
-          }
-        })
-        .filter(Boolean)
-        .join('\n')
-      const role =
-        message.role === 'tool'
-          ? `tool (${message.toolCallId}${message.isError ? ', failed' : ''})`
-          : message.role
-      return { message, text: text ? `${role}: ${text}` : '' }
-    })
-    .filter((item) => item.text)
-  const current = history.find((item) => item.message === user)?.text ?? ''
-  const injected = history.filter(
-    (item) => item.message.role === 'user' && item.message.source?.kind !== 'user',
-  )
-  const context = history
-    .filter((item) => item.message !== user && !injected.includes(item))
-    .map((item) => item.text)
-  // Historical tool calls are context, never instructions to execute them again.
-  const transcript = context.length
-    ? `${HISTORY_NOTICE}\n\n${context.join('\n\n')}\n\n当前用户请求：\n${current}`
-    : current
-  return injected.length
-    ? `会话上下文：\n${injected.map((item) => item.text).join('\n\n')}\n\n${context.length ? transcript : `当前用户请求：\n${current}`}`
-    : transcript
-}
 const required = (value: unknown, label: string): string => {
   if (typeof value !== 'string' || !value.trim() || value.length > 200000)
     throw Error(`无效的 ${label}`)
@@ -859,10 +823,17 @@ export class HarnessService {
     this.maintenance.set(id, state)
     const job = (async () => {
       try {
-        const result = await maintainHarness(item)
-        const fresh = await inspectHarness(definition, this.directory, this.command())
-        if (!fresh.installed || !fresh.version)
-          throw Error('更新器已结束，但版本回读失败，请重新检测')
+        const result = await maintainHarness(item, definition.proxy)
+        const fresh = await inspectInstalledHarness(
+          definition,
+          this.directory,
+          result,
+          this.command(),
+        )
+        if (fresh.verification !== 'verified' || !fresh.version)
+          throw Error(
+            `${fresh.error ?? '更新器已结束，但版本回读失败，请重新检测'}\n${result.message}`,
+          )
         if (
           result.expectedVersion &&
           fresh.version.match(/\d+\.\d+\.\d+/)?.[0] !== result.expectedVersion
@@ -870,10 +841,16 @@ export class HarnessService {
           throw Error(
             `已下载 ${result.expectedVersion}，但当前启动入口仍运行 ${fresh.version}；请修复原安装器的启动入口后重试`,
           )
-        if (!item.installed && fresh.path) {
+        const managedCommand =
+          !definition.command ||
+          definition.command ===
+            defaultExecutionCatalog().harnesses.find((entry) => entry.id === id)?.command
+        if (managedCommand && !item.installed && fresh.path) {
           const latest = await this.catalogStore.get()
           latest.harnesses = latest.harnesses.map((h) =>
-            h.id === id && fresh.path ? { ...h, command: fresh.path } : h,
+            h.id === id && h.command === definition.command && fresh.path
+              ? { ...h, command: fresh.path }
+              : h,
           )
           await this.catalogStore.set(latest)
         }
@@ -2014,12 +1991,16 @@ export class HarnessService {
   }
 
   async prompt(input: HarnessPromptRequest, reasoningEffort?: string): Promise<HarnessSnapshot> {
-    return this.runtimeMaintenance.admit(() => this.promptAdmitted(input, reasoningEffort))
+    return this.runtimeMaintenance.admit(() => {
+      requireHarnessInputText(input?.text, 'request')
+      return this.promptAdmitted(input, reasoningEffort)
+    })
   }
   private async promptAdmitted(
     input: HarnessPromptRequest,
     reasoningEffort?: string,
     displayPrompt?: string,
+    promptContent?: HarnessPromptPart[],
   ): Promise<HarnessSnapshot> {
     await this.ready
     if (this.disposed) throw Error('组合服务已关闭')
@@ -2034,10 +2015,13 @@ export class HarnessService {
       throw Error('外部会话正在编辑或结果尚未确认')
     // 编辑与普通提示共用同一把互斥。先查一次，保证被卡住的会话不会被拉起子进程再失败。
     this.assertStopEditIdle(record)
-    const text = required(input.text, 'text'),
+    const text = requireHarnessInputText(input.text, 'request'),
       operation = required(input.operationId, 'operationId')
     const writeScope = await resolveWriteScope(record.cwd, input.writeScope)
-    const content = reasoningEffort ? [record.id, text, reasoningEffort] : [record.id, text]
+    const content: unknown[] = reasoningEffort
+      ? [record.id, text, reasoningEffort]
+      : [record.id, text]
+    if (promptContent) content.push({ promptContent })
     // Keep the existing fingerprint for old operations that did not declare ownership.
     const fingerprint = hash(writeScope ? [...content, { writeScope }] : content)
     const previous = record.turns.find((t) => t.operationId === operation)
@@ -2095,6 +2079,7 @@ export class HarnessService {
       operationId: operation,
       fingerprint,
       prompt: text,
+      ...(promptContent ? { promptContent: structuredClone(promptContent) } : {}),
       text: '',
       state: 'queued',
       tools: [],
@@ -2291,13 +2276,51 @@ export class HarnessService {
             throw Error('编辑消息的发送身份不一致')
           await this.externalMessageEdits.beginPrompt(record.nativeSessionId!, edit.requestId)
         }
+        const promptParts = turn.promptContent ?? [{ type: 'text' as const, text: turn.prompt }]
+        assertPromptImages(promptParts, active.editLaunch?.promptImageSupport, active.agentInfo)
+        const generation = active.generation
+        const prompt = await resolvePromptContent(
+          this.ctx.get('attachments'),
+          promptParts,
+          this.conversationOwners.get(record.id)?.signal,
+        )
+        if (
+          this.disposed ||
+          active.cancelled ||
+          active.turn !== turn ||
+          this.active.get(record.id) !== active ||
+          active.generation !== generation ||
+          active.acp?.closed
+        )
+          throw new HarnessTransportError('读取附件期间会话已停止或连接已变化，未发送任务')
+        if (turn.promptContent?.some((part) => part.type === 'image'))
+          await this.pinSession(record, active, turn.reasoningEffort)
+        if (
+          this.disposed ||
+          active.cancelled ||
+          active.turn !== turn ||
+          this.active.get(record.id) !== active ||
+          active.generation !== generation ||
+          active.acp?.closed
+        )
+          throw new HarnessTransportError('附件请求的会话状态已变化，未发送任务')
+        assertPromptImages(prompt, active.editLaunch?.promptImageSupport, active.agentInfo)
+        adapter?.verifyPrompt?.(
+          record,
+          {
+            agent: active.agentInfo ?? {},
+            session: active.sessionInfo ?? {},
+            configOptions: active.configOptions,
+          },
+          prompt,
+        )
         active.vibeUsage?.beginTurn()
         const result = object(
           await active.acp!.request(
             'session/prompt',
             {
               sessionId: record.acpSessionId,
-              prompt: [{ type: 'text', text: turn.prompt }],
+              prompt,
               // 稳定的 operation 身份随提示一起进入 Runtime；扩展据此把真实入库的
               // 用户消息绑定到这条轮次，停止后编辑才有精确边界可用。
               _meta: {
@@ -3163,6 +3186,21 @@ export class HarnessService {
 
   /** Normal composer send with an exact old message target; retains the Session identity. */
   async messageEditSend(input: MessageEditSend) {
+    await this.ready
+    const target = this.stopEditTarget(input.prompt.sessionId)?.record
+    if (target && target.harnessRef !== 'dsh') {
+      const text = currentHarnessInputText(input.prompt.content, 'edit-request')
+      requireHarnessInputText(
+        'user: ' +
+          input.prompt.content
+            .flatMap((part) =>
+              part.type === 'text' ? (part.text ? [part.text] : []) : ['[图片附件]'],
+            )
+            .join('\n'),
+        'edit-request',
+        { currentTextLength: text.length },
+      )
+    }
     return this.runtimeMaintenance.admit(async () => {
       await this.assertConversationModelAvailable(input.prompt.sessionId)
       const state = await this.messageEditState({ sessionId: input.prompt.sessionId })
@@ -3173,12 +3211,61 @@ export class HarnessService {
       if (agent.inbox.nextTurn.length || agent.inbox.nextStep.length)
         throw Error('请先处理待发送消息，再编辑对话')
       const record = this.stopEditTarget(input.prompt.sessionId)?.record
-      if (!record)
-        return agent.runMaintenance((signal) =>
-          this.messageEdits.send(agent, input, () =>
-            this.ctx.sessionController.prompt(input.prompt, signal),
+      // The composer edits text; immutable pictures belong to the selected message.
+      // Re-read them from that exact event before any vendor fork or Session mutation.
+      const original = readNativeUserMessages(agent.session.snapshotEvents()).find(
+        (message) => message.seq === input.targetSeq,
+      )
+      const images = original?.content?.filter((part) => part.type === 'image') ?? []
+      let expectedContent = images.length
+        ? [
+            ...input.prompt.content.map((part) => {
+              if (part.type !== 'text') throw Error('编辑图片消息时请保留原图片，仅修改文本')
+              return { type: 'text' as const, text: part.text }
+            }),
+            ...images.map((part) => ({ type: 'image' as const, attachment: part.attachment })),
+          ]
+        : undefined
+      const promptForEdit = async (signal: AbortSignal) => {
+        if (!expectedContent) return input.prompt
+        signal.throwIfAborted()
+        const attachments = this.ctx.get('attachments')
+        if (!attachments) throw new LlmError('图片附件存储尚未就绪，未发送任务', 'HARNESS_INPUT')
+        const content = await resolvePromptContent(attachments, expectedContent, signal)
+        signal.throwIfAborted()
+        const prompt = {
+          ...input.prompt,
+          content: content.map((part, index) =>
+            part.type === 'text'
+              ? part
+              : {
+                  type: 'image' as const,
+                  mediaType: part.mimeType as import('@deepseek-ai/dsh-attachment').ImageMediaType,
+                  data: part.data,
+                  ...(expectedContent![index]?.type === 'image' &&
+                  expectedContent![index]!.attachment.name
+                    ? { name: expectedContent![index]!.attachment.name }
+                    : {}),
+                },
           ),
-        )
+        }
+        // Use the public admission result, including normalization metadata. The
+        // Session controller receives the same encoded input and owns its admission.
+        const admitted = await attachments.admitPromptContent(prompt.content)
+        signal.throwIfAborted()
+        expectedContent = admitted.filter((part) => part.type !== 'file')
+        return prompt
+      }
+      if (!record)
+        return agent.runMaintenance(async (signal) => {
+          const prompt = await promptForEdit(signal)
+          return this.messageEdits.send(
+            agent,
+            input,
+            () => this.ctx.sessionController.prompt(prompt, signal),
+            expectedContent,
+          )
+        })
       const driver = this.externalDriver(record)
       if (!driver || this.externalEditing.has(record.id)) throw Error('此会话暂时不能编辑')
       if (!state.choices.some((choice) => choice.seq === input.targetSeq))
@@ -3192,6 +3279,8 @@ export class HarnessService {
       this.externalEditing.add(record.id)
       try {
         return await agent.runMaintenance(async (signal) => {
+          const prompt = await promptForEdit(signal)
+          signal.throwIfAborted()
           const priorIntent = this.externalMessageEdits.intent(agent.id)
           const preparedChoice = externalPreparedChoice(
             record,
@@ -3329,7 +3418,8 @@ export class HarnessService {
             value = await this.messageEdits.send(
               agent,
               { ...input, head: Number(agent.session.seq) - 1 },
-              () => this.ctx.sessionController.prompt(input.prompt, signal),
+              () => this.ctx.sessionController.prompt(prompt, signal),
+              expectedContent,
             )
           })
           return value!
@@ -5119,14 +5209,16 @@ export class HarnessService {
           '请在模型菜单明确选择一个已启用的执行组合，本轮未发送。',
           'HARNESS_BINDING',
         )
-      if (
-        definition &&
-        this.selections[options.sessionId] !== definition.id &&
-        !this.replacementFor(options.sessionId, catalog, options)
-      )
-        await this.bindSelection(options.sessionId, definition.id)
     }
     if (!options.sessionId || options.purpose || !definition || definition.harnessRef === 'dsh') {
+      if (
+        options.sessionId &&
+        !options.purpose &&
+        definition &&
+        this.selections[options.sessionId] !== definition.id &&
+        !this.replacementFor(options.sessionId, catalog!, options)
+      )
+        await this.bindSelection(options.sessionId, definition.id)
       yield* next()
       return
     }
@@ -5147,6 +5239,52 @@ export class HarnessService {
         (record) =>
           record.nativeSessionId === options.sessionId && record.combination === definition.id,
       )
+    const user = options.messages.findLast(
+      (message) => message.role === 'user' && message.source?.kind === 'user',
+    )
+    if (!user) throw harnessInputError('conversation-current', 'blank', { currentTextLength: 0 })
+    const currentTextLength = currentHarnessInputText(user.content, 'conversation-current').length
+    const admitted = bound?.turns.find(
+      (turn) =>
+        user.source?.kind === 'user' &&
+        'rpcId' in user.source &&
+        user.source.rpcId === harnessRequestId(bound, turn),
+    )
+    const editIntent = this.externalMessageEdits.intent(session.id)
+    const editRpc =
+      user.source?.kind === 'user' && 'rpcId' in user.source ? user.source.rpcId : undefined
+    const operationId =
+      admitted?.operationId ??
+      (editIntent?.phase === 'admitting' && editIntent.requestId === editRpc
+        ? 'message-edit:' + editRpc
+        : 'conversation:' + hash(user))
+    const previous = bound?.turns.find((turn) => turn.operationId === operationId)
+    const messages =
+      bound?.turns.length && !previous
+        ? options.messages.slice(options.messages.indexOf(user))
+        : previous
+          ? []
+          : options.messages
+    const input = previous
+      ? {
+          text: requireHarnessInputText(previous.prompt, 'conversation-replay', {
+            currentTextLength,
+          }),
+          content: previous.promptContent,
+        }
+      : conversationInput(
+          messages,
+          user,
+          bound?.turns.length ? 'conversation-followup' : 'conversation-first-binding',
+        )
+    const text = input.text
+    if (previous?.promptContent)
+      promptContentText(previous.promptContent, 'conversation-replay', currentTextLength)
+    if (
+      this.selections[session.id] !== definition.id &&
+      !this.replacementFor(session.id, catalog!, options)
+    )
+      await this.bindSelection(session.id, definition.id)
     if (
       bound &&
       ['codex', 'claude'].includes(bound.harnessRef) &&
@@ -5205,21 +5343,6 @@ export class HarnessService {
     const record = this.records.get(started.id)!
     await this.finalizing.get(record.id)
     await this.connect(record)
-    const user =
-      options.messages.findLast(
-        (message) =>
-          message.role === 'user' && message.source?.kind === 'user' && 'rpcId' in message.source,
-      ) ??
-      options.messages.findLast(
-        (message) => message.role === 'user' && message.source?.kind === 'user',
-      )
-    if (!user) throw new LlmError('没有可执行的用户输入', 'HARNESS_INPUT')
-    const admitted = record.turns.find(
-      (turn) =>
-        user.source?.kind === 'user' &&
-        'rpcId' in user.source &&
-        user.source.rpcId === harnessRequestId(record, turn),
-    )
     // Managed turns retain their submitted setting. The native picker value is
     // not an external CLI capability and must not be copied into a new
     // external session (for example, Kimi may not advertise `high`).
@@ -5231,22 +5354,12 @@ export class HarnessService {
             definition.modelRef.provider === MINIMAX_CODE_PROVIDER
           ? options.reasoningEffort
           : undefined
-    const editIntent = this.externalMessageEdits.intent(session.id)
-    const editRpc =
-      user.source?.kind === 'user' && 'rpcId' in user.source ? user.source.rpcId : undefined
-    const operationId =
-      admitted?.operationId ??
-      (editIntent?.phase === 'admitting' && editIntent.requestId === editRpc
-        ? 'message-edit:' + editRpc
-        : 'conversation:' + hash(user))
-    const previous = record.turns.find((turn) => turn.operationId === operationId)
-    const messages =
-      record.turns.length && !previous
-        ? options.messages.slice(options.messages.indexOf(user))
-        : previous
-          ? []
-          : options.messages
-    const text = previous?.prompt ?? conversationPrompt(messages, user)
+    if (input.content)
+      assertPromptImages(
+        input.content,
+        this.active.get(record.id)?.editLaunch?.promptImageSupport,
+        this.active.get(record.id)?.agentInfo,
+      )
     this.conversationOwners.set(record.id, {
       sessionId: options.sessionId,
       ...(options.signal ? { signal: options.signal } : {}),
@@ -5271,6 +5384,7 @@ export class HarnessService {
               .filter((part) => part.type === 'text')
               .map((part) => part.text)
               .join('\n'),
+            input.content,
           ),
         )
       }

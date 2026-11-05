@@ -216,11 +216,11 @@ function metadataFrom(
 /**
  * Map official metadata to the bounded page state.
  *
- * `authenticated`, `refreshing`, `expired`, `scope_upgrade_required`, `logging_out`, and
- * `logout_pending` all mean the CLI still has a stored credential: an expired access token
- * is refreshed by the CLI on demand, and a pending sign-out has not deleted the credential
- * yet. `anonymous` and `authorizing` mean no usable account is stored. `error` and
- * unreadable metadata cannot support either claim.
+ * `authenticated`, `refreshing`, `expired`, and `scope_upgrade_required` indicate a stored
+ * login; the CLI refreshes expired access tokens on demand. `logging_out` and
+ * `logout_pending` report an unfinished sign-out separately. `anonymous` and `authorizing`
+ * mean no usable account is stored. `error` and unreadable metadata cannot support either
+ * account claim.
  *
  * This is local account presence, not online validity: it never proves that the refresh
  * token is accepted, that the account is not revoked, or that quota remains.
@@ -236,9 +236,10 @@ export function miniMaxAccountLoginState(state: MiniMaxAccountStateRead): MiniMa
     case 'refreshing':
     case 'expired':
     case 'scope_upgrade_required':
+      return 'signed-in'
     case 'logging_out':
     case 'logout_pending':
-      return 'signed-in'
+      return 'signing-out'
     case 'error':
       return 'unknown'
   }

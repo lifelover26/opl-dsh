@@ -58,7 +58,13 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
     })
   }
   if (m.method === 'initialize')
-    answer(m.id, { protocolVersion: 1, agentCapabilities: { loadSession: true } })
+    answer(m.id, {
+      protocolVersion: 1,
+      agentCapabilities: {
+        loadSession: true,
+        ...(process.env.OPL_FIXTURE_IMAGES === '1' ? { promptCapabilities: { image: true } } : {}),
+      },
+    })
   else if (m.method === 'session/new' || m.method === 'session/load') {
     await appendFile(join(process.cwd(), 'connections.txt'), m.method + '\n')
     sessionId =
@@ -95,6 +101,11 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
     answer(m.id, { configOptions: configOptions() })
   } else if (m.method === 'session/prompt') {
     running = m.id
+    if (process.env.OPL_FIXTURE_IMAGES === '1')
+      await appendFile(
+        join(process.cwd(), 'image-calls.jsonl'),
+        JSON.stringify(m.params.prompt) + '\n',
+      )
     await appendFile(join(process.cwd(), 'calls.txt'), m.params.prompt[0].text + '\n')
     const text = m.params.prompt[0].text
     if (

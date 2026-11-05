@@ -4,7 +4,7 @@ import type { Session, SessionEvent, SessionSeq } from '@deepseek-ai/dsh-session
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { createSystemMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
 import type { SessionPromptValue } from '@deepseek-ai/dsh-api-session-controller/types'
-import { readNativeUserMessages } from './stop-edit-native.ts'
+import { editableNativeMessage, readNativeUserMessages } from './stop-edit-native.ts'
 import {
   messageEditMarker,
   MESSAGE_EDIT_SOURCE,
@@ -45,7 +45,7 @@ export function messageEditState(
     pending: unresolvedMessageEdit(events),
     choices: supported
       ? readNativeUserMessages(events)
-          .filter((message) => active.has(message.seq) && !message.attachments.length)
+          .filter((message) => active.has(message.seq) && editableNativeMessage(message))
           .map((message) => ({ seq: message.seq, text: message.text }))
       : [],
   }
@@ -114,6 +114,7 @@ export class MessageEditTransactions {
     agent: Agent,
     input: MessageEditSend,
     prompt: () => Promise<SessionPromptValue>,
+    expectedContent?: UserMessage['content'],
   ): Promise<SessionPromptValue> {
     if (this.staging.has(agent.id)) throw Error('编辑消息正在发送')
     this.staging.add(agent.id)
@@ -170,6 +171,7 @@ export class MessageEditTransactions {
         input,
         surface: [...agent.session.surface.nodes],
         phase: 'prepared',
+        ...(expectedContent ? { expectedContent: structuredClone(expectedContent) } : {}),
       }
       return await this.admit(agent, intent, prompt)
     } finally {
@@ -183,7 +185,11 @@ export class MessageEditTransactions {
       (message) =>
         'rpcId' in message.source && message.source.rpcId === intent.input.prompt.requestId,
     )
-    if (!message || JSON.stringify(message.content) !== JSON.stringify(intent.input.prompt.content))
+    if (
+      !message ||
+      JSON.stringify(message.content) !==
+        JSON.stringify(intent.expectedContent ?? intent.input.prompt.content)
+    )
       throw Error('编辑消息的发送内容尚未确认')
     this.claims.set(agent.id, { agent, turn, step, requestId: intent.input.prompt.requestId })
   }

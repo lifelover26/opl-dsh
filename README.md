@@ -70,6 +70,8 @@ brew install --cask gaofeng21cn/opl-dsh/opl-dsh
 
 外部 CLI 可分别设置继承环境、直连或 HTTP/HTTPS 代理，入口为 **设置 → 执行与组合 → 执行引擎与网络代理**。Windows Git Bash 能力因 Harness 而异，见[Windows 验证与限制](docs/windows-local-validation.md)及 [Codex Git Bash 候选版](docs/codex-gitbash-candidate.md)。
 
+图片输入按模型来源与 CLI 实际能力开放，保留官方附件引用、输入顺序及编辑时的原图片；未声明图片能力的组合会在发送前拒绝。详见[模型与 Harness 架构](docs/model-harness-architecture.md)。
+
 ## 更新与数据
 
 官方桌面通过 DeepSeek 自身的机制更新；OPL 增强通过维护入口或已启用自动启动的 Codex Skill 检查联合 Release。**直接打开官方桌面不会触发 OPL 更新器**，也可重新运行最新安装器更新。Homebrew 用户可运行：

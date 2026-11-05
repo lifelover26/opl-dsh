@@ -9,9 +9,11 @@ import { join, resolve } from 'node:path'
 
 const command = process.env.OPL_TEST_CLAUDE_COMMAND
 const bridgeSource = resolve('src/execution/host/adapters/native-harness-bridge.ts')
+const imageData =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg=='
 
 test(
-  'Claude bridge starts an empty saved session and resumes after a completed turn',
+  'Claude bridge resumes a saved session and sends ordered text and image blocks to Messages',
   { skip: !command, timeout: 90000 },
   async () => {
     const home = await mkdtemp(join(tmpdir(), 'opl-claude-bridge-'))
@@ -25,7 +27,7 @@ test(
         res.end('{}')
         return
       }
-      requests.push({ path: req.url, model: JSON.parse(body).model })
+      requests.push({ path: req.url, ...JSON.parse(body) })
       const reply = (value) => res.write(`event: ${value.type}\ndata: ${JSON.stringify(value)}\n\n`)
       res.writeHead(200, { 'content-type': 'text/event-stream' })
       reply({
@@ -52,7 +54,7 @@ test(
       res.end()
     })
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
-    const child = spawn(process.execPath, [resolve('dist/package/lib/native-harness-bridge.mjs')], {
+    const child = spawn(process.execPath, [bridgeSource], {
       cwd,
       env: {
         ...process.env,
@@ -62,11 +64,16 @@ test(
         OPL_NATIVE_HARNESS: 'claude',
         OPL_NATIVE_COMMAND: command,
         OPL_NATIVE_MODEL: 'claude-opus-5-5',
-        OPL_NATIVE_PERMISSION: 'read-only',
+        OPL_NATIVE_PERMISSION: 'full-access',
+        OPL_NATIVE_IMAGE_INPUT: '1',
+        OPL_NATIVE_DIAGNOSTICS: '1',
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     })
-    child.stderr.resume()
+    let diagnostics = ''
+    child.stderr.on('data', (chunk) => (diagnostics += String(chunk)))
+    const exited = new Promise((done) => child.once('exit', done))
     const pending = new Map()
     const chunks = []
     createInterface({ input: child.stdout }).on('line', (line) => {
@@ -77,7 +84,9 @@ test(
       } else if (pending.has(message.id)) {
         const finish = pending.get(message.id)
         pending.delete(message.id)
-        message.error ? finish.reject(Error(message.error.code)) : finish.resolve(message.result)
+        message.error
+          ? finish.reject(Error(`${message.error.code}; ${diagnostics.slice(-700)}`))
+          : finish.resolve(message.result)
       }
     })
     let id = 0
@@ -92,21 +101,79 @@ test(
       const sessionId = '17c19314-288f-41fa-a5cf-6bd3db7c35a1'
       await call('session/load', { cwd, sessionId, mcpServers: [] })
       for (let turn = 0; turn < 2; turn++) {
-        assert.deepEqual(
-          await call('session/prompt', {
-            sessionId,
-            prompt: [{ type: 'text', text: 'Reply ok.' }],
-          }),
-          { stopReason: 'end_turn' },
+        assert.equal(
+          (
+            await call('session/prompt', {
+              sessionId,
+              prompt:
+                turn === 0
+                  ? [{ type: 'text', text: 'Reply ok.' }]
+                  : [
+                      { type: 'text', text: 'Look at this image.' },
+                      { type: 'image', data: imageData, mimeType: 'image/png' },
+                      { type: 'text', text: 'Reply ok after viewing it.' },
+                    ],
+            })
+          ).stopReason,
+          'end_turn',
         )
       }
       assert.equal(chunks.join(''), 'okok')
       assert.equal(requests.length, 2)
       assert.ok(requests.every((item) => item.path?.includes('/v1/messages')))
+      const lastUser = requests[1].messages.findLast((item) => item.role === 'user')
+      const relevant = lastUser.content.filter(
+        (part) =>
+          part.type === 'image' ||
+          (part.type === 'text' &&
+            ['Look at this image.', 'Reply ok after viewing it.'].some((text) =>
+              part.text.includes(text),
+            )),
+      )
+      assert.deepEqual(
+        relevant.map((part) => part.type),
+        ['text', 'image', 'text'],
+      )
+      assert.equal(relevant[0].text, 'Look at this image.')
+      assert.deepEqual(relevant[1], {
+        type: 'image',
+        source: { type: 'base64', media_type: 'image/png', data: imageData },
+      })
+      // The CLI appends its own reminder to the final text block.
+      assert.ok(relevant[2].text.startsWith('Reply ok after viewing it.'))
+      assert.equal(relevant[2].text.split('Reply ok after viewing it.').length, 2)
+      const imageHistory = await call('opl/message-edit/read', { sessionId })
+      assert.equal(imageHistory.boundaries[1].imageCount, 1)
+      assert.equal(imageHistory.boundaries[1].unavailableReason, undefined)
+      await call('session/prompt', {
+        sessionId,
+        prompt: [{ type: 'text', text: 'This later turn will be removed.' }],
+      })
+      const before = await call('opl/message-edit/read', { sessionId })
+      const forked = await call('opl/message-edit/rewind', {
+        sessionId,
+        targetId: before.boundaries[2].id,
+        expectedToken: before.token,
+      })
+      assert.equal(forked.retained.length, 2)
+      const after = await call('opl/message-edit/read', { sessionId: forked.sessionId })
+      assert.equal(after.boundaries.length, 2)
+      assert.equal(after.boundaries[1].imageCount, 1)
+      await call('session/prompt', {
+        sessionId: forked.sessionId,
+        prompt: [{ type: 'text', text: 'Continue with the retained image.' }],
+      })
+      assert.equal(requests.length, 4)
+      const replayedImages = requests[3].messages
+        .filter((item) => item.role === 'user')
+        .flatMap((item) => (Array.isArray(item.content) ? item.content : []))
+        .filter((part) => part.type === 'image')
+      assert.deepEqual(replayedImages, [relevant[1]])
     } finally {
       child.kill()
+      await exited
       await new Promise((resolve) => server.close(resolve))
-      await rm(home, { recursive: true, force: true })
+      await rm(home, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
     }
   },
 )

@@ -47,25 +47,64 @@ export function HarnessSettings({ call, embedded = false }: { call: Call; embedd
                 {item.version ?? (item.installed ? '版本未检测' : '尚未安装')}
               </span>
             </span>
-            <span>{item.installed ? '已安装' : '未安装'}</span>
+            <span>
+              {item.installed
+                ? item.verification === 'failed'
+                  ? '已发现，验证未通过'
+                  : '已安装'
+                : '未安装'}
+            </span>
           </div>
-          {item.error && <p className={css.muted}>{item.error}</p>}
+          {item.error && (
+            <p className={css.muted} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+              {item.error}
+            </p>
+          )}
           {item.installed && (
             <p className={css.muted}>
-              {item.runnable ? '可用于对话组合' : '可在本机终端使用；暂不能用于对话组合'}
+              {item.runnable
+                ? '可用于对话组合'
+                : item.verification === 'failed'
+                  ? '当前启动入口未就绪，请检查路径与运行依赖。'
+                  : '可在本机终端使用；暂不能用于对话组合'}
             </p>
           )}
           {item.path && (
             <p className={css.muted}>
-              检测路径：{item.path}
+              当前启动入口：{item.path}
               {item.detectedBy === 'known-path'
                 ? '（已从常见安装目录发现）'
                 : item.detectedBy === 'shell-path'
-                  ? '（来自登录 Shell PATH）'
+                  ? '（来自 PATH）'
                   : item.detectedBy === 'configured-path'
                     ? '（来自执行组合）'
-                    : ''}
+                    : item.detectedBy === 'app-bundle'
+                      ? '（来自 Codex 桌面安装目录）'
+                      : ''}
             </p>
+          )}
+          {item.installedCandidate && (
+            <p className={css.muted}>
+              另发现安装入口：{item.installedCandidate.path}
+              {item.installedCandidate.version ? `（${item.installedCandidate.version}）` : ''}
+              。请在下方确认可执行文件路径后重新检测。
+            </p>
+          )}
+          {item.discovery && (
+            <details>
+              <summary>其他发现的启动入口（未验证）</summary>
+              {item.discovery.otherPaths.length > 0 && (
+                <ul>
+                  {item.discovery.otherPaths.map((path) => (
+                    <li key={path} style={{ overflowWrap: 'anywhere' }}>
+                      {path}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {item.discovery.limited && <p>安装目录搜索已达到上限。</p>}
+              <p>请在“可执行文件路径”中填写要使用的绝对路径后重新检测。</p>
+            </details>
           )}
           {item.website && (
             <a href={item.website} target="_blank" rel="noreferrer">
@@ -91,7 +130,7 @@ export function HarnessSettings({ call, embedded = false }: { call: Call; embedd
                 {item.maintenance.state === 'running'
                   ? '正在使用官方更新器，请保持应用运行。'
                   : item.maintenance.state === 'completed'
-                    ? '已完成，版本已重新检测。'
+                    ? '已完成，已验证当前启动入口。'
                     : '未完成，可重新检测或重试。'}
               </p>
               <details>
@@ -106,13 +145,15 @@ export function HarnessSettings({ call, embedded = false }: { call: Call; embedd
             <details className={css.pathDetails}>
               <summary>可执行文件路径</summary>
               <input
+                key={item.definition?.command ?? item.path ?? ''}
                 className={css.input}
-                defaultValue={item.path ?? ''}
+                defaultValue={item.definition?.command ?? item.path ?? ''}
                 placeholder="绝对路径或 PATH 中的命令"
                 disabled={busy}
                 onBlur={(e) => {
                   const command = e.target.value.trim()
-                  if (command !== item.path) void savePath(item.id, command)
+                  if (command !== (item.definition?.command ?? item.path ?? ''))
+                    void savePath(item.id, command)
                 }}
               />
             </details>

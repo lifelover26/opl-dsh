@@ -1,4 +1,4 @@
-/** One Session's message-edit selection, shared by message actions and recovery UI. */
+/** One Session's message-edit selection, shared by the composer and message actions. */
 import type { ExecutionCall } from '../../shared/client/remote-call.ts'
 import type {
   MessageEditChoice,
@@ -28,7 +28,6 @@ export const messageEditCopy = {
   stop: '请先停止当前对话',
   recover: '重试未确认的编辑',
   retry: '重试编辑',
-  unavailable: '暂不可编辑',
 } as const
 
 export const messageEditUnavailableCopy: Record<MessageEditUnavailable['reason'], string> = {
@@ -70,7 +69,7 @@ function restored(sessionId: string): EditSelection | undefined {
 /**
  * Own one Session's editable choices and selected target.
  *
- * Every message action and the exceptional recovery control observe this store,
+ * Every message action and the composer observe this store,
  * so the row icon, the composer draft, and the prompt interceptor cannot drift
  * into separate selections.
  */

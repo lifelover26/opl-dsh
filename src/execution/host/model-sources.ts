@@ -12,6 +12,8 @@ export interface ExternalModelRoute {
   protocol: ExternalWireProtocol
   /** Source-owned configured context budget; it is not a provider-side capacity probe. */
   contextWindow?: number
+  /** The exact source advertises image input; absent routes remain text-only. */
+  imageInput?: boolean
 }
 /** One source explicitly declares supported model/Harness pairs and owns route resolution. */
 export interface ExternalModelSource {
@@ -127,6 +129,8 @@ export class ExternalModelSources {
       (!Number.isSafeInteger(route.contextWindow) || route.contextWindow <= 0)
     )
       throw Error('模型来源提供了无效的上下文容量')
+    if (route.imageInput !== undefined && typeof route.imageInput !== 'boolean')
+      throw Error('模型来源提供了无效的图片能力')
     return route
   }
 }

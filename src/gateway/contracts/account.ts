@@ -1,4 +1,5 @@
 import type { GatewayGroupId } from './groups.ts'
+import type { GatewayCatalogStatus, GatewayModelDiagnostic } from './models.ts'
 /**
  * Wire-safe account vocabulary for the OPL Gateway surface.
  *
@@ -47,6 +48,7 @@ export interface GatewayGroupStatus {
   readonly rateMultiplier?: number
   readonly state: 'ready' | 'unauthorized' | 'unconfigured' | 'error'
   readonly error?: string
+  readonly catalog?: GatewayCatalogStatus
 }
 /** One status answer, secret-free. */
 export interface GatewayAccountStatus {
@@ -66,6 +68,8 @@ export interface GatewayAccountStatus {
   readonly channelError?: string | undefined
   /** Provisioning failure of the optional Grok Build combination. */
   readonly harnessError?: string | undefined
+  /** Unexpected failure outside an individual group's model-listing operation. */
+  readonly modelSyncError?: GatewayModelDiagnostic
   /**
    * Where the account facts came from: this process's own session, or the
    * binding OPL recorded. Absent when neither has one.

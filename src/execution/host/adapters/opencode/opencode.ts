@@ -295,6 +295,7 @@ export const openCodeAdapter: HarnessAdapter = {
       home: options.home,
       command: started.command,
       args: started.args,
+      promptImageSupport: route?.imageInput === true,
       // The key is carried in the child's own configuration variable and nowhere else.
       env: {
         ...binding.env,
@@ -337,6 +338,13 @@ export const openCodeAdapter: HarnessAdapter = {
       snapshot.configOptions,
       describe,
     )
+  },
+  verifyPrompt(_record, snapshot, prompt) {
+    if (
+      prompt.some((part) => part.type === 'image') &&
+      snapshot.agent?.agentCapabilities?.promptCapabilities?.image !== true
+    )
+      throw failure('未声明图片输入能力；未发送提示词。', snapshot)
   },
 }
 

@@ -87,6 +87,10 @@ npm test
 
 `execution/host/adapters` 中的 DSH、Grok Build、Codex CLI、Claude Code 各自声明匹配规则和启动方式。外部程序仍保存自己的上下文、工具与原生会话。Codex 使用 app-server，Claude 使用官方 Agent SDK，Grok 使用 ACP。OPL 只转换协议、权限与状态。Harness 注册表同时搜索桌面 PATH、登录 Shell PATH、常见用户目录和官方应用附带 CLI；Codex CLI 与 Claude Code 的安装/更新只走固定官方入口，安装完成后必须重新回读绝对路径和版本。
 
+CLI 维护回读绕过版本缓存，并检查安装器返回的实际安装目录；已配置入口与新安装不一致时报告两者，不自动替换用户入口。维护命令复用该 Harness 的代理设置。Codex app-server 在启动时和每次创建、加载会话时核验同一个 provider，避免线程参数与全局 Responses 客户端使用不同渠道。
+
+已有 CLI 的发现与版本验证不依赖 npm；npm 只用于需要它的安装或更新。排查以 Desktop 实际采用的路径、版本和脱敏失败原因为准，终端中的另一个同名程序可运行不等于当前入口已通过验证。显式路径保留用户选择；多个安装入口不按目录名猜测最新版本。
+
 组合目录只保存模型引用、Harness 引用、默认/启用状态和权限。`ExecutionModelResolver` 从官方模型注册表和 Gateway 读取投影，不另存模型连接。新增执行器应提供一个适配器及其协议/权限/恢复测试，不在中心服务增加账户或 Provider 配置分支。
 
 通用协作后台记录父子对话、明确任务、验收要求、执行状态、交付和回传状态。执行完成不等于验收通过。同项目写任务按现有协作规则排队，只读任务可并行；取消父任务传递给后代，子任务不能扩大权限。主界面保持官方 DSH 会话 UI，不渲染第二套外部会话列表；外部 Codex 开关只限制外部桥接，不关闭内部 Codex CLI 组合。

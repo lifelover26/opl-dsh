@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -18,11 +18,14 @@ const intent: ExternalEditIntent = {
   phase: 'invoking',
 }
 const stores: FileExternalEditJournal[] = []
+const roots: string[] = []
 afterEach(async () => {
   await Promise.allSettled(stores.splice(0).map((store) => store.drain()))
+  await Promise.all(roots.splice(0).map((home) => rm(home, { recursive: true, force: true })))
 })
 async function fixture() {
   const home = await mkdtemp(join(tmpdir(), 'opl-edit-journal-'))
+  roots.push(home)
   const store = new FileExternalEditJournal(home)
   stores.push(store)
   return { home, store, directory: join(home, 'profiles/desktop/external-message-edit-intents') }
@@ -30,6 +33,26 @@ async function fixture() {
 const filename = createHash('sha256').update('dsh').digest('hex') + '.json'
 
 describe('external edit journal persistence', () => {
+  it('keeps exact vendor image counts across restart and rejects damaged counts', async () => {
+    const { home, store, directory } = await fixture()
+    const withImages = {
+      ...intent,
+      expected: { ...intent.expected, boundaries: [{ id: 'a', imageCount: 2 }] },
+    }
+    await store.save(withImages)
+    const restarted = new FileExternalEditJournal(home)
+    await restarted.load()
+    expect(restarted.get('dsh')).toEqual(withImages)
+    await writeFile(
+      join(directory, filename),
+      JSON.stringify({
+        ...withImages,
+        expected: { ...withImages.expected, boundaries: [{ id: 'a', imageCount: -1 }] },
+      }),
+    )
+    await expect(restarted.load()).rejects.toThrow('损坏')
+    expect(restarted.get('dsh')?.expected.boundaries[0]?.imageCount).toBe(2)
+  })
   it('retains the exact optional native target and rejects invalid sequence values', async () => {
     const { home, store, directory } = await fixture()
     await store.save({ ...intent, targetSeq: 17 })

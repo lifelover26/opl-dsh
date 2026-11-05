@@ -22,8 +22,10 @@ import type { MiniMaxAccountStatus } from '../contracts/minimax-account.ts'
 const executeFile = promisify(execFile)
 /** The official device-authorization lease is ten minutes; the UI gets the same bound. */
 const LOGIN_LEASE_MS = 600_000
-/** Sign-out normally returns immediately; a bounded wait avoids an unbounded maintenance gate. */
+/** Bounds the sign-out process and the metadata confirmation together. */
 const LOGOUT_TIMEOUT_MS = 120_000
+/** Metadata can settle after the configured command has exited. */
+const LOGOUT_RECHECK_INTERVAL_MS = 250
 /** Grace period between a graceful stop and a forced one. */
 const STOP_GRACE_MS = 5_000
 
@@ -47,6 +49,7 @@ export interface MiniMaxAccountOptions {
   now?: () => number
   platform?: NodeJS.Platform
   loginLeaseMs?: number
+  /** Shared budget for the child process and post-exit metadata confirmation. */
   logoutTimeoutMs?: number
   stopGraceMs?: number
 }
@@ -87,6 +90,7 @@ interface LoginOperation extends Operation {
 }
 
 interface LogoutOperation extends Operation {
+  recheck: AbortController
   result: Promise<MiniMaxAccountStatus>
 }
 
@@ -170,7 +174,8 @@ export class MiniMaxAccount {
    * Run the official sign-out command for the selected region.
    *
    * Sign-out is a real CLI operation with the same region flag as login. This method never
-   * fabricates a signed-out state: it reports whatever the CLI metadata says afterwards.
+   * fabricates a signed-out state: process exit and metadata confirmation share one timeout,
+   * and an unconfirmed result preserves the last observed pending, signed-in or unknown state.
    */
   async logout(region: Region): Promise<MiniMaxAccountStatus> {
     assertRegion(region)
@@ -243,16 +248,20 @@ export class MiniMaxAccount {
         }
       }
       const logout = this.logoutOperation
-      if (logout?.child) {
+      if (logout) {
+        logout.cancelled = true
+        logout.recheck.abort()
         let stopped = true
-        try {
-          await this.stopOperation(logout)
-        } catch (error) {
-          stopped = false
-          if (!failed) failure = error
-          failed = true
+        if (logout.child) {
+          try {
+            await this.stopOperation(logout)
+          } catch (error) {
+            stopped = false
+            if (!failed) failure = error
+            failed = true
+          }
         }
-        if (stopped) await logout.result.catch(() => {})
+        if (stopped && logout.exited) await logout.result.catch(() => {})
       }
       if (failed) throw failure
     })()
@@ -313,6 +322,7 @@ export class MiniMaxAccount {
 
   private reserveLogout(region: Region): LogoutOperation {
     const operation = this.createOperation(region) as LogoutOperation
+    operation.recheck = new AbortController()
     operation.result = undefined as unknown as Promise<MiniMaxAccountStatus>
     this.logoutOperation = operation
     operation.result = this.runLogout(operation)
@@ -405,7 +415,7 @@ export class MiniMaxAccount {
       this.ownExit(operation)
       const outcome = await this.waitForTimedExit(operation, this.logoutTimeoutMs)
       if (outcome.timedOut) {
-        await this.stopOperation(operation).catch(() => {})
+        await this.stopOperation(operation)
         const status = await this.statusSnapshot(
           operation.region,
           true,
@@ -420,12 +430,46 @@ export class MiniMaxAccount {
         if (status.loginState === 'signed-out') return status
         throw Error('无法启动官方 MiniMax 退出程序')
       }
-      if (result?.code === 0) return status
+      if (result?.code === 0)
+        return await this.confirmLogout(operation, config.prefix ?? this.prefix, status)
       if (status.loginState === 'signed-out') return status
       throw Error('官方退出未完成，请刷新状态后重试')
     } finally {
       this.finishOperation(operation)
     }
+  }
+
+  private async confirmLogout(
+    operation: LogoutOperation,
+    prefix: readonly string[],
+    initial: MiniMaxAccountStatus,
+  ): Promise<MiniMaxAccountStatus> {
+    let status = initial
+    while (
+      status.loginState !== 'signed-out' &&
+      !operation.timedOut &&
+      !operation.cancelled &&
+      !this.closed
+    ) {
+      await this.waitForLogoutRecheck(operation.recheck.signal)
+      if (operation.cancelled || this.closed) break
+      status = await this.statusSnapshot(operation.region, true, prefix)
+    }
+    return status
+  }
+
+  private waitForLogoutRecheck(signal: AbortSignal): Promise<void> {
+    if (signal.aborted) return Promise.resolve()
+    return new Promise((resolve) => {
+      const finish = () => {
+        clearTimeout(timer)
+        signal.removeEventListener('abort', finish)
+        resolve()
+      }
+      const timer = setTimeout(finish, LOGOUT_RECHECK_INTERVAL_MS)
+      timer.unref?.()
+      signal.addEventListener('abort', finish, { once: true })
+    })
   }
 
   /**
@@ -558,7 +602,7 @@ export class MiniMaxAccount {
       operation.exited = true
       operation.child = undefined
       if (this.pending === operation) this.pending = undefined
-      if (this.logoutOperation === operation) this.logoutOperation = undefined
+      if (operation.finished) this.releaseOperation(operation)
     })
   }
 
@@ -642,18 +686,22 @@ export class MiniMaxAccount {
     return result
   }
 
-  private async waitForTimedExit(operation: Operation, timeoutMs: number): Promise<TimedExit> {
+  private async waitForTimedExit(
+    operation: LogoutOperation,
+    timeoutMs: number,
+  ): Promise<TimedExit> {
     const watch = operation.watch
     if (!watch) return { timedOut: true }
-    let timer: ReturnType<typeof setTimeout> | undefined
     const timeout = new Promise<TimedExit>((resolve) => {
-      timer = setTimeout(() => resolve({ timedOut: true }), timeoutMs)
-      timer.unref?.()
+      operation.timer = setTimeout(() => {
+        operation.timedOut = true
+        operation.recheck.abort()
+        resolve({ timedOut: true })
+      }, timeoutMs)
+      operation.timer.unref?.()
     })
     const exited = watch.exit.then((result) => ({ timedOut: false, result }))
-    const outcome = await Promise.race([exited, timeout])
-    if (timer) clearTimeout(timer)
-    return outcome
+    return Promise.race([exited, timeout])
   }
 }
 

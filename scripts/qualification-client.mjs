@@ -329,6 +329,11 @@ export async function verifyDesktopClient(
     session,
     `Array.from(${settingsNav}.querySelectorAll('button')).map(x=>x.textContent.trim())`,
   )
+  result.visibleNavigationIcons = await pipe.evaluate(
+    session,
+    `Array.from(${settingsNav}.querySelectorAll('button svg')).filter(x=>x.getClientRects().length).length`,
+  )
+  if (result.visibleNavigationIcons) throw new Error('设置导航应只显示文字')
   result.clippedNavigationLabels = await pipe.evaluate(
     session,
     `Array.from(${settingsNav}.querySelectorAll('button span')).filter(x=>x.getClientRects().length && x.scrollWidth>x.clientWidth+1).map(x=>x.textContent.trim()).filter(Boolean)`,

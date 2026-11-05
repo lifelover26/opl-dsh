@@ -102,7 +102,14 @@ export function buildOpenCodeRouteConfig(
           npm: OPENCODE_NPM,
           name: 'OPL Route',
           options: { baseURL: route.baseURL, apiKey: route.apiKey },
-          models: { [model]: { name: model } },
+          models: {
+            [model]: {
+              name: model,
+              ...(route.imageInput === true
+                ? { modalities: { input: ['text', 'image'], output: ['text'] } }
+                : {}),
+            },
+          },
         },
       },
     }),
