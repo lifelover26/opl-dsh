@@ -27,6 +27,8 @@ export interface HarnessTurn {
   operationId: string
   fingerprint: string
   prompt: string
+  /** Ordered request input with immutable official image references; absent on text-only turns. */
+  promptContent?: import('./prompt.ts').HarnessPromptPart[]
   reasoningEffort?: string
   /** Canonical declared write paths for scheduling, not a sandbox restriction. */
   writeScope?: string[]

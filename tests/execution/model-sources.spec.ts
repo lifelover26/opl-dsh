@@ -108,16 +108,19 @@ describe('external model-source ownership', () => {
   it('uses the configured Gateway protocol rather than inferring it from a GPT name', async () => {
     const changed = {
       ...ctx,
-      get: () => ({
-        describe: () => [
-          {
-            ns: 'llm-pi-ai',
-            value: {
-              providers: { 'opl-gateway-openai': { api: 'openai-completions' } },
-            },
-          },
-        ],
-      }),
+      get: (name: string) =>
+        name === 'settings'
+          ? {
+              describe: () => [
+                {
+                  ns: 'llm-pi-ai',
+                  value: {
+                    providers: { 'opl-gateway-openai': { api: 'openai-completions' } },
+                  },
+                },
+              ],
+            }
+          : undefined,
     } as unknown as Context
     await expect(
       new ExternalModelSources(changed).resolve(

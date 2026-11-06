@@ -3,12 +3,16 @@ import { act, createElement, type ComponentType, type ReactElement } from 'react
 import { createRoot, type Root } from 'react-dom/client'
 import { flushSync } from 'react-dom'
 import { afterEach, expect, it, vi } from 'vitest'
+import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SlotCore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ChatNodeViewProps } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { ExecutionCall } from '../../src/shared/client/remote-call.ts'
 import { MessageEditSession } from '../../src/execution/client/message-edit-session.ts'
 import { MessageEditAction } from '../../src/execution/client/MessageEditAction.tsx'
-import type { MessageEditState } from '../../src/execution/contracts/message-edit.ts'
+import type {
+  MessageEditSend,
+  MessageEditState,
+} from '../../src/execution/contracts/message-edit.ts'
 import {
   MessageEditUserRow,
   installMessageEditUserRows,
@@ -18,7 +22,7 @@ import {
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   IconCopyOutlineRegular: () => null,
   IconEditOutlineRegular: () => null,
-  Tooltip: ({ children }: { children: unknown }) => children,
+  Tooltip: vi.fn(({ children }: { children: unknown }) => children),
 }))
 
 type ShimNode = {
@@ -346,6 +350,27 @@ function actionState(sessionId = 'action-session'): MessageEditState {
   }
 }
 
+function recoveryState(): MessageEditState & { recovery: MessageEditSend } {
+  return {
+    ...actionState(),
+    pending: true,
+    choices: [],
+    recovery: {
+      prompt: {
+        sessionId: 'action-session' as MessageEditSend['prompt']['sessionId'],
+        requestId: 'saved-edit-request' as MessageEditSend['prompt']['requestId'],
+        mode: 'queue',
+        content: [
+          { type: 'text', text: '已保存的编辑输入' },
+          { type: 'image', mediaType: 'image/png', data: 'c2F2ZWQ=' },
+        ],
+      },
+      targetSeq: 3,
+      head: 9,
+    },
+  }
+}
+
 it('keeps a supported edit action reachable while initial history is unavailable and retries only the read', async () => {
   const call = vi
     .fn()
@@ -373,6 +398,308 @@ it('keeps a supported edit action reachable while initial history is unavailable
   expect(session.getSnapshot().selection).toBeUndefined()
   expect(buttons(container)[0]?.getAttribute?.('aria-label')).toBe('编辑消息')
 })
+
+it.each(['transport', 'history-busy'] as const)(
+  'offers a read retry before engine support is known after %s failure',
+  async (failure) => {
+    const call = vi.fn()
+    if (failure === 'transport') call.mockRejectedValueOnce(Error('offline'))
+    else
+      call.mockResolvedValueOnce({
+        ...actionState(),
+        supported: false,
+        choices: [],
+        unavailable: { reason: 'history-busy', retryable: true },
+      })
+    call.mockResolvedValueOnce(actionState())
+    const session = new MessageEditSession('action-session', call as ExecutionCall)
+    await session.load()
+    const onDraft = vi.fn()
+    const container = dom.container()
+    root = createRoot(container as unknown as HTMLElement)
+    await act(async () =>
+      root.render(
+        createElement(MessageEditAction, { session, seq: 3, draft: '未发送草稿', onDraft }),
+      ),
+    )
+    expect(buttons(container)[0]?.getAttribute?.('aria-label')).toBe('重试编辑')
+    await act(async () => buttons(container)[0]!.click!())
+    expect(call.mock.calls).toEqual([
+      ['message-edit-state', { sessionId: 'action-session' }],
+      ['message-edit-state', { sessionId: 'action-session' }],
+    ])
+    expect(session.getSnapshot().selection).toBeUndefined()
+    expect(onDraft).not.toHaveBeenCalled()
+    expect(buttons(container)[0]?.getAttribute?.('aria-label')).toBe('编辑消息')
+  },
+)
+
+it('retries one history read for repeated clicks without changing an active edit draft', async () => {
+  let finish!: (state: MessageEditState) => void
+  const read = new Promise<MessageEditState>((resolve) => {
+    finish = resolve
+  })
+  const call = vi
+    .fn()
+    .mockResolvedValueOnce(actionState())
+    .mockResolvedValueOnce({
+      ...actionState(),
+      choices: [],
+      unavailable: { reason: 'history-unavailable', retryable: true },
+    })
+    .mockImplementationOnce(() => read)
+  const session = new MessageEditSession('action-session', call as ExecutionCall)
+  await session.load()
+  await session.select(3, '')
+  const selection = session.getSnapshot().selection
+  await session.load()
+  const retry = vi.spyOn(session, 'retry')
+  const onDraft = vi.fn()
+  const container = dom.container()
+  root = createRoot(container as unknown as HTMLElement)
+  await act(async () =>
+    root.render(
+      createElement(MessageEditAction, { session, seq: 3, draft: '编辑中的草稿', onDraft }),
+    ),
+  )
+  await act(async () => {
+    const action = buttons(container)[0]!
+    action.click!()
+    action.click!()
+  })
+  expect(call.mock.calls.map(([method]) => method)).toEqual([
+    'message-edit-state',
+    'message-edit-state',
+    'message-edit-state',
+  ])
+  await act(async () => {
+    finish(actionState())
+    await Promise.all(retry.mock.results.map((result) => result.value))
+  })
+  expect(call).toHaveBeenCalledTimes(3)
+  expect(session.getSnapshot().selection).toBe(selection)
+  expect(onDraft).not.toHaveBeenCalled()
+})
+
+it('recovers the saved request once from its user-message icon without touching the draft', async () => {
+  const pending = recoveryState()
+  let finish!: (result: { accepted: true }) => void
+  const send = new Promise<{ accepted: true }>((resolve) => {
+    finish = resolve
+  })
+  const call = vi
+    .fn()
+    .mockResolvedValueOnce(pending)
+    .mockImplementationOnce(() => send)
+    .mockResolvedValueOnce(actionState())
+  const session = new MessageEditSession('action-session', call as ExecutionCall)
+  await session.load()
+  const recover = vi.spyOn(session, 'recover')
+  const select = vi.spyOn(session, 'select')
+  const onDraft = vi.fn()
+  const container = dom.container()
+  root = createRoot(container as unknown as HTMLElement)
+  const tooltipCalls = vi.mocked(Tooltip).mock.calls.length
+  await act(async () =>
+    root.render(
+      createElement(MessageEditUserRow, {
+        edit: session,
+        sessionId: 'action-session',
+        node: {
+          kind: 'user',
+          data: {
+            kind: 'user',
+            seq: 3,
+            time: Date.now(),
+            content: [
+              { type: 'text', text: '消息原文' },
+              {
+                type: 'image',
+                attachment: {
+                  attachmentId: 'original-image',
+                  mediaType: 'image/png',
+                  bytes: 4,
+                  width: 1,
+                  height: 1,
+                },
+              },
+            ],
+            source: { kind: 'user' },
+          },
+        },
+        loadImage: vi.fn(),
+        renderSlotChain: vi.fn(() => null),
+        renderFactorySlot: vi.fn(() => null),
+        useInput: ((selector: (state: { draft: string }) => unknown) =>
+          selector({ draft: '未发送草稿' })) as ChatNodeViewProps<'user'>['useInput'],
+        inputActions: { setDraft: onDraft },
+        t: (key: string) => ({ copy: '复制', copied: '已复制' })[key] ?? key,
+      } as unknown as MessageEditUserRowProps),
+    ),
+  )
+  expect(buttons(container).map((button) => button.getAttribute?.('aria-label'))).toEqual([
+    '复制',
+    '重试未确认的编辑',
+  ])
+  const hints = vi
+    .mocked(Tooltip)
+    .mock.calls.slice(tooltipCalls)
+    .map(([props]) => props.label)
+  expect(hints).toContain('重试未确认的编辑')
+  expect(hints).not.toContain('编辑消息，保留原图片')
+  expect(call).toHaveBeenCalledTimes(1)
+  await act(async () => {
+    const action = buttons(container)[1]!
+    expect(action.getAttribute?.('aria-disabled')).toBeNull()
+    action.click!()
+    action.click!()
+  })
+  expect(call).toHaveBeenCalledTimes(2)
+  expect(call.mock.calls[1]).toEqual(['message-edit-send', pending.recovery])
+  expect(call.mock.calls[1]![1]).toBe(pending.recovery)
+  await act(async () => {
+    finish({ accepted: true })
+    await Promise.all(recover.mock.results.map((result) => result.value))
+  })
+  expect(call.mock.calls.map(([method]) => method)).toEqual([
+    'message-edit-state',
+    'message-edit-send',
+    'message-edit-state',
+  ])
+  expect(select).not.toHaveBeenCalled()
+  expect(onDraft).not.toHaveBeenCalled()
+  expect(session.getSnapshot().selection).toBeUndefined()
+  expect(buttons(container)[1]?.getAttribute?.('aria-label')).toBe('编辑消息')
+})
+
+it.each(['same-message', 'different-message'] as const)(
+  'ignores a stale recovery click when the saved request changes for the %s',
+  async (target) => {
+    const next = recoveryState()
+    next.recovery = {
+      ...next.recovery,
+      targetSeq: target === 'different-message' ? 4 : 3,
+      prompt: {
+        ...next.recovery.prompt,
+        requestId: 'new-saved-request' as MessageEditSend['prompt']['requestId'],
+      },
+    }
+    const call = vi.fn().mockResolvedValueOnce(recoveryState()).mockResolvedValueOnce(next)
+    const session = new MessageEditSession('action-session', call as ExecutionCall)
+    await session.load()
+    // A delayed React commit can leave the preceding icon visible after a state read completes.
+    vi.spyOn(session, 'subscribe').mockImplementation(() => () => {})
+    const recover = vi.spyOn(session, 'recover')
+    const onDraft = vi.fn()
+    const container = dom.container()
+    root = createRoot(container as unknown as HTMLElement)
+    await act(async () =>
+      root.render(createElement(MessageEditAction, { session, seq: 3, draft: '', onDraft })),
+    )
+    const action = buttons(container)[0]!
+    await act(async () => session.load())
+    expect(action.getAttribute?.('aria-label')).toBe('重试未确认的编辑')
+    await act(async () => action.click!())
+    expect(recover).not.toHaveBeenCalled()
+    expect(call.mock.calls.map(([method]) => method)).toEqual([
+      'message-edit-state',
+      'message-edit-state',
+    ])
+    expect(onDraft).not.toHaveBeenCalled()
+    expect(session.getSnapshot().selection).toBeUndefined()
+  },
+)
+
+it.each([false, true])(
+  'never offers recovery from a different message with a known choice: %s',
+  async (known) => {
+    const state = recoveryState()
+    if (known) state.choices = [{ seq: 4, text: '已保存的编辑输入' }]
+    const call = vi.fn().mockResolvedValue(state)
+    const session = new MessageEditSession('action-session', call as ExecutionCall)
+    await session.load()
+    const onDraft = vi.fn()
+    const container = dom.container()
+    root = createRoot(container as unknown as HTMLElement)
+    await act(async () =>
+      root.render(createElement(MessageEditAction, { session, seq: 4, draft: '', onDraft })),
+    )
+    const actions = buttons(container)
+    if (known) {
+      expect(actions[0]?.getAttribute?.('aria-label')).toBe('编辑消息')
+      expect(actions[0]?.getAttribute?.('aria-disabled')).toBe('true')
+      await act(async () => actions[0]!.click!())
+    } else expect(actions).toHaveLength(0)
+    expect(call).toHaveBeenCalledTimes(1)
+    expect(onDraft).not.toHaveBeenCalled()
+    expect(session.getSnapshot().selection).toBeUndefined()
+  },
+)
+
+it.each([true, false])(
+  'keeps unavailable recovery read-only with retryable=%s',
+  async (retryable) => {
+    const state = recoveryState()
+    const call = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...state,
+        unavailable: retryable
+          ? { reason: 'history-unavailable', retryable: true }
+          : { reason: 'mapping-unavailable', retryable: false },
+      })
+      .mockResolvedValueOnce(state)
+    const session = new MessageEditSession('action-session', call as ExecutionCall)
+    await session.load()
+    const onDraft = vi.fn()
+    const container = dom.container()
+    root = createRoot(container as unknown as HTMLElement)
+    await act(async () =>
+      root.render(
+        createElement(MessageEditAction, { session, seq: 3, draft: '未发送草稿', onDraft }),
+      ),
+    )
+    const action = buttons(container)[0]!
+    expect(action.getAttribute?.('aria-label')).toBe(retryable ? '重试编辑' : '重试未确认的编辑')
+    expect(action.getAttribute?.('aria-disabled')).toBe(retryable ? null : 'true')
+    await act(async () => action.click!())
+    expect(call.mock.calls.map(([method]) => method)).toEqual(
+      retryable ? ['message-edit-state', 'message-edit-state'] : ['message-edit-state'],
+    )
+    expect(onDraft).not.toHaveBeenCalled()
+    expect(session.getSnapshot().selection).toBeUndefined()
+  },
+)
+
+it.each(['running-recovery', 'running-read', 'pending-read'] as const)(
+  'blocks message-local actions during %s',
+  async (mode) => {
+    const state =
+      mode === 'running-recovery'
+        ? { ...recoveryState(), busy: true }
+        : {
+            ...actionState(),
+            busy: mode === 'running-read',
+            pending: mode === 'pending-read',
+            unavailable: { reason: 'history-busy', retryable: true },
+          }
+    const call = vi.fn().mockResolvedValue(state)
+    const session = new MessageEditSession('action-session', call as ExecutionCall)
+    await session.load()
+    const onDraft = vi.fn()
+    const container = dom.container()
+    root = createRoot(container as unknown as HTMLElement)
+    await act(async () =>
+      root.render(createElement(MessageEditAction, { session, seq: 3, draft: '', onDraft })),
+    )
+    const action = buttons(container)[0]!
+    expect(action.getAttribute?.('aria-disabled')).toBe('true')
+    await act(async () => action.click!())
+    expect(call).toHaveBeenCalledTimes(1)
+    expect(onDraft).not.toHaveBeenCalled()
+    expect(session.getSnapshot().selection).toBeUndefined()
+  },
+)
 
 it.each([
   { supported: false, choices: [] },

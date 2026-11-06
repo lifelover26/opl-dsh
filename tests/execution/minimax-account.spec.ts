@@ -164,12 +164,19 @@ describe('official MiniMax account seat', () => {
     async (operation) => {
       const directory = await dataDir()
       await writeState(directory, 'cn', state('cn'))
+      vi.useFakeTimers()
       const child = new FakeChild()
       const spawn = spawnReturning(child)
-      const service = account({ directory, spawn, prefix: ['--env', 'staging'] })
+      const service = account({
+        directory,
+        spawn,
+        prefix: ['--env', 'staging'],
+        logoutTimeoutMs: 100,
+      })
       const result = operation === 'login' ? service.login('cn') : service.logout('cn')
       await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce())
       child.close(0)
+      await vi.advanceTimersByTimeAsync(100)
       expect(await result).toMatchObject({ loginState: 'unknown', loginPending: false })
       await service.dispose()
     },
@@ -310,6 +317,27 @@ describe('official MiniMax account seat', () => {
     await expect(service.logout('cn')).rejects.toThrow('登录')
     child.close(0)
     await login
+    await service.dispose()
+  })
+
+  it('confirms CN sign-out without changing the saved Global account', async () => {
+    const directory = await dataDir()
+    await writeState(directory, 'cn', state('cn'))
+    await writeState(directory, 'en', state('en'))
+    const child = new FakeChild()
+    const spawn = spawnReturning(child)
+    const service = account({ directory, spawn })
+    const logout = service.logout('cn')
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalledOnce())
+    await writeState(directory, 'cn', state('cn', { status: 'anonymous', expiresAtMs: undefined }))
+    child.close()
+
+    expect(await logout).toMatchObject({ region: 'cn', loginState: 'signed-out' })
+    expect(await service.status('global')).toMatchObject({
+      region: 'global',
+      loginState: 'signed-in',
+    })
+    expect(spawn).toHaveBeenCalledOnce()
     await service.dispose()
   })
 

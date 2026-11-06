@@ -3,12 +3,16 @@ import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readdir, readFile, writeFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { MessageEditSend } from '../contracts/message-edit.ts'
+import type { UserMessage } from '@deepseek-ai/dsh-llm'
+import { validPromptContent } from './multimodal-prompt.ts'
 
 export interface EditIntent {
   version: 1
   input: MessageEditSend
   surface: number[]
   phase: 'prepared' | 'committed' | 'cancelled'
+  /** Logged input expected after the official controller admits the retained image bytes. */
+  expectedContent?: UserMessage['content']
 }
 /** Parse durable input without adopting a malformed target or submission. */
 function parse(value: unknown): EditIntent {
@@ -31,6 +35,7 @@ function parse(value: unknown): EditIntent {
     item.input.prompt.mode !== 'queue' ||
     !Array.isArray(item.input.prompt.content) ||
     !item.input.prompt.content.length ||
+    (item.expectedContent !== undefined && !validPromptContent(item.expectedContent)) ||
     !item.input.prompt.content.every(
       (part) => part.type === 'text' && typeof part.text === 'string',
     )

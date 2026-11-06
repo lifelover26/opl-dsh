@@ -166,6 +166,7 @@ export function MiniMaxAccountSection({
   const localPendingOther = localPendingRegion !== undefined && localPendingRegion !== region
   const pendingCurrent = serverPendingCurrent || localPendingCurrent
   const pendingOther = serverPendingOther || localPendingOther
+  const signingOut = status?.loginState === 'signing-out'
   const otherRegion = serverPendingOther
     ? pendingRegion
     : localPendingOther
@@ -215,6 +216,7 @@ export function MiniMaxAccountSection({
     if (
       !status?.installed ||
       status.loginState === 'signed-in' ||
+      signingOut ||
       loginBusy ||
       logoutBusy ||
       cancelBusy ||
@@ -312,13 +314,18 @@ export function MiniMaxAccountSection({
       else {
         setStatus(next)
         setNotice({
-          tone: next.loginState === 'signed-out' ? 'info' : 'error',
+          tone:
+            next.loginState === 'signed-out' || next.loginState === 'signing-out'
+              ? 'info'
+              : 'error',
           text:
             next.loginState === 'signed-out'
               ? t('logoutDone')
-              : next.loginState === 'signed-in'
-                ? t('logoutNotCompleted')
-                : t('logoutUnknown'),
+              : next.loginState === 'signing-out'
+                ? t('logoutStillPending')
+                : next.loginState === 'signed-in'
+                  ? t('logoutNotCompleted')
+                  : t('logoutUnknown'),
         })
       }
     } catch {
@@ -343,6 +350,8 @@ export function MiniMaxAccountSection({
     if (!mounted.current || logoutToken.current !== token || regionRef.current !== requested) return
     if (!next) return
     if (next.loginState === 'signed-out') setNotice({ tone: 'info', text: t('logoutDone') })
+    else if (next.loginState === 'signing-out')
+      setNotice({ tone: 'info', text: t('logoutStillPending') })
     else if (next.loginState === 'signed-in')
       setNotice({ tone: 'error', text: t('logoutNotCompleted') })
     else setNotice({ tone: 'error', text: t('logoutUnknown') })
@@ -414,9 +423,11 @@ export function MiniMaxAccountSection({
           ? t('otherPending')
           : status.loginState === 'signed-in'
             ? t('signedIn')
-            : status.loginState === 'signed-out'
-              ? t('signedOut')
-              : t('unknown')
+            : signingOut
+              ? t('logoutPending')
+              : status.loginState === 'signed-out'
+                ? t('signedOut')
+                : t('unknown')
 
   const stateHint = !status
     ? t('hint')
@@ -424,9 +435,11 @@ export function MiniMaxAccountSection({
       ? t('missingHint')
       : pendingCurrent || pendingOther
         ? t('pendingHint')
-        : status.loginState === 'unknown'
-          ? t('unknownHint')
-          : t('hint')
+        : signingOut
+          ? t('logoutStillPending')
+          : status.loginState === 'unknown'
+            ? t('unknownHint')
+            : t('hint')
 
   const deadline =
     pendingCurrent &&
@@ -449,6 +462,7 @@ export function MiniMaxAccountSection({
   const loginDisabled =
     !status?.installed ||
     status.loginState === 'signed-in' ||
+    signingOut ||
     reading ||
     loginBusy ||
     logoutBusy ||
@@ -457,11 +471,13 @@ export function MiniMaxAccountSection({
     pendingOther
   const loginDisabledHint = !status
     ? t('loginDisabledUnknown')
-    : pendingCurrent || pendingOther
-      ? t('loginDisabledPending')
-      : !status.installed
-        ? t('loginDisabledMissing')
-        : t('loginDisabledUnknown')
+    : signingOut
+      ? t('logoutStillPending')
+      : pendingCurrent || pendingOther
+        ? t('loginDisabledPending')
+        : !status.installed
+          ? t('loginDisabledMissing')
+          : t('loginDisabledUnknown')
   const logoutDisabled =
     !status ||
     !status.installed ||
@@ -534,7 +550,7 @@ export function MiniMaxAccountSection({
             </span>
           )}
         </div>
-        {status?.loginState !== 'signed-in' && (
+        {status?.loginState !== 'signed-in' && !signingOut && (
           <Button
             size="sm"
             data-opl-login
@@ -545,7 +561,7 @@ export function MiniMaxAccountSection({
             {status?.loginState === 'unknown' ? t('relogin') : t('login')}
           </Button>
         )}
-        {status?.loginState === 'signed-in' && (
+        {(status?.loginState === 'signed-in' || signingOut) && (
           <Button
             size="sm"
             variant="outline"
@@ -554,13 +570,15 @@ export function MiniMaxAccountSection({
             title={
               !status?.installed
                 ? t('missingHint')
-                : pendingCurrent || pendingOther
-                  ? t('logoutDisabledPending')
-                  : t('logoutHint')
+                : signingOut
+                  ? t('logoutStillPending')
+                  : pendingCurrent || pendingOther
+                    ? t('logoutDisabledPending')
+                    : t('logoutHint')
             }
             onClick={() => void logout()}
           >
-            {logoutBusy ? t('loggingOut') : t('logout')}
+            {logoutBusy || signingOut ? t('loggingOut') : t('logout')}
           </Button>
         )}
         {pendingCurrent && (

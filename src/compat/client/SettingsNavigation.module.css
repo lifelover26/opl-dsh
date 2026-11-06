@@ -1,4 +1,5 @@
-/* The official settings rail supplies a gear for sections without a dedicated glyph. */
+/* Hide the navigation glyph wrapper, including icons contributed by other plugins. */
+:global([data-shortcut-modal='settings'] > nav button > [aria-hidden='true'][class*='_navIcon']),
 :global([role='dialog'][aria-modal='true'] > nav button > svg[class*='_navIcon']) {
   display: none;
 }

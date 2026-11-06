@@ -278,6 +278,16 @@ function boundariesOf(messages: readonly VendorMessage[]): ExternalEditBoundary[
     if (message.info.role !== 'user') continue
     const text = nonSyntheticText(message)
     const hasFile = message.parts.some((part) => part.type === 'file')
+    const hasUnsupportedFile = message.parts.some(
+      (part) =>
+        part.type === 'file' &&
+        !['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(String(part.mime)),
+    )
+    const imageCount = message.parts.filter(
+      (part) =>
+        part.type === 'file' &&
+        ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(String(part.mime)),
+    ).length
     const id = messageId(message)
     if (!text.trim()) {
       if (hasFile) boundaries.push({ id, unavailableReason: '这条消息没有可编辑文本' })
@@ -286,7 +296,8 @@ function boundariesOf(messages: readonly VendorMessage[]): ExternalEditBoundary[
     boundaries.push({
       id,
       text,
-      ...(hasFile ? { unavailableReason: '这条消息带有附件，暂不支持编辑' } : {}),
+      ...(imageCount ? { imageCount } : {}),
+      ...(hasUnsupportedFile ? { unavailableReason: '这条消息带有附件，暂不支持编辑' } : {}),
     })
   }
   return boundaries

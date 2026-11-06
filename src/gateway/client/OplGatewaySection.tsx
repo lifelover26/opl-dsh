@@ -413,6 +413,11 @@ export function OplGatewaySection(
                 选择在此 DSH
                 中使用的分组。密钥自动管理，模型在“模型”页选择。停用会保留模型配置和已有对话。分组倍率相同不代表模型单价相同。
               </p>
+              {state.modelSyncError && (
+                <p className={css.error} role="alert">
+                  {state.modelSyncError.message}
+                </p>
+              )}
               <div className={css.modelRows}>
                 {state.groups?.map((group) => (
                   <div key={group.id} className={css.modelRow}>
@@ -431,6 +436,9 @@ export function OplGatewaySection(
                       </p>
                       {group.error && group.state === 'error' && (
                         <p className={css.error}>{group.error}</p>
+                      )}
+                      {group.enabled !== false && group.catalog?.diagnostic && (
+                        <p className={css.error}>{group.catalog.diagnostic.message}</p>
                       )}
                     </div>
                     <label className={css.row}>

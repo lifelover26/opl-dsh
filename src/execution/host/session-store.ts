@@ -5,6 +5,7 @@ import { isAbsolute, join } from 'node:path'
 import type { HarnessSession } from '../contracts/sessions.ts'
 import { DSH_COMBINATION } from '../contracts/sessions.ts'
 import { harnessAllowsFullAccess } from './permissions.ts'
+import { validPromptContent } from './multimodal-prompt.ts'
 
 function parseRecord(raw: unknown): HarnessSession {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw))
@@ -134,6 +135,8 @@ function parseRecord(raw: unknown): HarnessSession {
     'interrupted',
   ]
   for (const turn of item.turns ?? []) {
+    if (turn.promptContent !== undefined && !validPromptContent(turn.promptContent))
+      throw Error('组合会话图片输入记录无效，原文件已保留')
     if (
       turn.content !== undefined &&
       (!Array.isArray(turn.content) ||

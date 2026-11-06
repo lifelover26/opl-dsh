@@ -6,12 +6,14 @@ import { createInterface } from 'node:readline'
 import { createHash, randomUUID } from 'node:crypto'
 import { realpath } from 'node:fs/promises'
 import { dirname, resolve, sep } from 'node:path'
+import { commandLaunch } from '../harness-registry.ts'
 import {
   forkSession,
   getSessionMessages,
   query,
   type Query,
   type McpServerConfig,
+  type SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk'
 import {
   codexSandboxMode,
@@ -41,6 +43,68 @@ const taskPermission = (process.env.OPL_NATIVE_PERMISSION ?? 'read-only') as Nat
   model = process.env.OPL_NATIVE_MODEL!,
   cwd = process.cwd(),
   readonly = taskPermission === 'read-only'
+/** Source-owned image support; no model name or filename implies this capability. */
+const imageInputSetting = process.env.OPL_NATIVE_IMAGE_INPUT
+const imageInput = imageInputSetting === '1' && (kind === 'codex' || kind === 'claude')
+type ImageMimeType = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
+type NativePromptPart =
+  | { type: 'text'; text: string }
+  | { type: 'image'; data: string; mimeType: ImageMimeType }
+
+function imageMimeType(value: unknown): value is ImageMimeType {
+  return (
+    value === 'image/png' ||
+    value === 'image/jpeg' ||
+    value === 'image/gif' ||
+    value === 'image/webp'
+  )
+}
+function imageData(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length % 4 === 0 &&
+    /^[A-Za-z0-9+/]+={0,2}$/.test(value)
+  )
+}
+
+/** Validate ACP JSON before starting a turn; image bytes always come from the caller. */
+function nativePrompt(value: unknown): NativePromptPart[] {
+  if (!Array.isArray(value) || !value.length) throw Error('提示词内容为空')
+  return value.map((item: unknown): NativePromptPart => {
+    if (!item || typeof item !== 'object') throw Error('提示词内容无效')
+    const part = item as Record<string, unknown>
+    if (part.type === 'text' && typeof part.text === 'string')
+      return { type: 'text', text: part.text }
+    if (part.type !== 'image') throw Error('当前原生桥接仅支持文字和图片提示词')
+    if (!imageInput) throw Error('当前模型来源未声明图片输入能力')
+    const mimeType = part.mimeType
+    if (!imageMimeType(mimeType)) throw Error('当前原生桥接不支持此图片格式')
+    if (!imageData(part.data)) throw Error('图片必须携带有效的 Base64 数据')
+    // ACP's optional URI describes the source. It never authorizes a file read or fetch.
+    return { type: 'image', data: part.data, mimeType }
+  })
+}
+
+/** One structured user message retains every input block in its original order. */
+async function* claudeUserMessage(prompt: NativePromptPart[]): AsyncGenerator<SDKUserMessage> {
+  yield {
+    type: 'user',
+    session_id: sessionId,
+    parent_tool_use_id: null,
+    message: {
+      role: 'user',
+      content: prompt.map((part) =>
+        part.type === 'text'
+          ? { type: 'text', text: part.text }
+          : {
+              type: 'image',
+              source: { type: 'base64', media_type: part.mimeType, data: part.data },
+            },
+      ),
+    },
+  }
+}
 /**
  * The Auto permission session's official-review opt-in, carried from the adapter.
  *
@@ -145,23 +209,43 @@ function codexRequest(method: string, params: object): Promise<any> {
 }
 async function openCodex() {
   const windowsScript = process.platform === 'win32' && /\.(?:cmd|bat)$/i.test(command)
-  child = spawn(
-    windowsScript ? (process.env.ComSpec ?? 'cmd.exe') : command,
-    windowsScript
-      ? ['/d', '/s', '/c', `""${command}" app-server --stdio"`]
-      : ['app-server', '--stdio'],
-    {
-      cwd,
-      env: harnessEnv(),
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-      // cmd.exe with /S strips only the outermost quote pair, so the script path must
-      // stay quoted inside a second pair, and the arguments must reach cmd verbatim:
-      // Node's own Windows escaping would turn those inner quotes into \" which cmd
-      // reads as literal backslashes and never resolves the script.
-      ...(windowsScript ? { windowsVerbatimArguments: true } : {}),
-    },
-  )
+  const settings: [string, string | boolean][] = [
+    ['model_provider', 'opl-gateway'],
+    ['model', model],
+    ['model_providers.opl-gateway.name', 'OPL Gateway'],
+    ['model_providers.opl-gateway.env_key', 'OPL_NATIVE_API_KEY'],
+    ['model_providers.opl-gateway.wire_api', 'responses'],
+    ['model_providers.opl-gateway.requires_openai_auth', false],
+    ['forced_login_method', 'api'],
+  ]
+  const baseURL = process.env.OPL_NATIVE_BASE_URL
+  if (baseURL !== undefined) settings.push(['model_providers.opl-gateway.base_url', baseURL])
+  // Codex compares a thread's provider with the process-wide provider before each turn.
+  // Startup overrides bind both to the resolved route without writing the user's config.
+  const args = settings.flatMap(([key, value]) => {
+    if (windowsScript && typeof value === 'string' && /['\r\n]/.test(value))
+      throw Error('Codex 启动参数无法通过 Windows 脚本安全传递，请使用官方 .exe 程序')
+    const encoded =
+      typeof value === 'boolean'
+        ? String(value)
+        : windowsScript
+          ? `'${value}'`
+          : JSON.stringify(value)
+    return ['-c', `${key}=${encoded}`]
+  })
+  let launch: ReturnType<typeof commandLaunch>
+  try {
+    launch = commandLaunch(command, ['app-server', '--stdio', ...args])
+  } catch {
+    throw Error('Codex 启动参数无法通过 Windows 脚本安全传递，请使用官方 .exe 程序')
+  }
+  child = spawn(launch.command, launch.args, {
+    cwd,
+    env: harnessEnv(),
+    stdio: ['pipe', 'pipe', 'pipe'],
+    windowsHide: true,
+    ...(launch.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
+  })
   child.stderr!.resume()
   const fail = () => {
     const error = new HarnessReportedError('codex', { type: 'processExited' })
@@ -392,7 +476,7 @@ async function pathInProject(path: unknown): Promise<boolean> {
     }
   }
 }
-async function claudePrompt(text: string, effort?: string) {
+async function claudePrompt(prompt: NativePromptPart[], effort?: string) {
   if (effort && !['low', 'medium', 'high', 'xhigh', 'max'].includes(effort))
     throw Error('Claude Code 不支持该推理强度')
   cancelled = false
@@ -420,7 +504,7 @@ async function claudePrompt(text: string, effort?: string) {
     firstResponseTimer = undefined
   }
   claude = query({
-    prompt: text,
+    prompt: claudeUserMessage(prompt),
     options: {
       cwd,
       model,
@@ -599,7 +683,7 @@ const OPL_EDIT_META = 'opl/message-edit'
 const OPL_EDIT_READ = 'opl/message-edit/read'
 const OPL_EDIT_REWIND = 'opl/message-edit/rewind'
 
-type EditBoundary = { id: string; text?: string; unavailableReason?: string }
+type EditBoundary = { id: string; text?: string; imageCount?: number; unavailableReason?: string }
 type EditHistory = {
   sessionId: string
   token: string
@@ -640,15 +724,20 @@ function codexTurnUser(turn: any): EditBoundary {
   const content = Array.isArray(users[0]?.content) ? users[0].content : []
   const texts: string[] = []
   let nonText = false
+  let imageCount = 0
   for (const part of content) {
     if (part?.type === 'text' && typeof part.text === 'string') texts.push(part.text)
-    else nonText = true
+    else if (part?.type === 'image' && typeof part.url === 'string') {
+      const source = /^data:(image\/(?:png|jpeg|gif|webp));base64,(.*)$/s.exec(part.url)
+      if (source && imageData(source[2])) imageCount++
+      else nonText = true
+    } else nonText = true
   }
   return {
     id: String(turn?.id ?? ''),
     ...(nonText
       ? { unavailableReason: '这条消息带有附件或非文本内容，无法回填' }
-      : { text: texts.join('') }),
+      : { text: texts.join(''), ...(imageCount ? { imageCount } : {}) }),
   }
 }
 
@@ -761,7 +850,9 @@ async function codexRewind(
 
 function claudeContent(
   message: any,
-): { kind: 'human'; text?: string; unavailableReason?: string } | { kind: 'tool' } {
+):
+  | { kind: 'human'; text?: string; imageCount?: number; unavailableReason?: string }
+  | { kind: 'tool' } {
   const content = message?.message?.content
   if (typeof content === 'string') return { kind: 'human', text: content }
   if (!Array.isArray(content))
@@ -769,13 +860,21 @@ function claudeContent(
   if (content.some((part: any) => part?.type === 'tool_result')) return { kind: 'tool' }
   const texts: string[] = []
   let nonText = false
+  let imageCount = 0
   for (const part of content) {
     if (part?.type === 'text' && typeof part.text === 'string') texts.push(part.text)
+    else if (
+      part?.type === 'image' &&
+      part.source?.type === 'base64' &&
+      imageMimeType(part.source.media_type) &&
+      imageData(part.source.data)
+    )
+      imageCount++
     else nonText = true
   }
   return nonText
     ? { kind: 'human', unavailableReason: '这条消息带有附件或非文本内容，无法回填' }
-    : { kind: 'human', text: texts.join('') }
+    : { kind: 'human', text: texts.join(''), ...(imageCount ? { imageCount } : {}) }
 }
 
 async function claudeMessages(sessionId: string): Promise<any[]> {
@@ -796,7 +895,10 @@ function claudeBoundaries(messages: any[]): EditBoundary[] {
       id: String(message.uuid),
       ...(content.unavailableReason
         ? { unavailableReason: content.unavailableReason }
-        : { text: content.text ?? '' }),
+        : {
+            text: content.text ?? '',
+            ...(content.imageCount ? { imageCount: content.imageCount } : {}),
+          }),
     })
   }
   return boundaries
@@ -900,11 +1002,14 @@ async function invoke(method: string, p: any) {
     // an ordinary session, because the ordinary session is the more permissive of the two.
     if (autoReviewSetting !== undefined && autoReviewSetting !== '0' && autoReviewSetting !== '1')
       throw Error('OPL_NATIVE_AUTO_REVIEW 不是受支持的取值')
+    if (imageInputSetting !== undefined && imageInputSetting !== '0' && imageInputSetting !== '1')
+      throw Error('OPL_NATIVE_IMAGE_INPUT 不是受支持的取值')
     if (kind === 'codex') await openCodex()
     return {
       protocolVersion: 1,
       agentCapabilities: {
         loadSession: true,
+        promptCapabilities: { image: imageInput },
         _meta: {
           [OPL_EDIT_META]: { version: 1, methods: [OPL_EDIT_READ, OPL_EDIT_REWIND] },
         },
@@ -983,6 +1088,8 @@ async function invoke(method: string, p: any) {
         if (pending.threadId === sessionId) recordContext(codexUsage.accept(notification)?.context)
       }
       if (r.model && r.model !== model) throw Error('Codex 返回不同模型')
+      if (r.modelProvider && r.modelProvider !== 'opl-gateway')
+        throw Error('Codex 返回不同模型来源')
       // Verified after the thread exists but before any turn, so a thread that did not take
       // the official reviewer is refused instead of being used.
       if (autoReview) confirmCodexAutoReview(r)
@@ -1022,12 +1129,11 @@ async function invoke(method: string, p: any) {
     return {}
   }
   if (method === 'session/prompt') {
-    const text = p.prompt
-      .filter((v: any) => v.type === 'text')
-      .map((v: any) => v.text)
-      .join('\n')
+    if (kind === 'codex' && !process.env.OPL_NATIVE_BASE_URL)
+      throw Error('Codex 模型来源未提供端点，未发送提示词')
+    const prompt = nativePrompt(p.prompt)
     const effort = p._meta?.reasoningEffort ?? undefined
-    if (kind === 'claude') return claudePrompt(text, effort)
+    if (kind === 'claude') return claudePrompt(prompt, effort)
     codexMessageText.clear()
     codexUsage.beginTurn()
     const done = new Promise((resolve, reject) => {
@@ -1039,7 +1145,11 @@ async function invoke(method: string, p: any) {
     try {
       const r = await codexRequest('turn/start', {
         threadId: sessionId,
-        input: [{ type: 'text', text, text_elements: [] }],
+        input: prompt.map((part) =>
+          part.type === 'text'
+            ? { type: 'text', text: part.text, text_elements: [] }
+            : { type: 'image', url: `data:${part.mimeType};base64,${part.data}` },
+        ),
         model,
         effort: effort ?? null,
       })

@@ -3,7 +3,9 @@ import type { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { GATEWAY_GROUPS } from '../contracts/groups.ts'
 import { gatewayGroupEnabled } from './group-settings.ts'
-import { OPL_GATEWAY_INFERENCE_BASE_URL } from './opl-credentials.ts'
+import { gatewayInferenceBaseURL } from './protocol.ts'
+import { DEFAULT_MODELS, toAdapterConfig } from './config.ts'
+import type { ModelDraft } from '../contracts/models.ts'
 
 export { gatewayModelSettings } from './model-settings.ts'
 export { internalGatewayProvider } from '../contracts/groups.ts'
@@ -12,32 +14,67 @@ export async function resolveGatewayExecution(
   ctx: Context,
   ref: { provider: string; model: string },
   resolveKey?: () => Promise<string | undefined>,
-): Promise<{ baseURL: string; model: string; apiKey: string; credential: string; api: string }> {
+): Promise<{
+  baseURL: string
+  model: string
+  apiKey: string
+  credential: string
+  api: string
+  imageInput: boolean
+}> {
   if (ref.provider !== 'opl-gateway') throw Error('模型不属于 OPL Gateway')
   const separator = ref.model.indexOf('::')
   const id = separator < 0 ? 'deepseek' : ref.model.slice(0, separator)
   const group = GATEWAY_GROUPS.find((item) => item.id === id)
   if (!group || !gatewayGroupEnabled(ctx, group.id)) throw Error('此分组已停用，请在账号页激活')
-  const key = resolveKey
-    ? await resolveKey()
-    : (await ctx.credentials.resolve(credentialRef(group.credential)))?.value
-  if (!key) throw Error('所选渠道凭据未就绪，请在网关账户（OPL Gateway）页面刷新账号')
   const settings = ctx.get('settings')?.describe()
   const suite = settings?.find((item) => item.ns === 'opl-suite')?.value as
-    | { gateway?: { baseURL?: string } }
+    | { gateway?: { baseURL?: string; apiKeyEnv?: string; models?: ModelDraft[] } }
     | undefined
   const providers = settings?.find((item) => item.ns === 'llm-pi-ai')?.value as
-    | { providers?: Record<string, { baseURL?: string; api?: string }> }
+    | {
+        providers?: Record<
+          string,
+          { baseURL?: string; api?: string; apiKeyEnv?: string; models?: ModelDraft[] }
+        >
+      }
     | undefined
-  const baseURL =
+  const profile = group.id === 'deepseek' ? suite?.gateway : providers?.providers?.[group.provider]
+  const deepseek = group.id === 'deepseek' ? toAdapterConfig(suite?.gateway ?? {}) : undefined
+  const api =
+    group.id === 'deepseek' ? group.api : (providers?.providers?.[group.provider]?.api ?? group.api)
+  const credential = (deepseek ? deepseek.apiKeyEnv : profile?.apiKeyEnv) ?? group.credential
+  const key = resolveKey
+    ? await resolveKey()
+    : (await ctx.credentials.resolve(credentialRef(credential)))?.value
+  if (!key) throw Error('所选渠道凭据未就绪，请在网关账户（OPL Gateway）页面刷新账号')
+  const baseURL = (deepseek ? deepseek.baseURL : profile?.baseURL) ?? gatewayInferenceBaseURL(api)
+  const model = separator < 0 ? ref.model : ref.model.slice(separator + 2)
+  const configured = (profile?.models ?? (group.id === 'deepseek' ? DEFAULT_MODELS : [])).find(
+    (item) => item.id === model,
+  )
+  const input =
+    configured &&
     (group.id === 'deepseek'
-      ? suite?.gateway?.baseURL
-      : providers?.providers?.[group.provider]?.baseURL) ?? OPL_GATEWAY_INFERENCE_BASE_URL
+      ? configured.inputModalities
+      : 'input' in configured
+        ? configured.input
+        : undefined)
+  let imageInput = Array.isArray(input) && input.includes('image')
+  const llm = ctx.get('llm')
+  if (
+    (!Array.isArray(input) || input.length === 0) &&
+    llm?.listProviders().some((provider) => provider.id === group.provider)
+  ) {
+    const info = await llm.resolveModelInfo(group.provider, model)
+    imageInput = info.inputModalities?.includes('image') ?? false
+  }
   return {
     baseURL,
-    model: separator < 0 ? ref.model : ref.model.slice(separator + 2),
+    model,
     apiKey: key,
-    credential: group.credential,
-    api: providers?.providers?.[group.provider]?.api ?? group.api,
+    credential,
+    api,
+    imageInput,
   }
 }

@@ -22,6 +22,8 @@ OPL DSH 在官方桌面上提供账号自动配置、Harness 管理和组合选�
 
 登录、刷新时按分组尝试获取模型目录。首次导入和未被用户修改的自动目录可以更新；已有用户模型列表保留。模型页也可手动获取候选模型并保存。自动导入失败时保留已有配置。模型目录所有权摘要保存在原生设置中，不另存一份模型表。
 
+目录状态与 Key 状态分开记录；模型页按分组说明缺凭据、认证、网络、超时、设置冲突或服务未就绪，不把全部失败归因于 Key。目录读取使用该组的有效地址、部署前缀与凭据引用，不借用其他分组。AWS/Kiro 的 Anthropic 默认地址不带 `/v1`，由官方 SDK 追加消息路径；旧套件默认地址和 Opus 5.5 缺失的 adaptive 配置会迁移，用户自定义地址、凭据引用和显式兼容设置保持原值。
+
 用户只看到一个 OPL Gateway 来源，账号页控制本机激活分组，模型页获取目录并勾选所需模型。停用分组保留 Key、模型配置和已有对话，但阻止新的调用。新加入的 Kiro 默认未激活；升级保留原分组的激活行为。分组路由显式映射，绝不按模型名字猜测，也不在错误后换组：
 
 | 分组        | 默认执行接口                               | 凭据         |
@@ -45,7 +47,7 @@ DeepSeek 4.1 Flash 的 DeepSeek 与 OpenAI 协议渠道默认推理档位为 `hi
 
 - **OPL Gateway**：Gateway 登录、用量、分组权限与凭据。其他 Provider 保留官方的配置入口。
 - **模型**：沿用官方模型页面；OPL Gateway 排在第一位，其他 Provider 和自定义 API 使用官方表单。Gateway 默认显示模型及必要的渠道选项，手动字段和协议放进高级编辑，不要求重填 Key。
-- **Harness**：检测 DSH、Grok Build、Codex CLI、Claude Code、Antigravity CLI（agy）的安装、版本与路径；可登记其他程序。Codex CLI 与 Claude Code 会搜索登录 Shell PATH、常见用户目录和官方桌面附带目录；已安装时调用官方更新器，未安装时提供固定官方一键安装入口，安装后重新检测绝对路径和版本。内置 DSH 随官方桌面更新，不可删除。
+- **Harness**：检测已接入 CLI 的安装、版本与路径；可登记其他程序。检测区分文件存在与版本验证成功，Windows npm 入口选择 `.cmd` 等可执行启动器；ZCode 的桌面入口不在检测时启动。安装与更新使用固定官方入口，npm 使用实际全局安装目录；维护完成后重新验证入口与版本。首次安装的默认入口保存为验证过的绝对路径，显式路径和自定义命令保持原值，发现的其他安装单独展示。内置 DSH 随官方桌面更新，不可删除。
 - **组合**：从 DSH 模型目录选择模型，绑定 Harness 与权限。每个模型可指定一个默认组合；没有自定义默认时，GPT 默认 Codex CLI、Claude 默认 Claude Code，其他模型使用已配置的官方默认组合。
 
 对话输入栏复用官方模型目录、模型选择投影、菜单组件与 Slot；OPL 的组合选择菜单显示“模型 · Harness”，来源仅作为展开菜单的分组标题。没有凭据的官方 DeepSeek 模型不作为可选项。DSH 原生组合调用官方 Session 的模型选择接口；外部 Harness 组合绑定到当前官方 Session，由 Host 在 `llm/stream` 阶段转发同一轮请求并把文本流回官方 Session。自动生成组合的权限只作为新委派任务的缺省值，切换模型保留当前会话选择的权限；显式只读组合通过官方只读预设同时设置 sandbox 与审批策略，不产生两者混用的 custom 状态，也不会静默扩大当前权限。原生会话列表不会出现第二套 OPL 管理页面；父子委派工具仍用于需要显式子任务、交付验收或跨 Harness 协作的场景。
@@ -57,6 +59,8 @@ DeepSeek 4.1 Flash 的 DeepSeek 与 OpenAI 协议渠道默认推理档位为 `hi
 执行器使用官方 DSH、Grok Build、本机 Codex CLI 的 app-server，以及官方 Claude Agent SDK 驱动的本机 Claude Code。OPL 只做协议、权限、显示和协作映射，不实现 Agent 循环。Codex 与 Claude 的配置及会话保存在套件自有目录，不改日常 CLI 配置。OpenCode 也可承载 OPL Gateway Gemini 的三个固定组合：Gemini 4 Argon、Gemini 3.8 Flash 和 Gemini 3.1 Pro；它们仍从 Gateway 读取凭据和 OpenAI Chat Completions 路由，OpenCode 只负责 Agent 循环与工具执行。OFM 的 `big-pickle` 与官方 OpenCode 免费车道同样由 OpenCode 执行；OpenCode 不广告推理档位，这些组合不显示推理强度。Kilo 频道的 `nvidia/nemotron-3-super-120b-a12b:free` 和 `recursive/flint-v1.0:free` 由 Kilo 读取 OFM Chat 端点；`flint-40b-free` 由 OpenCode 读取 OFM Chat 端点。它们保留 OFM 作为模型来源。Antigravity 暂仅支持本机管理。
 
 Claude Code 的官方 SDK 思考增量映射到对话中的思考流，正文增量仍独立显示；签名不显示，已完成的内容块不重复追加。只展示 SDK 实际发送的思考，渠道未发送时不补写。
+
+图片经官方附件服务接收与读取；外部轮次只持久化附件引用，发送时才编码，不读取模型提供的 URI。模型来源必须声明支持图片，CLI 必须广告图片能力，或满足已验证的版本兼容条件。Grok Build 1.0.46 的 ACP 图片广告为 false，但实际支持图片；兼容判定仅接受 Grok Build 适配器及该版本的初始化元数据，其他未声明支持的版本与实现仍拒绝发送。文字和多张图片保持输入顺序，不支持的输入在发送前拒绝，不降成文字。图片消息编辑保留原图片，且要求持久引用与 CLI 历史的图片数量一致；Grok 历史缺少可靠图片计数时仍不提供图片消息编辑。此路径不扩展为音频或通用文件上传。
 
 各已接入 Harness 的协作工具可以先查询可用组合，再使用组合 ID 派发同项目子任务。Codex Skill 同样通过组合目录派发。各 Harness 保留自己的上下文，交接依靠明确的任务说明。
 

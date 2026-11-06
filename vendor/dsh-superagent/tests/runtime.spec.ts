@@ -1467,18 +1467,16 @@ it('restarts a worker that was mid-work when the host stopped with the recovery 
   expect(recovered.inputs).toEqual([expect.objectContaining({ kind: 'text', text: expect.stringContaining('host restarted') })])
 })
 
-it('keeps the report of a blocked, failed or ready worker whose turn ends, and relays nothing more', async () => {
-  for (const state of ['blocked', 'failed', 'ready'] as const) {
-    const { ticket, sessionId } = await acceptedTicket(feishu(String(20 + ['blocked', 'failed', 'ready'].indexOf(state)), `@bot 修 ${state}`, { root_id: undefined }))
-    await runTool(sessionId, 'orchestrator_report', { state, summary: `${state} report` })
-    const relayed = relays(runtime.masterId).length
-    const agent = agents.get(sessionId)! as { status: string }
-    agent.status = 'idle'
-    ;(runtime as unknown as { ctx: Context }).ctx.emit('agent/status', { agent, status: 'idle' } as never)
-    await runtime.idle()
-    expect(runtime.store.tickets.get(ticket.id)!.assignments.at(-1)!.report).toMatchObject({ state, summary: `${state} report` })
-    expect(relays(runtime.masterId)).toHaveLength(relayed)
-  }
+it.each(['blocked', 'failed', 'ready'] as const)('keeps the report of a %s worker whose turn ends, and relays nothing more', async state => {
+  const { ticket, sessionId } = await acceptedTicket()
+  await runTool(sessionId, 'orchestrator_report', { state, summary: `${state} report` })
+  const relayed = relays(runtime.masterId).length
+  const agent = agents.get(sessionId)! as { status: string }
+  agent.status = 'idle'
+  ;(runtime as unknown as { ctx: Context }).ctx.emit('agent/status', { agent, status: 'idle' } as never)
+  await runtime.idle()
+  expect(runtime.store.tickets.get(ticket.id)!.assignments.at(-1)!.report).toMatchObject({ state, summary: `${state} report` })
+  expect(relays(runtime.masterId)).toHaveLength(relayed)
 })
 
 it('relays the status-request hint when a worker\'s turn ends with no text and no report', async () => {

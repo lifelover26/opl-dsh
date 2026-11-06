@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readFile, writeFile, rm, access } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -33,6 +34,8 @@ import type {
 } from '../../src/execution/host/message-edit-driver.ts'
 import type { ExternalMessageEditTransactions } from '../../src/execution/host/message-edit-external.ts'
 import type { HarnessSession } from '../../src/execution/contracts/sessions.ts'
+import { HARNESS_INPUT_MAX_LENGTH } from '../../src/execution/host/harness-input.ts'
+import { HISTORY_NOTICE } from '../../src/execution/host/multimodal-prompt.ts'
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => {
   vi.unstubAllEnvs()
@@ -584,6 +587,283 @@ async function nativeSetup(
     },
   }
 }
+
+describe('external input rejection and replay', () => {
+  const ref = { provider: 'opl-gateway', model: 'grok::grok-4.7' }
+  const user = (text: string) =>
+    createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text }] })
+  const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
+  const native = vi.fn(async function* () {
+    throw Error('external input must not fall through to the native provider')
+  })
+
+  it('uses the latest ordinary user message when an earlier RPC message has an id', async () => {
+    const { service, root, session } = await nativeSetup([{ id: ref.model, name: 'Grok' }])
+    await service.selectCombination({ sessionId: session.id, combination: GROK_COMBINATION })
+    const earlier = createUserMessage({
+      source: { kind: 'user', rpcId: 'historical-rpc' },
+      content: [{ type: 'text', text: 'earlier-rpc-input' }],
+    })
+    const current = user('current-ordinary-input')
+    const context = createUserMessage({
+      source: { kind: 'working-directory' },
+      content: [{ type: 'text', text: 'injected-context' }],
+    })
+    const request = {
+      ...ref,
+      sessionId: session.id,
+      messages: [earlier, current, context],
+    } as GenerateOptions
+    await Array.fromAsync(service.conversationStream(request, native))
+    expect(await readFile(join(root, 'calls.txt'), 'utf8')).toMatch(
+      /当前用户请求：\nuser: current-ordinary-input\n$/,
+    )
+    const record = (await service.list()).sessions[0]!
+    const before = await service.snapshot({ sessionId: record.id })
+    expect(before.title).toBe('current-ordinary-input')
+    expect(before.turns[0]?.operationId).toBe('conversation:' + hash(current))
+    for (const [value, reason] of [
+      [' ', 'blank'],
+      [42, 'type'],
+    ] as const) {
+      const latest = structuredClone(user('placeholder'))
+      ;(latest.content[0] as { text: unknown }).text = value
+      await expect(
+        Array.fromAsync(
+          service.conversationStream(
+            { ...request, messages: [...request.messages, latest] },
+            native,
+          ),
+        ),
+      ).rejects.toMatchObject({
+        code: 'HARNESS_INPUT',
+        message: expect.stringContaining(`stage=conversation-current; reason=${reason}`),
+      })
+    }
+    expect(await service.snapshot({ sessionId: record.id })).toEqual(before)
+  })
+
+  it('reports short current text and oversized first-binding history before launching, then admits an explicit retry once', async () => {
+    const { service, root, session } = await nativeSetup([{ id: ref.model, name: 'Grok' }])
+    const owner = service as unknown as { selections: Record<string, string> }
+    const selections = { ...owner.selections }
+    const current = user('运行')
+    const oldText = 'history-only-marker-' + 'a'.repeat(HARNESS_INPUT_MAX_LENGTH)
+    const previous = createAssistantMessage({
+      source: ref,
+      content: [{ type: 'text', text: oldText }],
+    })
+    const request = {
+      ...ref,
+      sessionId: session.id,
+      messages: [previous, current],
+    } as GenerateOptions
+    const projected =
+      HISTORY_NOTICE + '\n\nassistant: ' + oldText + '\n\n当前用户请求：\nuser: 运行'
+    const prepare = vi.mocked(adapterFor('grok-build', ref)!.prepare!)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await expect(
+        Array.fromAsync(service.conversationStream(request, native)),
+      ).rejects.toMatchObject({
+        code: 'HARNESS_INPUT',
+        message: expect.stringContaining(
+          `stage=conversation-first-binding; reason=too-long; currentTextLength=2; promptTextLength=${projected.length}`,
+        ),
+      })
+    }
+    await expect(Array.fromAsync(service.conversationStream(request, native))).rejects.not.toThrow(
+      'history-only-marker',
+    )
+    expect(prepare).not.toHaveBeenCalled()
+    expect(owner.selections).toEqual(selections)
+    expect(native).not.toHaveBeenCalled()
+    await expect(access(join(root, 'connections.txt'))).rejects.toThrow()
+    expect((await service.list()).sessions).toEqual([])
+    const retry = { ...request, messages: [current] }
+    await Array.fromAsync(service.conversationStream(retry, native))
+    const record = (await service.list()).sessions[0]!
+    const saved = await service.snapshot({ sessionId: record.id })
+    expect(saved.turns).toHaveLength(1)
+    expect(saved.turns[0]).toMatchObject({
+      state: 'completed',
+      operationId: 'conversation:' + hash(current),
+      fingerprint: hash([record.id, 'user: 运行']),
+      prompt: 'user: 运行',
+    })
+    await Array.fromAsync(service.conversationStream(request, native))
+    expect(await service.snapshot({ sessionId: record.id })).toEqual(saved)
+    expect(await readFile(join(root, 'calls.txt'), 'utf8')).toBe('user: 运行\n')
+  })
+
+  it('rejects invalid current input on a cold bound conversation without changing its successful turn, then sends only the followup', async () => {
+    const { service, root, session, ctx, options } = await nativeSetup([
+      { id: ref.model, name: 'Grok' },
+    ])
+    await service.selectCombination({ sessionId: session.id, combination: GROK_COMBINATION })
+    const first = user('first-success')
+    const request = { ...ref, sessionId: session.id, messages: [first] } as GenerateOptions
+    await Array.fromAsync(service.conversationStream(request, native))
+    const record = (await service.list()).sessions[0]!
+    await service.dispose()
+    const restored = new HarnessService(ctx, options)
+    cleanups.push(() => restored.dispose())
+    const before = await restored.snapshot({ sessionId: record.id })
+    const filename = new HarnessSessionStore(options.home).filename(record.id)
+    const bytes = await readFile(filename, 'utf8')
+    const prepare = vi.mocked(adapterFor('grok-build', ref)!.prepare!).mockClear()
+    for (const [value, reason] of [
+      [42, 'type'],
+      [' \n\t', 'blank'],
+      ['z'.repeat(HARNESS_INPUT_MAX_LENGTH + 1), 'too-long'],
+    ] as const) {
+      const malformed = structuredClone(user('placeholder'))
+      ;(malformed.content[0] as { text: unknown }).text = value
+      await expect(
+        Array.fromAsync(
+          restored.conversationStream({ ...request, messages: [first, malformed] }, native),
+        ),
+      ).rejects.toMatchObject({
+        code: 'HARNESS_INPUT',
+        message: expect.stringContaining(`stage=conversation-current; reason=${reason}`),
+      })
+    }
+    expect(prepare).not.toHaveBeenCalled()
+    expect(await restored.snapshot({ sessionId: record.id })).toEqual(before)
+    expect(await readFile(filename, 'utf8')).toBe(bytes)
+    expect(await readFile(join(root, 'connections.txt'), 'utf8')).toBe('session/new\n')
+    const old = createAssistantMessage({
+      source: ref,
+      content: [{ type: 'text', text: 'h'.repeat(HARNESS_INPUT_MAX_LENGTH + 1) }],
+    })
+    await Array.fromAsync(
+      restored.conversationStream({ ...request, messages: [first, old, user('只回复ok')] }, native),
+    )
+    expect(await readFile(join(root, 'calls.txt'), 'utf8')).toBe(
+      'user: first-success\nuser: 只回复ok\n',
+    )
+    const continued = await restored.snapshot({ sessionId: record.id })
+    expect(continued.turns[0]).toEqual(before.turns[0])
+    expect(continued.turns[1]?.prompt).toBe('user: 只回复ok')
+  })
+
+  it.each([
+    { name: 'blank', prompt: ' \n ', reason: 'blank' },
+    { name: 'oversized', prompt: 'x'.repeat(HARNESS_INPUT_MAX_LENGTH + 1), reason: 'too-long' },
+  ])(
+    'refuses a $name saved prompt during replay without loading or rewriting the old session',
+    async ({ prompt, reason }) => {
+      const { service, root, session, ctx, options } = await nativeSetup([
+        { id: ref.model, name: 'Grok' },
+      ])
+      await service.selectCombination({ sessionId: session.id, combination: GROK_COMBINATION })
+      const request = { ...ref, sessionId: session.id, messages: [user('运行')] } as GenerateOptions
+      await Array.fromAsync(service.conversationStream(request, native))
+      const record = (await service.list()).sessions[0]!
+      await service.dispose()
+      const filename = new HarnessSessionStore(options.home).filename(record.id)
+      const raw = JSON.parse(await readFile(filename, 'utf8')) as HarnessSession
+      raw.turns[0]!.prompt = prompt
+      await writeFile(filename, JSON.stringify(raw) + '\n')
+      const restored = new HarnessService(ctx, options)
+      cleanups.push(() => restored.dispose())
+      const before = await restored.snapshot({ sessionId: record.id })
+      const bytes = await readFile(filename, 'utf8')
+      const prepare = vi.mocked(adapterFor('grok-build', ref)!.prepare!).mockClear()
+      await expect(
+        Array.fromAsync(restored.conversationStream(request, native)),
+      ).rejects.toMatchObject({
+        code: 'HARNESS_INPUT',
+        message: expect.stringContaining(
+          `stage=conversation-replay; reason=${reason}; currentTextLength=2; promptTextLength=${prompt.length}`,
+        ),
+      })
+      expect(prepare).not.toHaveBeenCalled()
+      expect(await restored.snapshot({ sessionId: record.id })).toEqual(before)
+      expect(await readFile(filename, 'utf8')).toBe(bytes)
+      expect(await readFile(join(root, 'connections.txt'), 'utf8')).toBe('session/new\n')
+      expect(await readFile(join(root, 'calls.txt'), 'utf8')).toBe('user: 运行\n')
+    },
+  )
+
+  it('keeps direct request fingerprints and operation retries after typed input refusals', async () => {
+    const { service, root, ctx, options } = await setup()
+    const session = await start(service, root)
+    await service.prompt({ sessionId: session.id, text: 'original', operationId: 'one' })
+    const first = await wait(service, session.id)
+    expect(first.turns[0]?.fingerprint).toBe(hash([session.id, 'original']))
+    await service.dispose()
+    const restored = new HarnessService(ctx, options)
+    cleanups.push(() => restored.dispose())
+    const before = await restored.snapshot({ sessionId: session.id })
+    const prepare = vi.mocked(adapterFor('grok-build', ref)!.prepare!).mockClear()
+    for (const [value, reason] of [
+      [42, 'type'],
+      ['', 'blank'],
+      ['x'.repeat(HARNESS_INPUT_MAX_LENGTH + 1), 'too-long'],
+    ] as const) {
+      await expect(
+        restored.prompt({ sessionId: session.id, text: value as string, operationId: 'two' }),
+      ).rejects.toMatchObject({
+        code: 'HARNESS_INPUT',
+        message: expect.stringContaining(`stage=request; reason=${reason}`),
+      })
+    }
+    expect(prepare).not.toHaveBeenCalled()
+    expect(await restored.snapshot({ sessionId: session.id })).toEqual(before)
+    const retry = { sessionId: session.id, text: 'retry-once', operationId: 'two' }
+    await restored.prompt(retry)
+    await wait(restored, session.id)
+    await restored.prompt(retry)
+    await expect(restored.prompt({ ...retry, text: 'changed' })).rejects.toThrow('operation')
+    expect(await readFile(join(root, 'calls.txt'), 'utf8')).toBe('original\nretry-once\n')
+    expect((await restored.snapshot({ sessionId: session.id })).turns[0]).toEqual(first.turns[0])
+    const failedRequest = { sessionId: session.id, text: 'fail-turn', operationId: 'three' }
+    await restored.prompt(failedRequest)
+    const failed = await wait(restored, session.id)
+    expect(failed.state).toBe('failed')
+    expect(await restored.prompt(failedRequest)).toEqual(failed)
+    expect(await readFile(join(root, 'calls.txt'), 'utf8')).toBe(
+      'original\nretry-once\nfail-turn\n',
+    )
+  })
+
+  it('rejects malformed external message replacements before edit recovery or fork admission', async () => {
+    const { service, session } = await nativeSetup([{ id: ref.model, name: 'Grok' }])
+    await service.selectCombination({ sessionId: session.id, combination: GROK_COMBINATION })
+    await Array.fromAsync(
+      service.conversationStream(
+        { ...ref, sessionId: session.id, messages: [user('original')] } as GenerateOptions,
+        native,
+      ),
+    )
+    const record = (await service.list()).sessions[0]!
+    const before = await service.snapshot({ sessionId: record.id })
+    const state = vi.spyOn(service, 'messageEditState')
+    for (const [value, reason] of [
+      [42, 'type'],
+      [' \n', 'blank'],
+      ['x'.repeat(HARNESS_INPUT_MAX_LENGTH), 'too-long'],
+    ] as const) {
+      await expect(
+        service.messageEditSend({
+          prompt: {
+            sessionId: session.id,
+            requestId: 'same-edit-retry',
+            mode: 'queue',
+            content: [{ type: 'text', text: value as string }],
+          },
+          targetSeq: 0,
+          head: 1,
+        }),
+      ).rejects.toMatchObject({
+        code: 'HARNESS_INPUT',
+        message: expect.stringContaining(`stage=edit-request; reason=${reason}`),
+      })
+    }
+    expect(state).not.toHaveBeenCalled()
+    expect(await service.snapshot({ sessionId: record.id })).toEqual(before)
+  })
+})
 
 it('reads saved edit choices while the original model is absent without launching a CLI', async () => {
   const { Session, SessionId } = await import('@deepseek-ai/dsh-session')
@@ -1329,6 +1609,127 @@ describe('native conversation combinations', () => {
     ).rejects.toMatchObject({ code: 'HARNESS_INPUT' })
     await expect(access(join(root, 'calls.txt'))).rejects.toThrow()
   })
+  it.each([
+    {
+      name: 'advertised image capability',
+      image: true,
+      grokVersion: undefined,
+      sourceEnabled: true,
+      accepted: true,
+    },
+    {
+      name: 'Grok Build 1.0.46 false image advertisement',
+      image: false,
+      grokVersion: '1.0.46',
+      sourceEnabled: true,
+      accepted: true,
+    },
+    {
+      name: 'unknown Grok Build version',
+      image: false,
+      grokVersion: '1.0.47',
+      sourceEnabled: true,
+      accepted: false,
+    },
+    {
+      name: 'false image advertisement without Grok metadata',
+      image: false,
+      grokVersion: undefined,
+      sourceEnabled: true,
+      accepted: false,
+    },
+    {
+      name: 'model source without image support',
+      image: false,
+      grokVersion: '1.0.46',
+      sourceEnabled: false,
+      accepted: false,
+    },
+  ])(
+    'admits ordered images through the shared conversation runtime: $name',
+    async ({ image, grokVersion, sourceEnabled, accepted }) => {
+      const { service, root, session, ctx, options } = await nativeSetup([
+        { id: 'grok::grok-4.7', name: 'Grok' },
+      ])
+      const adapter = adapterFor('grok-build', {
+        provider: 'opl-gateway',
+        model: 'grok::grok-4.7',
+      })!
+      vi.mocked(adapter.prepare!).mockImplementation(async () => {
+        // This case exercises shared transport without an official CLI or API.
+        const home = join(root, 'fixture-images')
+        return {
+          home,
+          command: process.execPath,
+          args: [resolve('tests/fixtures/acp-agent.mjs')],
+          env: {
+            ...systemEnvironment(),
+            OPL_FIXTURE_IMAGES: '1',
+            OPL_FIXTURE_IMAGE_CAPABILITY: String(image),
+            ...(grokVersion ? { OPL_FIXTURE_GROK_VERSION: grokVersion } : {}),
+          },
+          promptImageSupport: sourceEnabled,
+        }
+      })
+      const attachment = {
+        attachmentId: '1'.repeat(64),
+        mediaType: 'image/png' as const,
+        bytes: 3,
+        width: 1,
+        height: 1,
+        name: 'original.png',
+      }
+      const readImage = vi.fn(async (ref) => ({ ref, data: Buffer.from('png') }))
+      Object.assign(ctx, {
+        get: (name: string) => (name === 'attachments' ? { readImage } : undefined),
+      })
+      await service.selectCombination({ sessionId: session.id, combination: GROK_COMBINATION })
+      const user = createUserMessage({
+        source: { kind: 'user' },
+        content: [
+          { type: 'text', text: 'before' },
+          { type: 'image', attachment: attachment as never },
+          { type: 'text', text: 'after' },
+        ],
+      })
+      const response = Array.fromAsync(
+        service.conversationStream(
+          {
+            sessionId: session.id,
+            provider: 'opl-gateway',
+            model: 'grok::grok-4.7',
+            messages: [user],
+          } as GenerateOptions,
+          async function* () {},
+        ),
+      )
+      if (!accepted) {
+        await expect(response).rejects.toMatchObject({ code: 'HARNESS_INPUT' })
+        expect(readImage).not.toHaveBeenCalled()
+        await expect(access(join(root, 'calls.txt'))).rejects.toThrow()
+        await expect(access(join(root, 'image-calls.jsonl'))).rejects.toThrow()
+        return
+      }
+      const chunks = await response
+      expect(chunks.at(-1)?.type).toBe('finish')
+      expect(readImage).toHaveBeenCalledExactlyOnceWith(attachment, undefined)
+      const calls = (await readFile(join(root, 'image-calls.jsonl'), 'utf8'))
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line))
+      expect(calls).toEqual([
+        [
+          { type: 'text', text: 'user: before\n' },
+          { type: 'image', data: Buffer.from('png').toString('base64'), mimeType: 'image/png' },
+          { type: 'text', text: '\nafter' },
+        ],
+      ])
+      const records = await new HarnessSessionStore(options.home).load()
+      const turn = records.find((record) => record.nativeSessionId === session.id)!.turns[0]!
+      expect(turn.promptContent?.[1]).toEqual({ type: 'image', attachment })
+      expect(JSON.stringify(turn)).not.toContain('"data"')
+    },
+  )
   it('defaults Claude delegation to Kiro while preserving an explicit AWS combination', async () => {
     const { service, root } = await nativeSetup([
       { id: 'aws::claude-opus-5-5', name: 'Claude' },

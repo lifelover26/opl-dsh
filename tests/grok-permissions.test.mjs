@@ -34,6 +34,7 @@ const STUBS = {
     'export async function resolveGatewayExecution() { return { apiKey: "fake", baseURL: "https://gateway.medopl.com/v1", model: "grok-4.7", credential: "stub" } }',
   '../harness-registry.ts':
     'export async function executablePath() { return true }\nexport function commandLaunch(command, args = []) { return { command, args } }',
+  '../multimodal-prompt.ts': `export { agentSupportsPromptImages } from ${JSON.stringify(new URL('../src/execution/host/multimodal-prompt.ts', import.meta.url).href)}`,
   './environment.ts': 'export function systemEnvironment() { return {} }',
   './grok-bash.ts':
     "export async function grokBashEnvironment(env) { return { ...env, GROK_SHELL: 'bash' } }",

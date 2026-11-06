@@ -2,7 +2,11 @@
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { HarnessSession } from '../contracts/sessions.ts'
 import type { ExternalEditHistory, ExternalEditResult } from './message-edit-driver.ts'
-import { readNativeUserMessages, turnRequestIds } from './stop-edit-native.ts'
+import {
+  editableNativeMessage,
+  readNativeUserMessages,
+  turnRequestIds,
+} from './stop-edit-native.ts'
 import { validateExternalEditResult, type ExternalEditIntent } from './message-edit-external.ts'
 
 export interface ExternalEditChoice {
@@ -46,7 +50,7 @@ export function externalPreparedChoice(
   const matches = active.filter(
     (message) =>
       (intent.targetSeq === undefined || message.seq === intent.targetSeq) &&
-      !message.attachments.length,
+      editableNativeMessage(message),
   )
   return matches.length === 1 ? { seq: matches[0]!.seq, text: matches[0]!.text } : undefined
 }
@@ -78,7 +82,7 @@ export function externalUnsentEmptyChoice(
       activeSeqs.has(message.seq) &&
       (turn.native?.officialSeq === undefined || message.seq === turn.native.officialSeq) &&
       message.rpcId === intent.requestId &&
-      !message.attachments.length,
+      editableNativeMessage(message),
   )
   return messages.length === 1 ? { seq: messages[0]!.seq, text: messages[0]!.text } : undefined
 }
@@ -109,7 +113,7 @@ export function externalTerminalFailureChoice(
       activeSeqs.has(message.seq) &&
       message.rpcId === intent.requestId &&
       (turn.native?.officialSeq === undefined || message.seq === turn.native.officialSeq) &&
-      !message.attachments.length,
+      editableNativeMessage(message),
   )
   return matches.length === 1 ? { seq: matches[0]!.seq, text: matches[0]!.text } : undefined
 }
@@ -143,7 +147,7 @@ export function externalEditRecovery(
       activeSeqs.has(message.seq) &&
       message.seq === turn.native?.officialSeq &&
       message.rpcId === intent.requestId &&
-      !message.attachments.length,
+      editableNativeMessage(message),
   )
   if (messages.length !== 1) return
   const prefix = record.turns.slice(0, -1).map((item) => item.native?.userMessageId)
@@ -215,7 +219,10 @@ export function externalEditChoices(
     )
     if (matches.length !== 1) continue
     const message = matches[0]!
-    if (message.attachments.length) continue
+    if (!editableNativeMessage(message)) continue
+    const images = turn.promptContent?.filter((part) => part.type === 'image').length ?? 0
+    if ((boundary.imageCount ?? 0) !== images) continue
+    if (message.attachments.length && !images) continue
     choices.push({ seq: message.seq, text: message.text, boundaryId: boundary.id, turnIndex })
   }
   const counts = new Map<number, number>()
@@ -235,7 +242,18 @@ export function externalRecordedChoices(
       sessionId: record.acpSessionId,
       token: 'recorded-inputs',
       boundaries: record.turns.flatMap((turn) =>
-        turn.native?.userMessageId ? [{ id: turn.native.userMessageId }] : [],
+        turn.native?.userMessageId
+          ? [
+              {
+                id: turn.native.userMessageId,
+                ...(record.harnessRef !== 'grok-build' && turn.promptContent
+                  ? {
+                      imageCount: turn.promptContent.filter((part) => part.type === 'image').length,
+                    }
+                  : {}),
+              },
+            ]
+          : [],
       ),
     },
     events,
@@ -253,7 +271,7 @@ export function externalFreshFirstChoice(
   if (!record.acpSessionId || !turn || turn.native?.userMessageId) return
   const messages = readNativeUserMessages(events).filter((message) => activeSeqs.has(message.seq))
   const first = messages[0]
-  if (!first || first.attachments.length) return
+  if (!first || !editableNativeMessage(first)) return
   const matches = messages.filter((message) =>
     turn.native?.officialSeq !== undefined
       ? message.seq === turn.native.officialSeq

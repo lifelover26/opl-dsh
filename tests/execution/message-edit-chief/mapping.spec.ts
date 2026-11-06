@@ -51,6 +51,52 @@ it('projects saved identities without a live vendor or model catalog', () => {
     2,
   ])
 })
+it('requires preserved image references to match the vendor input before exposing an edit', () => {
+  const s = setup()
+  const attachment = {
+    attachmentId: 'image-ref',
+    mediaType: 'image/png',
+    bytes: 4,
+    width: 1,
+    height: 1,
+  } as const
+  const image = { type: 'image' as const, attachment }
+  const event = s.events[0]!
+  if (event.type === 'user/message') event.data.content.push(image as never)
+  const history = { ...s.history, boundaries: [{ id: 'a', imageCount: 1 }, { id: 'b' }] }
+  expect(
+    externalEditChoices(s.record, history, s.events, s.active).map((entry) => entry.seq),
+  ).toEqual([2])
+  s.record.turns[0]!.promptContent = [{ type: 'text', text: 'same' }, image]
+  expect(
+    externalEditChoices(s.record, history, s.events, s.active).map((entry) => entry.seq),
+  ).toEqual([1, 2])
+  expect(externalRecordedChoices(s.record, s.events, s.active).map((entry) => entry.seq)).toEqual([
+    1, 2,
+  ])
+  history.boundaries[0]!.imageCount = 2
+  expect(
+    externalEditChoices(s.record, history, s.events, s.active).map((entry) => entry.seq),
+  ).toEqual([2])
+})
+it('keeps cached and live Grok edit choices consistent for image and text inputs', () => {
+  const s = setup()
+  s.record.harnessRef = 'grok-build'
+  const attachment = {
+    attachmentId: 'image-ref',
+    mediaType: 'image/png',
+    bytes: 4,
+    width: 1,
+    height: 1,
+  } as const
+  const image = { type: 'image' as const, attachment }
+  const event = s.events[0]!
+  if (event.type === 'user/message') event.data.content.push(image as never)
+  s.record.turns[0]!.promptContent = [{ type: 'text', text: 'same' }, image]
+  const live = externalEditChoices(s.record, s.history, s.events, s.active)
+  expect(live).toEqual([{ seq: 2, text: 'same', boundaryId: 'b', turnIndex: 1 }])
+  expect(externalRecordedChoices(s.record, s.events, s.active)).toEqual(live)
+})
 it('allows only the exact unbound first DSH input to allocate an empty vendor session', () => {
   const s = setup()
   delete s.record.turns[0]!.native!.userMessageId

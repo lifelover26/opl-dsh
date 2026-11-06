@@ -1,5 +1,9 @@
 import { gatewayGroupEnabled } from './group-settings.ts'
-import { ensureAutoReviewProvider, syncGatewayModels } from './model-settings.ts'
+import {
+  ensureAutoReviewProvider,
+  migrateGatewayProtocolDefaults,
+  syncGatewayModels,
+} from './model-settings.ts'
 /** OPL-owned credentials and model-group routing over official DSH adapters. */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -320,18 +324,40 @@ export function apply(ctx: Context, config: Config): void {
     })
     let restored = false
     let closed = false
+    let pending: Promise<void> | undefined
+    let requested = false
     child.effect(() => () => {
       closed = true
+      return pending
     })
     const restore = () => {
-      if (closed || restored || !child.settings.describe().some((item) => item.ns === 'llm-pi-ai'))
-        return
-      restored = true
-      void ensureAutoReviewProvider(child).catch(() => {
-        child.logger.warn('llm-opl-gateway: Auto Review provider could not be restored')
-      })
+      if (closed || restored) return
+      requested = true
+      if (pending || !child.settings.describe().some((item) => item.ns === 'llm-pi-ai')) return
+      requested = false
+      pending = (async () => {
+        await migrateGatewayProtocolDefaults(child)
+        if (closed) return
+        await ensureAutoReviewProvider(child)
+        if (!closed) restored = true
+      })()
+        .catch(() => {
+          if (!closed)
+            child.logger.warn(
+              'llm-opl-gateway: Gateway provider defaults could not be updated; check model settings',
+            )
+        })
+        .finally(() => {
+          pending = undefined
+          if (!closed && !restored && requested) queueMicrotask(restore)
+        })
     }
-    child.on('internal/status', () => queueMicrotask(restore))
+    child.on('internal/status', (fiber) => {
+      if (fiber.runtime?.name === 'llm-pi-ai') queueMicrotask(restore)
+    })
+    child.on('settings/document-updated', (ns) => {
+      if (ns === 'llm-pi-ai' || ns === 'opl-suite') queueMicrotask(restore)
+    })
     queueMicrotask(restore)
   })
   // Search uses the account's Codex-group credential; fetching stays in the

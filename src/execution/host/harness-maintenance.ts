@@ -1,10 +1,19 @@
 /** Official CLI updaters only. The plugin never accepts an arbitrary shell command. */
 import { execFile } from 'node:child_process'
 import { homedir } from 'node:os'
-import { delimiter, dirname } from 'node:path'
+import { delimiter, dirname, isAbsolute } from 'node:path'
 import { promisify } from 'node:util'
 import type { HarnessInstallation } from '../contracts/installations.ts'
-import { harnessSearchPath } from './harness-registry.ts'
+import type { HarnessProxy } from '../contracts/catalog.ts'
+import { harnessProxyEnvironment } from './proxy.ts'
+import {
+  harnessSearchPath,
+  commandLaunch,
+  executablePath,
+  npmGlobalBin,
+  rememberHarnessInstallRoots,
+  harnessDiagnostic,
+} from './harness-registry.ts'
 const exec = promisify(execFile)
 export function maintenanceEnvironment(): NodeJS.ProcessEnv {
   const env = Object.fromEntries(
@@ -15,6 +24,9 @@ export function maintenanceEnvironment(): NodeJS.ProcessEnv {
       'APPDATA',
       'LOCALAPPDATA',
       'SYSTEMROOT',
+      'SystemRoot',
+      'ComSpec',
+      'PATHEXT',
       'TEMP',
       'TMP',
       'TMPDIR',
@@ -33,21 +45,23 @@ export function maintenanceEnvironment(): NodeJS.ProcessEnv {
       'SSL_CERT_DIR',
       'NODE_EXTRA_CA_CERTS',
       'NODE_USE_SYSTEM_CA',
+      'npm_config_prefix',
+      'NPM_CONFIG_PREFIX',
     ].flatMap((key) => (process.env[key] ? [[key, process.env[key]]] : [])),
   ) as NodeJS.ProcessEnv
-  env.PATH = [harnessSearchPath(), env.PATH].filter(Boolean).join(delimiter)
+  env.PATH = harnessSearchPath()
+  env.CI = '1'
+  env.NO_COLOR = '1'
+  env.npm_config_yes = 'true'
+  env.npm_config_audit = 'false'
+  env.npm_config_fund = 'false'
+  env.npm_config_update_notifier = 'false'
   return env
 }
 export interface MaintenancePlan {
   command: string
   args: string[]
-}
-
-function shell(command: string, extra: string[] = []): MaintenancePlan {
-  return {
-    command: process.env.SHELL?.startsWith('/') ? process.env.SHELL : '/bin/sh',
-    args: ['-lc', ['exec', command, ...extra].join(' ')],
-  }
+  npmGlobal?: boolean
 }
 
 function downloadAndRun(url: string, scriptArgs: string[] = []): MaintenancePlan {
@@ -74,17 +88,11 @@ function downloadAndRun(url: string, scriptArgs: string[] = []): MaintenancePlan
 }
 
 function npmGlobalInstall(packageName: string, extra: string[] = []): MaintenancePlan {
-  if (process.platform === 'win32')
-    return {
-      command: 'powershell.exe',
-      args: [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        `& npm.cmd install --global ${packageName}${extra.length > 0 ? ' ' + extra.join(' ') : ''}; exit $LASTEXITCODE`,
-      ],
-    }
-  return shell('npm', ['install', '--global', packageName, ...extra])
+  return {
+    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
+    args: ['install', '--global', packageName, ...extra],
+    npmGlobal: true,
+  }
 }
 
 export function maintenancePlan(item: HarnessInstallation): MaintenancePlan {
@@ -96,19 +104,7 @@ export function maintenancePlan(item: HarnessInstallation): MaintenancePlan {
   )
     return { command: item.path, args: ['update'] }
   if (item.maintenanceAction === 'install' && item.id === 'codex')
-    return process.platform === 'win32'
-      ? {
-          command: 'powershell.exe',
-          args: [
-            '-NoProfile',
-            '-NonInteractive',
-            '-Command',
-            '& npm.cmd install --global @openai/codex@latest; exit $LASTEXITCODE',
-          ],
-        }
-      : {
-          ...npmGlobalInstall('@openai/codex@latest'),
-        }
+    return npmGlobalInstall('@openai/codex@latest')
   if (item.maintenanceAction === 'install' && item.id === 'claude')
     return process.platform === 'win32'
       ? {
@@ -154,50 +150,71 @@ export function maintenancePlan(item: HarnessInstallation): MaintenancePlan {
     return npmGlobalInstall('@earendil-works/pi-coding-agent', ['--ignore-scripts'])
   throw Error('此 Harness 没有自动更新入口')
 }
-function safeOutput(value: string): string {
-  return value
-    .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
-    .replace(/(Bearer\s+|(?:token|api[_-]?key|password)\s*[=:]\s*)\S+/gi, '$1[REDACTED]')
-    .replace(/https?:\/\/[^\s]+/g, '[链接]')
-    .trim()
-    .slice(-1800)
+export interface MaintenanceResult {
+  message: string
+  command: string
+  expectedVersion?: string
+  /** Actual launcher directories reported by the selected npm, queried only during maintenance. */
+  installRoots?: string[]
 }
 /** Use the existing installation's official updater. */
 export async function maintainHarness(
   item: HarnessInstallation,
-): Promise<{ message: string; command: string; expectedVersion?: string }> {
+  proxy?: HarnessProxy,
+): Promise<MaintenanceResult> {
   const plan = maintenancePlan(item),
-    env = maintenanceEnvironment()
-  const installedCommand = item.path ?? ''
+    env = harnessProxyEnvironment(maintenanceEnvironment(), proxy)
   if (item.path) env.PATH = [dirname(item.path), env.PATH].join(delimiter)
-  const windowsScript = process.platform === 'win32' && /\.(?:cmd|bat)$/i.test(plan.command)
-  if (windowsScript) env.OPL_MAINTENANCE_COMMAND = plan.command
+  let command = plan.command
+  let installRoots: string[] | undefined
+  let stage = plan.npmGlobal ? '安装依赖检查（尚未启动安装）' : '官方更新器'
   try {
-    const { stdout, stderr } = await exec(
-      windowsScript ? 'powershell.exe' : plan.command,
-      windowsScript
-        ? [
-            '-NoProfile',
-            '-NonInteractive',
-            '-Command',
-            '& $env:OPL_MAINTENANCE_COMMAND update; exit $LASTEXITCODE',
-          ]
-        : plan.args,
-      {
+    if (plan.npmGlobal) {
+      const npm = await executablePath('npm')
+      if (!npm) throw Error('安装依赖缺失：未找到 npm，请检查 npm.cmd/npm 的安装及 PATH。')
+      command = npm
+      stage = 'npm 全局目录查询（尚未启动安装）'
+      const prefixLaunch = commandLaunch(npm, ['prefix', '--global'])
+      const prefixPending = exec(prefixLaunch.command, prefixLaunch.args, {
+        ...(prefixLaunch.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
         env,
         cwd: homedir(),
-        timeout: 600000,
-        maxBuffer: 1024 * 1024,
-      },
-    )
+        timeout: 30000,
+        maxBuffer: 16384,
+        windowsHide: true,
+      })
+      prefixPending.child.stdin?.end()
+      const { stdout } = await prefixPending
+      const prefix = stdout.trim()
+      if (!prefix || /[\r\n\0]/.test(prefix) || !isAbsolute(prefix))
+        throw Error(`npm 未返回有效的全局安装目录：${harnessDiagnostic(stdout) || '输出为空'}`)
+      installRoots = [npmGlobalBin(prefix)]
+    }
+    stage = '官方更新器'
+    const launch = commandLaunch(command, plan.args)
+    const pending = exec(launch.command, launch.args, {
+      ...(launch.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
+      env,
+      cwd: homedir(),
+      timeout: 600000,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+    })
+    pending.child.stdin?.end()
+    const { stdout, stderr } = await pending
     const expectedVersion =
       item.id === 'claude'
         ? stdout.match(/Successfully updated from \S+ to version (\d+\.\d+\.\d+)/)?.[1]
         : undefined
+    if (installRoots) rememberHarnessInstallRoots(installRoots)
     return {
-      command: installedCommand || plan.command,
-      message: safeOutput(stdout + '\n' + stderr) || '官方更新器执行完成',
+      command,
+      message: [
+        harnessDiagnostic(stdout + '\n' + stderr) || '官方更新器执行完成',
+        ...(installRoots ? [`npm 全局启动目录：${installRoots.join('、')}`] : []),
+      ].join('\n'),
       ...(expectedVersion ? { expectedVersion } : {}),
+      ...(installRoots ? { installRoots } : {}),
     }
   } catch (error) {
     const detail = error as {
@@ -205,11 +222,15 @@ export async function maintainHarness(
       stdout?: string
       stderr?: string
       killed?: boolean
+      message?: string
     }
+    const reason = detail.killed
+      ? '超时'
+      : typeof detail.code === 'number'
+        ? `退出码 ${detail.code}`
+        : `启动失败${detail.code ? ` ${detail.code}` : ''}`
     throw Error(
-      detail.killed
-        ? '更新器超时，请重新检测版本后再操作'
-        : `官方更新器未完成（${detail.code ?? '启动失败'}）：${safeOutput((detail.stderr ?? '') + '\n' + (detail.stdout ?? ''))}`,
+      `${stage}未完成（${reason}）：${harnessDiagnostic((detail.stderr ?? '') + '\n' + (detail.stdout ?? '')) || harnessDiagnostic(detail.message ?? '')}\n启动入口：${command}${installRoots ? `\nnpm 全局启动目录：${installRoots.join('、')}` : ''}`,
     )
   }
 }

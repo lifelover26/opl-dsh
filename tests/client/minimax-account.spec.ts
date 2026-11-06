@@ -322,6 +322,99 @@ describe('MiniMax official account card', () => {
     expect(disabled(login)).toBe(false)
   })
 
+  it('shows pending sign-out separately and allows a manual refresh to confirm completion', async () => {
+    let loginState: MiniMaxAccountStatus['loginState'] = 'signing-out'
+    const interval = vi.spyOn(globalThis, 'setInterval')
+    const { call, calls } = fixture(async (_method, request) =>
+      status({ region: request.region, loginState }),
+    )
+    const view = await mount(call)
+    expect(text(view.container)).toContain('等待官方完成退出')
+    expect(text(view.container)).not.toContain('已登录')
+    expect(has(view.container, 'data-opl-login')).toBe(false)
+    expect(disabled(control(view.container, 'data-opl-logout'))).toBe(true)
+    expect(disabled(control(view.container, 'data-opl-refresh'))).toBe(false)
+    expect(interval.mock.calls.some((call) => call[1] === 2000)).toBe(false)
+
+    loginState = 'signed-out'
+    await press(view.container, 'data-opl-refresh')
+    expect(text(view.container)).toContain('未登录')
+    expect(disabled(control(view.container, 'data-opl-login'))).toBe(false)
+    expect(calls.map((call) => call.method)).toEqual([
+      'minimax-account-status',
+      'minimax-account-status',
+    ])
+  })
+
+  it.each([
+    ['signing-out', '官方退出仍在处理中'],
+    ['signed-in', '重新读取后仍为已登录'],
+    ['unknown', '无法确认退出结果'],
+  ] as const)(
+    'reports a %s logout result without claiming success',
+    async (loginState, message) => {
+      const { call } = fixture(async (method, request) =>
+        status({
+          region: request.region,
+          loginState: method === 'minimax-account-logout' ? loginState : 'signed-in',
+        }),
+      )
+      const view = await mount(call)
+      await press(view.container, 'data-opl-logout')
+      expect(text(view.container)).toContain(message)
+      expect(text(view.container)).not.toContain('已退出官方账号')
+      if (loginState === 'signing-out') {
+        expect(text(view.container)).toContain('等待官方完成退出')
+        expect(disabled(control(view.container, 'data-opl-logout'))).toBe(true)
+        expect(has(view.container, 'data-opl-login')).toBe(false)
+      }
+    },
+  )
+
+  it('re-reads pending logout after an unconfirmed request without labelling it signed-in', async () => {
+    let reads = 0
+    const { call, calls } = fixture(async (method, request) => {
+      if (method === 'minimax-account-logout') throw Error('unconfirmed')
+      return status({
+        region: request.region,
+        loginState: ++reads === 1 ? 'signed-in' : 'signing-out',
+      })
+    })
+    const view = await mount(call)
+    await press(view.container, 'data-opl-logout')
+    expect(calls.filter((call) => call.method === 'minimax-account-status')).toHaveLength(2)
+    expect(text(view.container)).toContain('官方退出仍在处理中')
+    expect(text(view.container)).not.toContain('重新读取后仍为已登录')
+    expect(text(view.container)).not.toContain('已退出官方账号')
+  })
+
+  it('keeps the signed-in Global view when an earlier CN logout finishes pending', async () => {
+    const logout = deferred<MiniMaxAccountStatus>()
+    let cnState: MiniMaxAccountStatus['loginState'] = 'signed-in'
+    const { call, calls } = fixture(async (method, request) => {
+      if (method === 'minimax-account-logout') return logout.promise
+      return status({
+        region: request.region,
+        loginState: request.region === 'cn' ? cnState : 'signed-in',
+      })
+    })
+    const view = await mount(call)
+    await press(view.container, 'data-opl-logout')
+    await chooseRegion(view.container, 'global')
+    cnState = 'signing-out'
+    await act(async () => {
+      logout.resolve(status({ region: 'cn', loginState: cnState }))
+    })
+    expect(text(view.container)).toContain('已登录')
+    expect(text(view.container)).not.toContain('等待官方完成退出')
+    expect(calls.filter((call) => call.method === 'minimax-account-logout')).toEqual([
+      { method: 'minimax-account-logout', request: { region: 'cn' } },
+    ])
+    await chooseRegion(view.container, 'cn')
+    expect(text(view.container)).toContain('等待官方完成退出')
+    expect(text(view.container)).not.toContain('已登录')
+  })
+
   it('refreshes the selected region through a user read', async () => {
     let reads = 0
     const { call, calls } = fixture(async (method, request) => {

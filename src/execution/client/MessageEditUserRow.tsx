@@ -132,6 +132,7 @@ export function MessageEditUserRow({
           session={edit}
           seq={node.data.seq}
           draft={draft}
+          retainsImages={attachments.some((part) => part.type === 'image')}
           onDraft={(text) => inputActions.setDraft(text)}
         />
       </div>

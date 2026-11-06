@@ -8,6 +8,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { HarnessService } from '../../src/execution/host/harness.ts'
 import { harnessAdapters } from '../../src/execution/host/adapters/index.ts'
 import { commandLaunch } from '../../src/execution/host/harness-registry.ts'
@@ -644,7 +645,12 @@ describe('ordinary conversation full-access binding', () => {
         {
           ...definition.modelRef,
           sessionId: 'dsh-session',
-          messages: [],
+          messages: [
+            createUserMessage({
+              source: { kind: 'user' },
+              content: [{ type: 'text', text: 'check authorized sandbox' }],
+            }),
+          ],
         },
         async function* () {},
       )

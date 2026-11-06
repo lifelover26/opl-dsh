@@ -9,6 +9,12 @@
 
 import { GatewayPasswordStore } from './remembered-login.ts'
 import { gatewayGroupEnabled } from './group-settings.ts'
+import {
+  clearGatewayCatalogStatus,
+  diagnoseGatewayModelFailure,
+  gatewayCatalogStatus,
+} from './model-diagnostics.ts'
+import type { GatewayModelDiagnostic } from '../contracts/models.ts'
 import { homedir, hostname } from 'node:os'
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
@@ -133,6 +139,7 @@ export class OplGatewayAccountService extends TypertRemoteService {
   private facts: GatewayAccountFacts | undefined
   private source: 'session' | 'opl' | undefined
   private failure: { code: string; message: string } | undefined
+  private modelSyncError: GatewayModelDiagnostic | undefined
   private readonly managedKeys = new Map<GatewayGroupId, GatewayManagedKey>()
   private readonly groupStates = new Map<GatewayGroupId, GatewayGroupStatus>()
   private readonly passwords = new GatewayPasswordStore()
@@ -184,6 +191,18 @@ export class OplGatewayAccountService extends TypertRemoteService {
     const hit = await credentials.resolve(this.options.credentialRef())
     if (hit !== undefined && hit.value.length > 0) return true
     return false
+  }
+
+  private async syncModels(): Promise<void> {
+    this.modelSyncError = undefined
+    try {
+      await this.options.syncModels?.()
+    } catch (error) {
+      this.modelSyncError = diagnoseGatewayModelFailure(error)
+      this.ctx.logger.warn(
+        `OPL Gateway model sync [${this.modelSyncError.code}]: ${this.modelSyncError.message}`,
+      )
+    }
   }
 
   /**
@@ -241,6 +260,7 @@ export class OplGatewayAccountService extends TypertRemoteService {
         const capability = known?.find((item) => labels.has(item.label.trim().toLowerCase()))
         const flags = {
           enabled: gatewayGroupEnabled(this.ctx, group.id),
+          catalog: gatewayCatalogStatus(this.ctx, group.id),
           ...(known ? { authorized: !!capability } : {}),
           ...(capability?.rateMultiplier !== undefined
             ? { rateMultiplier: capability.rateMultiplier }
@@ -265,6 +285,7 @@ export class OplGatewayAccountService extends TypertRemoteService {
       codexKeyReady: ready('codex'),
       grokKeyReady: ready('grok'),
       activeChannel: this.options.activeChannel?.(),
+      ...(this.modelSyncError ? { modelSyncError: this.modelSyncError } : {}),
     }
 
     if (this.facts !== undefined) {
@@ -356,6 +377,8 @@ export class OplGatewayAccountService extends TypertRemoteService {
     }
     try {
       this.failure = undefined
+      this.modelSyncError = undefined
+      clearGatewayCatalogStatus(this.ctx)
       const session = await this.control().login(email.trim(), password)
       this.session = session
       const accessToken = session.accessToken
@@ -373,7 +396,7 @@ export class OplGatewayAccountService extends TypertRemoteService {
         availableGroups: groups,
       }
       this.source = 'session'
-      await this.options.syncModels?.().catch(() => undefined)
+      await this.syncModels()
       writeFacts(this.home(), this.facts, new Date().toISOString())
       return { status: await this.status(), createdKey: created }
     } catch (error) {
@@ -524,7 +547,7 @@ export class OplGatewayAccountService extends TypertRemoteService {
       }
       this.source = 'session'
       this.failure = undefined
-      await this.options.syncModels?.().catch(() => undefined)
+      await this.syncModels()
       writeFacts(this.home(), this.facts, new Date().toISOString())
     } catch (error) {
       // The cached facts stay: the account may be fine and only the network
@@ -568,6 +591,8 @@ export class OplGatewayAccountService extends TypertRemoteService {
     this.managedKeys.clear()
     this.groupStates.clear()
     this.failure = undefined
+    this.modelSyncError = undefined
+    clearGatewayCatalogStatus(this.ctx)
     return this.status()
   }
 }

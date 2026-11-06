@@ -76,6 +76,7 @@ export async function prepareNative(
     home,
     command: process.execPath,
     args: [options.nativeBridgePath],
+    promptImageSupport: route.imageInput === true,
     env: {
       ...systemEnvironment(),
       ELECTRON_RUN_AS_NODE: '1',
@@ -85,6 +86,7 @@ export async function prepareNative(
       OPL_NATIVE_PERMISSION: record.sandbox,
       OPL_NATIVE_BASE_URL: base,
       OPL_NATIVE_API_KEY: key,
+      OPL_NATIVE_IMAGE_INPUT: route.imageInput === true ? '1' : '0',
       ...(gitBash ? { OPL_NATIVE_GIT_BASH: gitBash } : {}),
       // Codex has no upstream Git Bash interface, so the opt-in is carried explicitly and the
       // bridge verifies the real shell instead of assuming the request took effect.

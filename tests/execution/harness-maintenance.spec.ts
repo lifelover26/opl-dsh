@@ -60,22 +60,11 @@ it('provides fixed official install plans for missing Codex and Claude CLIs', ()
     website: '',
     maintenanceAction: 'install',
   })
-  expect(maintenancePlan(missing('codex'))).toEqual(
-    process.platform === 'win32'
-      ? {
-          command: 'powershell.exe',
-          args: [
-            '-NoProfile',
-            '-NonInteractive',
-            '-Command',
-            '& npm.cmd install --global @openai/codex@latest; exit $LASTEXITCODE',
-          ],
-        }
-      : {
-          command: process.env.SHELL?.startsWith('/') ? process.env.SHELL : '/bin/sh',
-          args: ['-lc', 'exec npm install --global @openai/codex@latest'],
-        },
-  )
+  expect(maintenancePlan(missing('codex'))).toEqual({
+    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
+    args: ['install', '--global', '@openai/codex@latest'],
+    npmGlobal: true,
+  })
   const claude = maintenancePlan(missing('claude'))
   expect(claude.command).toBe(process.platform === 'win32' ? 'powershell.exe' : '/bin/sh')
   expect(claude.args.join(' ')).toContain('claude.ai/install.')
@@ -90,37 +79,42 @@ it('provides fixed official install plans for missing Codex and Claude CLIs', ()
     ['kimi-code', '@moonshot-ai/kimi-code'],
   ] as const) {
     const plan = maintenancePlan(missing(id))
-    expect(plan.command).toMatch(/powershell|sh$|npm$|SHELL|bin\/(?:zsh|bash)/)
+    expect(plan.command).toMatch(/powershell|sh$|npm(?:\.cmd)?$/)
     expect(plan.args.join(' ')).toContain(official)
+    expect(plan.args).not.toContain('-lc')
   }
 })
 it('does not pass Gateway or model authentication into package updaters', () => {
   vi.stubEnv('OPL_GATEWAY_CODEX_API_KEY', 'test-sensitive')
   vi.stubEnv('OPENAI_API_KEY', 'test-sensitive')
   vi.stubEnv('ANTHROPIC_API_KEY', 'test-sensitive')
+  vi.stubEnv('npm_config_prefix', '/fixture-npm-prefix')
   const env = maintenanceEnvironment()
   expect(env.OPL_GATEWAY_CODEX_API_KEY).toBeUndefined()
   expect(env.OPENAI_API_KEY).toBeUndefined()
   expect(env.ANTHROPIC_API_KEY).toBeUndefined()
   expect(env.HOME).toBe(process.env.HOME)
+  expect(env.npm_config_prefix).toBe('/fixture-npm-prefix')
+  expect(env.CI).toBe('1')
 })
-it.skipIf(process.platform === 'win32')(
-  'runs the installed updater without shell interpolation and reports its real failure',
-  async () => {
-    const root = await mkdtemp(join(tmpdir(), 'opl-maintenance-'))
-    roots.push(root)
-    const command = join(root, 'codex with spaces')
-    await writeFile(
-      command,
-      '#!/bin/sh\n[ "$1" = update ] || exit 7\nprintf "token=test-sensitive\\n" >&2\nexit 9\n',
-      { mode: 0o700 },
-    )
-    await expect(maintainHarness(installed(command))).rejects.toThrow('9')
-    try {
-      await maintainHarness(installed(command))
-    } catch (error) {
-      expect(String(error)).not.toContain('test-sensitive')
-      expect(String(error)).toContain('[REDACTED]')
-    }
-  },
-)
+it('runs the installed updater without shell interpolation and reports its real failure', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'opl-maintenance-'))
+  roots.push(root)
+  const command = join(root, 'codex with spaces' + (process.platform === 'win32' ? '.cmd' : ''))
+  await writeFile(
+    command,
+    process.platform === 'win32'
+      ? '@echo off\r\nif not "%~1"=="update" exit /b 7\r\necho token=test-sensitive 1>&2\r\nexit /b 9\r\n'
+      : '#!/bin/sh\n[ "$1" = update ] || exit 7\nprintf "token=test-sensitive\\n" >&2\nexit 9\n',
+    { mode: 0o700 },
+  )
+  try {
+    await maintainHarness(installed(command))
+    expect.fail('the updater must report its nonzero exit')
+  } catch (error) {
+    expect(String(error)).toContain('9')
+    expect(String(error)).toContain(command)
+    expect(String(error)).not.toContain('test-sensitive')
+    expect(String(error)).toContain('[REDACTED]')
+  }
+})

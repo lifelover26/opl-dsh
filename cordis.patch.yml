@@ -57,33 +57,41 @@
               max: xhigh
           - id: gpt-6-astra
             name: GPT-6 Astra
+            input: [text, image]
             reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh, max: max }
           - id: gpt-6.1-sol
             name: GPT-6.1 Sol
+            input: [text, image]
             reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh, max: max }
           - id: gpt-6-sol
             name: GPT-6 Sol
+            input: [text, image]
             reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh, max: max }
           - id: gpt-6-luna
             name: GPT-6 Luna
+            input: [text, image]
             reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh, max: max }
       opl-gateway-aws:
         displayName: OPL Gateway · AWS
         api: anthropic-messages
-        baseURL: https://gateway.medopl.com/v1
+        baseURL: https://gateway.medopl.com
         apiKeyEnv: OPL_GATEWAY_AWS_API_KEY
         models:
           - id: claude-opus-5-5
             name: Claude Opus 5.5
+            input: [text, image]
+            compat: { forceAdaptiveThinking: true }
             reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh, max: max }
       opl-gateway-kiro:
         displayName: OPL Gateway · Kiro
         api: anthropic-messages
-        baseURL: https://gateway.medopl.com/v1
+        baseURL: https://gateway.medopl.com
         apiKeyEnv: OPL_GATEWAY_KIRO_API_KEY
         models:
           - id: claude-opus-5-5
             name: Claude Opus 5.5
+            input: [text, image]
+            compat: { forceAdaptiveThinking: true }
             reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh, max: max }
       opl-gateway-grok:
         displayName: OPL Gateway · Grok
@@ -93,6 +101,7 @@
         models:
           - id: grok-4.7
             name: Grok 4.7
+            input: [text, image]
             contextWindow: 500000
             reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh }
 - id: ui-settings-general

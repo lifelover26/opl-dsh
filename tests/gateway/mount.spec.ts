@@ -18,6 +18,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { TYPERT } from '../../src/generated/host.mjs'
 import { TYPERT_REMOTE } from '../../src/generated/remote.mjs'
 import { LocalCredentialProvider } from '@deepseek-ai/dsh-credentials-local'
+import { LlmError } from '@deepseek-ai/dsh-llm'
 import * as OplGateway from '../../src/gateway/host/index.ts'
 import { GatewayPasswordStore } from '../../src/gateway/host/remembered-login.ts'
 import { OplGatewayAccountService, gatewayKeyName } from '../../src/gateway/host/account-service.ts'
@@ -342,6 +343,38 @@ describe('account flow without any local OPL installation', () => {
       keyReady: true,
       account: { email: 'person@example.test', balanceAmount: 12.5, todayTokens: 1024 },
     })
+  })
+
+  it('keeps sign-in usable and exposes a sanitized model-sync failure until a successful retry', async () => {
+    const ctx = await seams()
+    const syncModels = vi.fn(async () => {
+      throw new LlmError(
+        'https://private.invalid/?token=fixture-private answered 503',
+        'DISCOVERY_FAILED',
+      )
+    })
+    const warning = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
+    const account = new OplGatewayAccountService(ctx, {
+      credentialRef: () => credentialRef('OPL_GATEWAY_DEEPSEEK_API_KEY'),
+      endpoint: () => 'https://gateway.medopl.com/v1',
+      control: gateway().control,
+      syncModels,
+    })
+    try {
+      const result = await account.signIn('person@example.test', 'right')
+      expect(result.status).toMatchObject({
+        phase: 'connected',
+        keyReady: true,
+        modelSyncError: { code: 'http', status: 503 },
+      })
+      expect(JSON.stringify([result.status, warning.mock.calls])).not.toContain('fixture-private')
+      expect(JSON.stringify(warning.mock.calls)).not.toContain('private.invalid')
+      syncModels.mockResolvedValueOnce(undefined)
+      expect((await account.refresh()).modelSyncError).toBeUndefined()
+      expect((await account.signOut()).modelSyncError).toBeUndefined()
+    } finally {
+      await ctx.fiber.dispose()
+    }
   })
 
   it('reuses the key a previous sign-in left behind instead of minting another', async () => {

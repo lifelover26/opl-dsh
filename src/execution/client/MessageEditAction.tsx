@@ -12,11 +12,13 @@ export function MessageEditAction({
   session,
   seq,
   draft,
+  retainsImages = false,
   onDraft,
 }: {
   session: MessageEditSession
   seq: number
   draft: string
+  retainsImages?: boolean
   onDraft(text: string): void
 }) {
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
@@ -31,19 +33,27 @@ export function MessageEditAction({
     }
   }, [])
   const choice = session.choice(seq)
+  const recovery = snapshot.state?.recovery?.targetSeq === seq ? snapshot.state.recovery : undefined
   const unavailable = snapshot.unavailable
+  const retryable = unavailable?.retryable === true
   if (
-    snapshot.state?.supported === false ||
-    (!choice && !(snapshot.state?.supported && unavailable))
+    (!retryable && snapshot.state?.supported === false) ||
+    (!choice && !recovery && !retryable && !(snapshot.state?.supported && unavailable))
   )
     return null
-  const busy = snapshot.state?.busy === true || snapshot.state?.pending === true
-  const label = unavailable?.retryable ? messageEditCopy.retry : '编辑消息'
+  const busy = snapshot.state?.busy === true || (snapshot.state?.pending === true && !recovery)
+  const label = unavailable?.retryable
+    ? messageEditCopy.retry
+    : recovery
+      ? messageEditCopy.recover
+      : '编辑消息'
   const hint = busy
     ? messageEditCopy.stop
     : unavailable
       ? `${messageEditUnavailableCopy[unavailable.reason]}${unavailable.retryable ? '，点击重试' : ''}`
-      : label
+      : retainsImages && !recovery
+        ? '编辑消息，保留原图片'
+        : label
   return (
     <Tooltip label={hint} side="bottom">
       <button
@@ -53,9 +63,21 @@ export function MessageEditAction({
         aria-disabled={busy || (unavailable && !unavailable.retryable) || undefined}
         data-unavailable={busy || unavailable !== undefined || undefined}
         onClick={async () => {
-          if (busy) return
-          if (unavailable) {
-            if (unavailable.retryable) await session.retry()
+          const latestSnapshot = session.getSnapshot()
+          if (
+            current.current.session !== session ||
+            current.current.seq !== seq ||
+            latestSnapshot.state?.busy ||
+            (latestSnapshot.state?.pending && !recovery)
+          )
+            return
+          if (latestSnapshot.unavailable) {
+            if (latestSnapshot.unavailable.retryable) await session.retry()
+            return
+          }
+          if (latestSnapshot.state?.supported === false) return
+          if (recovery) {
+            if (latestSnapshot.state?.recovery === recovery) await session.recover()
             return
           }
           if (!choice || selecting.current) return

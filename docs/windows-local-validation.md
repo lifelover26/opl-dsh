@@ -37,7 +37,7 @@ Grok CLI 自动写入的 marketplace 初始化标记属于可接受布局，后�
 
 ## 桌面独立生命周期
 
-Windows 的安装后自动启动与 Codex Skill 自动启动通过 WMI 创建套件启动器，再由同一 launch.vbs / setup.mjs 入口设置 profile 与应用路径。桌面不继承调用方的 Windows Job；关闭 Codex 启动进程不会通过该 Job 终止桌面。启动器按安装时选择的 Codex home 显式设置 CODEX_HOME，保证通知 CLI 使用正确的状态目录。WMI 不传递调用方的自定义环境块，外部 Harness 的代理请在执行引擎中设置。系统策略禁用 WMI 或启动失败时自动启动明确拒绝，不回退到共享 Job；此时从 OPL DSH 快捷方式打开。官方应用资源保持原样，安装器不创建持久服务或计划任务，也不要求提权。
+Windows 的安装后自动启动与 Codex Skill 自动启动通过 WMI 创建套件启动器，再由同一 launch.vbs / setup.mjs 入口设置 profile 与应用路径。桌面不继承调用方的 Windows Job；关闭 Codex 启动进程不会通过该 Job 终止桌面。启动器按安装时选择的 Codex home 显式设置 CODEX_HOME，保证通知 CLI 使用正确的状态目录。WMI 不传递调用方的自定义环境块；原生 DSH 网络代理使用系统启动环境或 DSH 主目录 `.env` 中的 HTTP_PROXY/HTTPS_PROXY，修改后重启，项目 `.env` 不允许设置这些变量。执行引擎中的代理只影响对应外部 CLI 及其维护命令，不改变原生 DSH 的 fetch。系统策略禁用 WMI 或启动失败时自动启动明确拒绝，不回退到共享 Job；此时从 OPL DSH 快捷方式打开。官方应用资源保持原样，安装器不创建持久服务或计划任务，也不要求提权。
 
 生命周期验收使用自有临时 Job、测试目标与 IPC，包含原 detached/unref 启动的负控和禁止 breakaway 的 Job；父子进程树关系与 Job 成员关系分别检查。真实关闭当前 Codex 的操作不作为自动验收步骤。
 

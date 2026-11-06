@@ -416,7 +416,7 @@ it('keeps the bounded cold-history retry after an RPC failure before Host activa
   })
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   await f.render()
-  expect(f.container.textContent).toBe('重试编辑')
+  expect(f.container.textContent).not.toContain('重试编辑')
   f.readState.mockResolvedValueOnce({
     ok: false,
     error: new RemoteError('gateway/internal', 'temporary test transport failure', {}),

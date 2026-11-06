@@ -2,13 +2,14 @@
 export interface MiniMaxAccountStatus {
   installed: boolean
   region: 'cn' | 'global'
-  loginState: 'signed-in' | 'signed-out' | 'unknown'
+  /** Local CLI account state; signed-in does not establish online validity. */
+  loginState: 'signed-in' | 'signed-out' | 'signing-out' | 'unknown'
   loginPending: boolean
   pendingRegion?: 'cn' | 'global'
   loginDeadline?: number
 }
 
-/** Region affects only an explicitly requested official browser sign-in. */
+/** Region selects the account being viewed or managed, without changing execution routing. */
 export interface MiniMaxAccountLoginRequest {
   region: 'cn' | 'global'
 }

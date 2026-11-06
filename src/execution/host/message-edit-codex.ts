@@ -55,16 +55,26 @@ export function parseExternalHistory(value: unknown): ExternalEditHistory {
     throw new ExternalEditError('history-unreadable', '消息编辑历史返回的形状无效')
   const boundaries: ExternalEditBoundary[] = []
   for (const item of body.boundaries) {
-    const entry = item as { id?: unknown; text?: unknown; unavailableReason?: unknown } | undefined
+    const entry = item as
+      | { id?: unknown; text?: unknown; imageCount?: unknown; unavailableReason?: unknown }
+      | undefined
     if (!entry || typeof entry.id !== 'string' || !entry.id)
       throw new ExternalEditError('history-unreadable', '消息编辑边界缺少稳定身份')
     if (entry.text !== undefined && typeof entry.text !== 'string')
       throw new ExternalEditError('history-unreadable', '消息编辑边界文本无效')
+    if (
+      entry.imageCount !== undefined &&
+      (typeof entry.imageCount !== 'number' ||
+        !Number.isSafeInteger(entry.imageCount) ||
+        entry.imageCount < 0)
+    )
+      throw new ExternalEditError('history-unreadable', '消息编辑边界图片数量无效')
     if (entry.unavailableReason !== undefined && typeof entry.unavailableReason !== 'string')
       throw new ExternalEditError('history-unreadable', '消息编辑边界限制无效')
     boundaries.push({
       id: entry.id,
       ...(entry.text === undefined ? {} : { text: entry.text }),
+      ...(entry.imageCount === undefined ? {} : { imageCount: entry.imageCount }),
       ...(entry.unavailableReason === undefined
         ? {}
         : { unavailableReason: entry.unavailableReason }),

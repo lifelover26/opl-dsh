@@ -10,6 +10,8 @@ export interface ExternalEditBoundary {
   statistics?: HarnessStatistics
   /** Exact text when supplied by the public protocol; summaries must not populate this. */
   text?: string
+  /** Number of image blocks in this vendor input; absence means text-only. */
+  imageCount?: number
   /** Vendor-specific restriction for this boundary. */
   unavailableReason?: string
 }

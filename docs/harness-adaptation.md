@@ -40,6 +40,7 @@ OFM 来源统一使用 `Our Free Model` 写法，区域渠道保留 `region-limi
 | Nemotron 3 Super 120B（nvidia/nemotron-3-super-120b-a12b:free）                                                               | Kilo Code，经 OFM 转发          | Chat      |
 | Flint v1.0 Free（recursive/flint-v1.0:free）                                                                                  | Kilo Code，经 OFM 转发          | Chat      |
 | Kilo Ling 3.1 Flash 1019（inclusionai/ling-3.1-flash-1019-free）                                                              | Kilo Code，经 OFM 转发          | Chat      |
+| Kilo Crouton Alpha（stealth/crouton-alpha）                                                                                  | Kilo Code，经 OFM 转发          | Chat      |
 | Flint 40B Free（flint-40b-free）                                                                                              | OpenCode，经 OFM 转发           | Chat      |
 | GPT-OSS 20B                                                                                                                   | Codex CLI                       | Responses |
 | Kilo Step 5 Preview（stepfun/step-5-preview-free）                                                                            | StepCode                        | Chat      |
