@@ -11,4 +11,4 @@ OPL 保留上游源码、测试、管理面板、GitHub／飞书 Source、提示
 安装与独立官方桌面启动入口归 OPL；调度、策略、工单、会话、数据库和回传仍归原版 bundle。
 原型使用 POSIX 账户 wrapper 与执行命令，OPL 本版仅在 macOS 提供启动入口。
 
-本地测试保留 Linux/macOS 的完整 POSIX 检查；Windows 仅跳过依赖 Unix 信号、权限、服务控制或可执行 Shell wrapper 的测试，继续运行共享逻辑。文档路径按本机路径 API 比较并接受 CRLF，提示词文件 fixture 与包内提示词保持同一磁盘卷，Git 配置按 Git 解析值检查，目录别名在 Windows 使用 junction；这些测试适配不增加 Windows 运行支持。
+本地测试保留 Linux/macOS 的完整 POSIX 检查；Windows 仅跳过依赖 Unix 信号、权限、服务控制或可执行 Shell wrapper 的测试，继续运行共享逻辑。文档路径按本机路径 API 比较并接受 CRLF，提示词文件 fixture 与包内提示词保持同一磁盘卷，Git 配置按 Git 解析值检查，目录别名在 Windows 使用 junction。Worker 回合结束后的 `blocked`、`failed`、`ready` 报告保留检查按状态分别建例，各自使用独立运行时、数据库和默认测试时限；这些测试适配不增加 Windows 运行支持。

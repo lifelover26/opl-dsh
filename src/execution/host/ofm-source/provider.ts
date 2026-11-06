@@ -117,6 +117,7 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'inclusionai/ling-3.1-flash-1019-free',
     'dots-studio/dots-3-note-preview:free',
     'stealth/glyph-cluster',
+    'stealth/crouton-alpha',
     'kilo-auto/free',
     'nvidia/nemotron-3-super-120b-a12b:free',
     'nvidia/nemotron-3.5-super-vl:free',
