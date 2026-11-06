@@ -2277,7 +2277,12 @@ export class HarnessService {
           await this.externalMessageEdits.beginPrompt(record.nativeSessionId!, edit.requestId)
         }
         const promptParts = turn.promptContent ?? [{ type: 'text' as const, text: turn.prompt }]
-        assertPromptImages(promptParts, active.editLaunch?.promptImageSupport, active.agentInfo)
+        assertPromptImages(
+          promptParts,
+          active.editLaunch?.promptImageSupport,
+          active.agentInfo,
+          record.harnessRef,
+        )
         const generation = active.generation
         const prompt = await resolvePromptContent(
           this.ctx.get('attachments'),
@@ -2304,7 +2309,12 @@ export class HarnessService {
           active.acp?.closed
         )
           throw new HarnessTransportError('附件请求的会话状态已变化，未发送任务')
-        assertPromptImages(prompt, active.editLaunch?.promptImageSupport, active.agentInfo)
+        assertPromptImages(
+          prompt,
+          active.editLaunch?.promptImageSupport,
+          active.agentInfo,
+          record.harnessRef,
+        )
         adapter?.verifyPrompt?.(
           record,
           {
@@ -5359,6 +5369,7 @@ export class HarnessService {
         input.content,
         this.active.get(record.id)?.editLaunch?.promptImageSupport,
         this.active.get(record.id)?.agentInfo,
+        record.harnessRef,
       )
     this.conversationOwners.set(record.id, {
       sessionId: options.sessionId,

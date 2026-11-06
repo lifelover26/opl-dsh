@@ -22,6 +22,7 @@ import type { HarnessSession } from '../../src/execution/contracts/sessions.ts'
 import type { HarnessPromptPart } from '../../src/execution/contracts/prompt.ts'
 import {
   HISTORY_NOTICE,
+  agentSupportsPromptImages,
   assertPromptImages,
   conversationInput,
   resolvePromptContent,
@@ -208,6 +209,7 @@ describe('external prompt projection', () => {
 
   it.each([
     [false, true, '模型来源'],
+    [false, false, '模型来源'],
     [undefined, true, '模型来源'],
     [true, false, 'Harness'],
     [true, undefined, 'Harness'],
@@ -236,6 +238,41 @@ describe('external prompt projection', () => {
     expect(() =>
       assertPromptImages([picture(first)], true, { promptCapabilities: { image: true } }),
     ).toThrow('Harness')
+  })
+
+  it('admits the verified Grok 1.0.46 image route only for its exact identity', () => {
+    const grok46 = {
+      agentCapabilities: { promptCapabilities: { image: false } },
+      _meta: { grokShell: true, agentVersion: '1.0.46' },
+    }
+    expect(agentSupportsPromptImages(grok46, 'grok-build')).toBe(true)
+    expect(() => assertPromptImages([picture(first)], true, grok46, 'grok-build')).not.toThrow()
+    expect(() => assertPromptImages([picture(first)], false, grok46, 'grok-build')).toThrow(
+      '模型来源',
+    )
+    expect(() =>
+      assertPromptImages(
+        [picture(first)],
+        true,
+        {
+          ...grok46,
+          _meta: { grokShell: true, agentVersion: '1.0.47' },
+        },
+        'grok-build',
+      ),
+    ).toThrow('Harness')
+    expect(() => assertPromptImages([picture(first)], true, grok46, 'other-harness')).toThrow(
+      'Harness',
+    )
+    expect(agentSupportsPromptImages(grok46, 'other-harness')).toBe(false)
+    expect(agentSupportsPromptImages(grok46)).toBe(false)
+    expect(
+      agentSupportsPromptImages({ ...grok46, _meta: { agentVersion: '1.0.46' } }, 'grok-build'),
+    ).toBe(false)
+    expect(agentSupportsPromptImages({ ...grok46, _meta: { grokShell: true } }, 'grok-build')).toBe(
+      false,
+    )
+    expect(agentSupportsPromptImages({ _meta: grok46._meta }, 'grok-build')).toBe(false)
   })
 
   it('reads immutable references in order and carries only encoded bytes on the ACP wire', async () => {

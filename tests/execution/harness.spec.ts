@@ -1609,66 +1609,127 @@ describe('native conversation combinations', () => {
     ).rejects.toMatchObject({ code: 'HARNESS_INPUT' })
     await expect(access(join(root, 'calls.txt'))).rejects.toThrow()
   })
-  it('sends ordered images through the shared conversation runtime and reloads only immutable references', async () => {
-    const { service, root, session, ctx, options } = await nativeSetup([
-      { id: 'grok::grok-4.7', name: 'Grok' },
-    ])
-    const adapter = adapterFor('grok-build', { provider: 'opl-gateway', model: 'grok::grok-4.7' })!
-    vi.mocked(adapter.prepare!).mockImplementation(async () => {
-      // This case exercises shared transport without an official CLI or API.
-      const home = join(root, 'fixture-images')
-      return {
-        home,
-        command: process.execPath,
-        args: [resolve('tests/fixtures/acp-agent.mjs')],
-        env: { ...systemEnvironment(), OPL_FIXTURE_IMAGES: '1' },
-        promptImageSupport: true,
+  it.each([
+    {
+      name: 'advertised image capability',
+      image: true,
+      grokVersion: undefined,
+      sourceEnabled: true,
+      accepted: true,
+    },
+    {
+      name: 'Grok Build 1.0.46 false image advertisement',
+      image: false,
+      grokVersion: '1.0.46',
+      sourceEnabled: true,
+      accepted: true,
+    },
+    {
+      name: 'unknown Grok Build version',
+      image: false,
+      grokVersion: '1.0.47',
+      sourceEnabled: true,
+      accepted: false,
+    },
+    {
+      name: 'false image advertisement without Grok metadata',
+      image: false,
+      grokVersion: undefined,
+      sourceEnabled: true,
+      accepted: false,
+    },
+    {
+      name: 'model source without image support',
+      image: false,
+      grokVersion: '1.0.46',
+      sourceEnabled: false,
+      accepted: false,
+    },
+  ])(
+    'admits ordered images through the shared conversation runtime: $name',
+    async ({ image, grokVersion, sourceEnabled, accepted }) => {
+      const { service, root, session, ctx, options } = await nativeSetup([
+        { id: 'grok::grok-4.7', name: 'Grok' },
+      ])
+      const adapter = adapterFor('grok-build', {
+        provider: 'opl-gateway',
+        model: 'grok::grok-4.7',
+      })!
+      vi.mocked(adapter.prepare!).mockImplementation(async () => {
+        // This case exercises shared transport without an official CLI or API.
+        const home = join(root, 'fixture-images')
+        return {
+          home,
+          command: process.execPath,
+          args: [resolve('tests/fixtures/acp-agent.mjs')],
+          env: {
+            ...systemEnvironment(),
+            OPL_FIXTURE_IMAGES: '1',
+            OPL_FIXTURE_IMAGE_CAPABILITY: String(image),
+            ...(grokVersion ? { OPL_FIXTURE_GROK_VERSION: grokVersion } : {}),
+          },
+          promptImageSupport: sourceEnabled,
+        }
+      })
+      const attachment = {
+        attachmentId: '1'.repeat(64),
+        mediaType: 'image/png' as const,
+        bytes: 3,
+        width: 1,
+        height: 1,
+        name: 'original.png',
       }
-    })
-    const attachment = {
-      attachmentId: '1'.repeat(64),
-      mediaType: 'image/png' as const,
-      bytes: 3,
-      width: 1,
-      height: 1,
-      name: 'original.png',
-    }
-    const readImage = vi.fn(async (ref) => ({ ref, data: Buffer.from('png') }))
-    Object.assign(ctx, {
-      get: (name: string) => (name === 'attachments' ? { readImage } : undefined),
-    })
-    await service.selectCombination({ sessionId: session.id, combination: GROK_COMBINATION })
-    const user = createUserMessage({
-      source: { kind: 'user' },
-      content: [
-        { type: 'text', text: 'before' },
-        { type: 'image', attachment: attachment as never },
-        { type: 'text', text: 'after' },
-      ],
-    })
-    const chunks = await Array.fromAsync(
-      service.conversationStream(
-        {
-          sessionId: session.id,
-          provider: 'opl-gateway',
-          model: 'grok::grok-4.7',
-          messages: [user],
-        } as GenerateOptions,
-        async function* () {},
-      ),
-    )
-    expect(chunks.at(-1)?.type).toBe('finish')
-    expect(readImage).toHaveBeenCalledWith(attachment, undefined)
-    expect(JSON.parse((await readFile(join(root, 'image-calls.jsonl'), 'utf8')).trim())).toEqual([
-      { type: 'text', text: 'user: before\n' },
-      { type: 'image', data: Buffer.from('png').toString('base64'), mimeType: 'image/png' },
-      { type: 'text', text: '\nafter' },
-    ])
-    const records = await new HarnessSessionStore(options.home).load()
-    const turn = records.find((record) => record.nativeSessionId === session.id)!.turns[0]!
-    expect(turn.promptContent?.[1]).toEqual({ type: 'image', attachment })
-    expect(JSON.stringify(turn)).not.toContain('"data"')
-  })
+      const readImage = vi.fn(async (ref) => ({ ref, data: Buffer.from('png') }))
+      Object.assign(ctx, {
+        get: (name: string) => (name === 'attachments' ? { readImage } : undefined),
+      })
+      await service.selectCombination({ sessionId: session.id, combination: GROK_COMBINATION })
+      const user = createUserMessage({
+        source: { kind: 'user' },
+        content: [
+          { type: 'text', text: 'before' },
+          { type: 'image', attachment: attachment as never },
+          { type: 'text', text: 'after' },
+        ],
+      })
+      const response = Array.fromAsync(
+        service.conversationStream(
+          {
+            sessionId: session.id,
+            provider: 'opl-gateway',
+            model: 'grok::grok-4.7',
+            messages: [user],
+          } as GenerateOptions,
+          async function* () {},
+        ),
+      )
+      if (!accepted) {
+        await expect(response).rejects.toMatchObject({ code: 'HARNESS_INPUT' })
+        expect(readImage).not.toHaveBeenCalled()
+        await expect(access(join(root, 'calls.txt'))).rejects.toThrow()
+        await expect(access(join(root, 'image-calls.jsonl'))).rejects.toThrow()
+        return
+      }
+      const chunks = await response
+      expect(chunks.at(-1)?.type).toBe('finish')
+      expect(readImage).toHaveBeenCalledExactlyOnceWith(attachment, undefined)
+      const calls = (await readFile(join(root, 'image-calls.jsonl'), 'utf8'))
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line))
+      expect(calls).toEqual([
+        [
+          { type: 'text', text: 'user: before\n' },
+          { type: 'image', data: Buffer.from('png').toString('base64'), mimeType: 'image/png' },
+          { type: 'text', text: '\nafter' },
+        ],
+      ])
+      const records = await new HarnessSessionStore(options.home).load()
+      const turn = records.find((record) => record.nativeSessionId === session.id)!.turns[0]!
+      expect(turn.promptContent?.[1]).toEqual({ type: 'image', attachment })
+      expect(JSON.stringify(turn)).not.toContain('"data"')
+    },
+  )
   it('defaults Claude delegation to Kiro while preserving an explicit AWS combination', async () => {
     const { service, root } = await nativeSetup([
       { id: 'aws::claude-opus-5-5', name: 'Claude' },

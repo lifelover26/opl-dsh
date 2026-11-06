@@ -201,15 +201,39 @@ export async function resolvePromptContent(
   return result
 }
 
-/** Both the source and the connected official CLI must advertise images for this exact request. */
+/**
+ * Check the connected ACP agent's image input capability.
+ *
+ * Grok Build 1.0.46 accepts ACP images despite advertising `image: false`.
+ * Its compatibility exception requires the owning Harness and exact initialize metadata.
+ * @param agent - ACP `initialize` result for the connected Harness.
+ * @param harnessId - Harness identifier owning the ACP connection.
+ * @returns whether the agent can receive image prompt parts.
+ */
+export function agentSupportsPromptImages(
+  agent: Record<string, any> | undefined,
+  harnessId?: string,
+): boolean {
+  const image = agent?.agentCapabilities?.promptCapabilities?.image
+  if (image === true) return true
+  return (
+    harnessId === 'grok-build' &&
+    image === false &&
+    agent?._meta?.grokShell === true &&
+    agent?._meta?.agentVersion === '1.0.46'
+  )
+}
+
+/** Both the source and the connected official CLI must support images for this request. */
 export function assertPromptImages(
   content: readonly { type: string }[],
   sourceEnabled: boolean | undefined,
   agent: Record<string, any> | undefined,
+  harnessId?: string,
 ): void {
   if (!content.some((part) => part.type === 'image')) return
   if (sourceEnabled !== true)
     throw new LlmError('所选模型来源未声明支持图片，未发送任务', 'HARNESS_INPUT')
-  if (agent?.agentCapabilities?.promptCapabilities?.image !== true)
+  if (!agentSupportsPromptImages(agent, harnessId))
     throw new LlmError('当前官方 Harness 未广告图片输入能力，未发送任务', 'HARNESS_INPUT')
 }

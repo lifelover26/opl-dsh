@@ -292,6 +292,47 @@ describe.each([grokAdapter, openCodeAdapter])('$id ACP image capability', (adapt
   })
 })
 
+describe('Grok Build image compatibility', () => {
+  const metadata = { grokShell: true, agentVersion: '1.0.46' }
+
+  it('accepts the verified Grok Build 1.0.46 image path with an empty session record', () => {
+    const snapshot = {
+      agent: { agentCapabilities: { promptCapabilities: { image: false } }, _meta: metadata },
+      session: {},
+      configOptions: [],
+    }
+    expect(() => grokAdapter.verifyPrompt!({} as HarnessSession, snapshot, MIXED)).not.toThrow()
+    expect(() => openCodeAdapter.verifyPrompt!({} as HarnessSession, snapshot, MIXED)).toThrow(
+      '图片输入能力',
+    )
+  })
+
+  it.each([
+    { label: 'an older version', meta: { ...metadata, agentVersion: '1.0.45' } },
+    { label: 'an unknown newer version', meta: { ...metadata, agentVersion: '1.0.47' } },
+    { label: 'a missing version', meta: { grokShell: true } },
+    { label: 'a missing Grok implementation marker', meta: { agentVersion: '1.0.46' } },
+    { label: 'a false Grok implementation marker', meta: { ...metadata, grokShell: false } },
+    { label: 'missing metadata', meta: undefined },
+  ])('refuses image:false with $label', ({ meta }) => {
+    const snapshot = {
+      agent: { agentCapabilities: { promptCapabilities: { image: false } }, _meta: meta },
+      session: {},
+      configOptions: [],
+    }
+    expect(() => grokAdapter.verifyPrompt!({} as HarnessSession, snapshot, MIXED)).toThrow(
+      '图片输入能力',
+    )
+  })
+
+  it('requires an explicit image flag even from the verified Grok implementation', () => {
+    const snapshot = { agent: { _meta: metadata }, session: {}, configOptions: [] }
+    expect(() => grokAdapter.verifyPrompt!({} as HarnessSession, snapshot, MIXED)).toThrow(
+      '图片输入能力',
+    )
+  })
+})
+
 it('declares OpenCode image modality only for an explicitly capable resolved route', () => {
   const route = {
     baseURL: 'https://example.test/v1',

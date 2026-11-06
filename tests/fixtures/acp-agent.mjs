@@ -62,8 +62,17 @@ createInterface({ input: process.stdin }).on('line', async (line) => {
       protocolVersion: 1,
       agentCapabilities: {
         loadSession: true,
-        ...(process.env.OPL_FIXTURE_IMAGES === '1' ? { promptCapabilities: { image: true } } : {}),
+        ...(process.env.OPL_FIXTURE_IMAGES === '1'
+          ? {
+              promptCapabilities: {
+                image: process.env.OPL_FIXTURE_IMAGE_CAPABILITY !== 'false',
+              },
+            }
+          : {}),
       },
+      ...(process.env.OPL_FIXTURE_GROK_VERSION
+        ? { _meta: { grokShell: true, agentVersion: process.env.OPL_FIXTURE_GROK_VERSION } }
+        : {}),
     })
   else if (m.method === 'session/new' || m.method === 'session/load') {
     await appendFile(join(process.cwd(), 'connections.txt'), m.method + '\n')

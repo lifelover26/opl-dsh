@@ -4,6 +4,7 @@ import { GROK_API_KEY_REF } from '../../../gateway/host/config.ts'
 import { OPL_GATEWAY_INFERENCE_BASE_URL } from '../../../gateway/host/opl-credentials.ts'
 import { resolveGatewayExecution } from '../../../gateway/host/execution-access.ts'
 import { executablePath, commandLaunch } from '../harness-registry.ts'
+import { agentSupportsPromptImages } from '../multimodal-prompt.ts'
 import { systemEnvironment } from './environment.ts'
 import { grokBashEnvironment } from './grok-bash.ts'
 import { HarnessConfigurationError } from '../acp.ts'
@@ -155,7 +156,7 @@ export const grokAdapter: HarnessAdapter = {
   verifyPrompt(_record, snapshot, prompt) {
     if (
       prompt.some((part) => part.type === 'image') &&
-      snapshot.agent?.agentCapabilities?.promptCapabilities?.image !== true
+      !agentSupportsPromptImages(snapshot.agent, 'grok-build')
     )
       throw new HarnessConfigurationError('当前 Grok CLI 未声明图片输入能力；未发送提示词。')
   },
