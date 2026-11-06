@@ -80,7 +80,7 @@ brew upgrade --cask gaofeng21cn/opl-dsh/opl-dsh
 
 增强包和缓存保存在 OPL DSH Suite，官方 profile、登录、会话与设置位于 `~/.dsh`；重新安装保留已有数据。Windows 上的 BambooNode 和 TypeSafe 个人 Key 使用 Windows Credential Manager；MiniMax 账号凭据由官方 mcode 管理。
 
-准确版本、平台与资产摘要见[最新 Release](https://github.com/gaofeng21cn/opl-dsh/releases/latest)。运行中的 profile 不替换，更新校验失败时保留已安装版本。发布流程每日检查主线的未发布改动，详见[发布约定](docs/release-policy.md)与[发布 SOP](docs/release-sop.md)。
+准确版本、平台与资产摘要见[最新 Release](https://github.com/gaofeng21cn/opl-dsh/releases/latest)。运行中的 profile 不替换，更新校验失败时保留已安装版本。发布流程每日检查主线的未发布改动和官方 DSH 双平台版本变化，通过兼容验收后自动发布新的联合版本，详见[发布约定](docs/release-policy.md)与[发布 SOP](docs/release-sop.md)。
 
 ## 开发与文档
 

@@ -4,7 +4,13 @@ import { mkdtemp, mkdir, writeFile, rm, readFile, copyFile } from 'node:fs/promi
 import { tmpdir } from 'node:os'
 import { join, delimiter } from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { planDailyRelease } from '../scripts/prepare-daily-release.mjs'
+import { createHash } from 'node:crypto'
+import { pathToFileURL } from 'node:url'
+import {
+  planDailyRelease,
+  readPublishedOfficialVersion,
+} from '../scripts/prepare-daily-release.mjs'
+import { readOfficialDesktopFeeds } from '../scripts/official-desktop-feeds.mjs'
 import { dailyReleaseNotes, writeDailyReleaseNotes } from '../scripts/daily-release-notes.mjs'
 import { renderReleaseNotes } from '../scripts/release-notes.mjs'
 import { prepareSharedReleaseNoteWriter } from '../scripts/prepare-shared-release-note-writer.mjs'
@@ -48,6 +54,119 @@ test('an unversioned product fix gets the next stable patch', async (t) => {
     version: '0.2.22',
     baseline: latest.tag_name,
   })
+})
+
+test('an official-only update prepares one new patch, resumes it and skips after publication', async (t) => {
+  const { root, git, latest, commit } = await fixture(t)
+  const upstream = { officialVersion: '0.2.2-rc.1', publishedOfficialVersion: '0.2.1-rc.5' }
+  assert.deepEqual(await planDailyRelease(root, latest, upstream), {
+    action: 'prepare',
+    version: '0.2.22',
+    baseline: latest.tag_name,
+  })
+  await writeFile(join(root, 'package.json'), JSON.stringify({ version: '0.2.22' }))
+  commit()
+  git(
+    'tag',
+    '-a',
+    'opl-dsh-v0.2.22',
+    '-m',
+    'OPL DSH v0.2.22\n\nOfficial DeepSeek Harness: 0.2.2-rc.1',
+  )
+  const frozen = git('rev-parse', 'HEAD')
+  assert.deepEqual(await planDailyRelease(root, latest, upstream), {
+    action: 'resume',
+    tag: 'opl-dsh-v0.2.22',
+    sourceCommit: frozen,
+  })
+  assert.equal(
+    (
+      await planDailyRelease(
+        root,
+        { ...latest, tag_name: 'opl-dsh-v0.2.22' },
+        {
+          officialVersion: upstream.officialVersion,
+          publishedOfficialVersion: upstream.officialVersion,
+        },
+      )
+    ).action,
+    'skip',
+  )
+  assert.equal(
+    (await planDailyRelease(root, latest, { ...upstream, officialVersion: '0.2.2-rc.2' })).version,
+    '0.2.23',
+  )
+  assert.equal(git('rev-parse', 'opl-dsh-v0.2.22^{commit}'), frozen)
+})
+
+const feed = (version) =>
+  `version: ${version}\npath: https://download.deepseek.com/desktop\nsha512: ${Buffer.alloc(64, 1).toString('base64')}\n`
+
+test('upstream detection rejects incomplete, unavailable or divergent platform feeds', async () => {
+  const feeds = await readOfficialDesktopFeeds(async () => new Response(feed('0.2.2-rc.1')))
+  assert.equal(feeds['mac-arm64'].version, '0.2.2-rc.1')
+  await assert.rejects(
+    readOfficialDesktopFeeds(
+      async (url) => new Response(feed(url.includes('mac-arm64') ? '0.2.2-rc.1' : '0.2.1-rc.5')),
+    ),
+    /disagree/,
+  )
+  await assert.rejects(
+    readOfficialDesktopFeeds(async () => new Response('', { status: 503 })),
+    /读取失败/,
+  )
+  await assert.rejects(
+    readOfficialDesktopFeeds(async () => new Response('version: 0.2.2\n')),
+    /缺少/,
+  )
+})
+
+function publishedFixture(latest, officialVersion = '0.2.1-rc.5') {
+  const bytes = Buffer.from(
+    JSON.stringify({
+      schemaVersion: 1,
+      channel: 'stable',
+      tagName: latest.tag_name,
+      releaseVersion: latest.tag_name.replace('opl-dsh-v', ''),
+      official: { version: officialVersion },
+      enhancement: {
+        version: latest.tag_name.replace('opl-dsh-v', ''),
+        sha256: 'sha256:' + 'a'.repeat(64),
+        size: 1,
+      },
+    }),
+  )
+  return {
+    bytes,
+    latest: {
+      ...latest,
+      assets: [
+        {
+          id: 123,
+          name: 'release-manifest.json',
+          size: bytes.length,
+          digest: 'sha256:' + createHash('sha256').update(bytes).digest('hex'),
+        },
+      ],
+    },
+  }
+}
+
+test('published official baseline comes from the exact digest-bound Latest manifest', () => {
+  const { latest, bytes } = publishedFixture({ tag_name: 'opl-dsh-v0.2.21' })
+  assert.equal(
+    readPublishedOfficialVersion(latest, () => bytes),
+    '0.2.1-rc.5',
+  )
+  assert.throws(() => readPublishedOfficialVersion(latest, () => Buffer.from('{}')), /checksum/)
+  assert.throws(
+    () => readPublishedOfficialVersion({ ...latest, tag_name: 'opl-dsh-v0.2.22' }, () => bytes),
+    /tag/,
+  )
+  assert.throws(
+    () => readPublishedOfficialVersion({ ...latest, assets: [] }, () => bytes),
+    /manifest/,
+  )
 })
 
 test('prepared versions are retained and a failed frozen candidate is resumed without a new tag', async (t) => {
@@ -319,11 +438,17 @@ test(
   },
 )
 
-for (const prepared of [false, true])
+for (const { prepared, upstreamOnly } of [
+  { prepared: false, upstreamOnly: false },
+  { prepared: true, upstreamOnly: false },
+  { prepared: false, upstreamOnly: true },
+])
   test(
-    prepared
-      ? 'precommitted version and notes freeze without an empty commit, then resume'
-      : 'real preparation pushes one frozen candidate and the next run resumes it',
+    upstreamOnly
+      ? 'an official-only update runs the real preparation once and resumes its frozen target'
+      : prepared
+        ? 'precommitted version and notes freeze without an empty commit, then resume'
+        : 'real preparation pushes one frozen candidate and the next run resumes it',
     { skip: process.platform === 'win32' },
     async (t) => {
       const { root, git, latest, commit } = await fixture(t)
@@ -333,13 +458,22 @@ for (const prepared of [false, true])
       execFileSync('git', ['init', '--bare', remote], { stdio: 'ignore' })
       git('remote', 'add', 'origin', remote)
       await mkdir(join(root, 'scripts'))
-      for (const file of ['prepare-daily-release.mjs', 'daily-release-notes.mjs'])
+      for (const file of [
+        'prepare-daily-release.mjs',
+        'daily-release-notes.mjs',
+        'official-desktop-feeds.mjs',
+      ])
         await copyFile(new URL('../scripts/' + file, import.meta.url), join(root, 'scripts', file))
+      await mkdir(join(root, 'installer'))
+      await copyFile(
+        new URL('../installer/release-manifest.mjs', import.meta.url),
+        join(root, 'installer/release-manifest.mjs'),
+      )
       await writeFile(
         join(root, 'package-lock.json'),
         JSON.stringify({ version: '0.2.21', packages: { '': { version: '0.2.21' } } }),
       )
-      await writeFile(join(root, 'src/plugin.ts'), 'export const value = 2\n')
+      if (!upstreamOnly) await writeFile(join(root, 'src/plugin.ts'), 'export const value = 2\n')
       if (prepared) {
         for (const file of ['package.json', 'package-lock.json']) {
           const value = JSON.parse(await readFile(join(root, file), 'utf8'))
@@ -350,16 +484,25 @@ for (const prepared of [false, true])
         await writeFile(join(root, 'docs/release-notes-0.2.22.md'), '维护者已准备的发布说明\n')
       }
       commit()
+      // The official-only case must have no unpublished product bytes at all.
+      if (upstreamOnly) git('tag', '-f', latest.tag_name)
       const preparedCommit = git('rev-parse', 'HEAD')
       git('push', 'origin', 'main', '--tags')
       const bin = join(external, 'bin')
       await mkdir(bin)
-      // Only Latest metadata is simulated; version writes, commits, tags, pushes,
+      // Latest metadata/manifest are simulated; version writes, commits, tags, pushes,
       // remote readback and workflow outputs use the actual production entry point.
       await writeFile(
         join(bin, 'gh'),
-        `#!${process.execPath}\nconsole.log(${JSON.stringify(JSON.stringify(latest))})\n`,
+        `#!${process.execPath}\nprocess.stdout.write(process.argv.includes('repos/gaofeng21cn/opl-dsh/releases/latest') ? ${JSON.stringify(JSON.stringify(publishedFixture(latest).latest))} : ${JSON.stringify(publishedFixture(latest).bytes.toString())})\n`,
         { mode: 0o700 },
+      )
+      // Keep the real preparation and Git mutation entry; only upstream HTTP is injected.
+      const runner = join(external, 'run.mjs')
+      const officialVersion = upstreamOnly ? '0.2.2-rc.1' : '0.2.1-rc.5'
+      await writeFile(
+        runner,
+        `import { prepareDailyRelease } from ${JSON.stringify(pathToFileURL(join(root, 'scripts/prepare-daily-release.mjs')).href)}; await prepareDailyRelease(${JSON.stringify(root)}, {request: async () => new Response(${JSON.stringify(feed(officialVersion))})});`,
       )
       const output = join(external, 'output')
       const env = {
@@ -374,7 +517,7 @@ for (const prepared of [false, true])
       delete env.GITHUB_TOKEN
       const run = () =>
         JSON.parse(
-          execFileSync(process.execPath, ['scripts/prepare-daily-release.mjs'], {
+          execFileSync(process.execPath, [runner], {
             cwd: root,
             env,
             encoding: 'utf8',
@@ -401,10 +544,38 @@ for (const prepared of [false, true])
       assert.equal(lock.version, '0.2.22')
       assert.equal(lock.packages[''].version, '0.2.22')
       assert.ok((await readFile(output, 'utf8')).includes('tag=opl-dsh-v0.2.22'))
+      assert.ok((await readFile(output, 'utf8')).includes(`official_version=${officialVersion}`))
+      assert.ok(
+        git('for-each-ref', '--format=%(contents)', 'refs/tags/opl-dsh-v0.2.22').includes(
+          `Official DeepSeek Harness: ${officialVersion}`,
+        ),
+      )
+      if (upstreamOnly) {
+        const notes = await readFile(join(root, 'docs/release-notes-0.2.22.md'), 'utf8')
+        assert.ok(notes.includes('0.2.1-rc.5') && notes.includes('0.2.2-rc.1'))
+      }
       const second = run()
       assert.equal(second.action, 'resume')
       assert.equal(second.sourceCommit, first.sourceCommit)
       assert.equal(git('status', '--porcelain'), '')
+      if (upstreamOnly) {
+        await writeFile(
+          runner,
+          `import { prepareDailyRelease } from ${JSON.stringify(pathToFileURL(join(root, 'scripts/prepare-daily-release.mjs')).href)}; await prepareDailyRelease(${JSON.stringify(root)}, {request: async () => new Response(${JSON.stringify(feed('0.2.2-rc.2'))})});`,
+        )
+        assert.throws(
+          () =>
+            execFileSync(process.execPath, [runner], {
+              cwd: root,
+              env: { ...env, GITHUB_REF: 'refs/tags/opl-dsh-v0.2.22' },
+              stdio: 'pipe',
+            }),
+          /Official feeds changed after this tag was frozen/,
+        )
+        assert.equal(git('rev-parse', 'HEAD'), first.sourceCommit)
+        assert.equal(git('rev-parse', 'opl-dsh-v0.2.22^{commit}'), first.sourceCommit)
+        assert.equal(git('status', '--porcelain'), '')
+      }
     },
   )
 

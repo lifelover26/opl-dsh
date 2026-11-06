@@ -24,6 +24,7 @@ jobs:
     outputs:
       tag: ${{ steps.candidate.outputs.tag }}
       source_commit: ${{ steps.candidate.outputs.source_commit }}
+      official_version: ${{ steps.candidate.outputs.official_version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -36,7 +37,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/prepare-shared-release-note-writer.mjs
-      - name: Detect unpublished enhancement changes or resume a frozen tag
+      - name: Detect enhancement or official desktop updates, or resume a frozen tag
         id: candidate
         env:
           GH_TOKEN: ${{ github.token }}
@@ -81,25 +82,23 @@ jobs:
       - run: npm run typecheck
       - run: npm run check:boundaries
       - run: npm run format:check
+      - name: Load feed reader from this workflow revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: dist/release-runner
       - name: Resolve the live official desktop feed version
+        env:
+          OPL_PREPARED_OFFICIAL_VERSION: ${{ needs.prepare.outputs.official_version }}
         run: |
           node --input-type=module - <<'NODE'
-          const feeds = [
-            'https://download.deepseek.com/dsh-desk/feeds/mac-arm64/nightly-mac.yml',
-            'https://download.deepseek.com/dsh-desk/feeds/win-x64/nightly.yml',
-          ]
-          const versions = []
-          for (const url of feeds) {
-            const response = await fetch(url)
-            if (!response.ok) throw Error(`Official feed failed: ${url}`)
-            const text = await response.text()
-            const version = text.match(/^version:\s*(.+)$/m)?.[1]?.trim()
-            if (!version) throw Error(`Official feed has no version: ${url}`)
-            versions.push(version)
-          }
-          if (new Set(versions).size !== 1) throw Error(`Official feeds disagree: ${versions.join(', ')}`)
-          await import('node:fs/promises').then(({ appendFile }) => appendFile(process.env.GITHUB_ENV, `OPL_OFFICIAL_VERSION=${versions[0]}\n`))
-          console.log(`Using official desktop feed version ${versions[0]}`)
+          import { readOfficialDesktopFeeds } from './dist/release-runner/scripts/official-desktop-feeds.mjs'
+          const feeds = await readOfficialDesktopFeeds()
+          const version = feeds['mac-arm64'].version
+          if (version !== process.env.OPL_PREPARED_OFFICIAL_VERSION)
+            throw Error('Official feeds changed after release preparation')
+          await import('node:fs/promises').then(({ appendFile }) => appendFile(process.env.GITHUB_ENV, `OPL_OFFICIAL_VERSION=${version}\n`))
+          console.log(`Using official desktop feed version ${version}`)
           NODE
       - run: npm run package
       - run: npm test
