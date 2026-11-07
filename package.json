@@ -9,7 +9,7 @@
     "build": "node build.mjs",
     "build:bridge": "node scripts/build-native-bridge.mjs",
     "typecheck": "tsc -p tsconfig.host.json && tsc -p tsconfig.client.json && npm run typecheck --workspace dsh-superagent",
-    "test": "vitest run && node --test tests/*.test.mjs && npm test --workspace dsh-superagent",
+    "test": "vitest run && node --test --test-concurrency=1 tests/*.test.mjs && npm test --workspace dsh-superagent",
     "package": "npm run build && node package.mjs",
     "release:manifest": "node scripts/create-release-manifest.mjs",
     "format": "prettier --write src tests scripts installer/*.mjs build.mjs",

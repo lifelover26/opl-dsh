@@ -701,6 +701,32 @@ it.each(['running-recovery', 'running-read', 'pending-read'] as const)(
   },
 )
 
+it('does not describe a stopped unresolved history as a running conversation', async () => {
+  const call = vi.fn().mockResolvedValue({
+    ...actionState(),
+    pending: true,
+    choices: [],
+    unavailable: { reason: 'mapping-unavailable', retryable: false },
+  })
+  const session = new MessageEditSession('action-session', call as ExecutionCall)
+  await session.load()
+  const beforeTooltips = vi.mocked(Tooltip).mock.calls.length
+  const container = dom.container()
+  root = createRoot(container as unknown as HTMLElement)
+  await act(async () => {
+    root.render(createElement(MessageEditAction, { session, seq: 3, draft: '', onDraft: vi.fn() }))
+  })
+  const action = buttons(container)[0]!
+  expect(action.getAttribute?.('aria-disabled')).toBe('true')
+  expect(action.getAttribute?.('data-unavailable')).toBe('true')
+  const hints = vi
+    .mocked(Tooltip)
+    .mock.calls.slice(beforeTooltips)
+    .map(([props]) => props.label)
+  expect(hints).toContain('消息身份尚未确认，请新建会话继续')
+  expect(hints).not.toContain('请先停止当前对话')
+})
+
 it.each([
   { supported: false, choices: [] },
   { supported: true, choices: [] },

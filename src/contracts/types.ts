@@ -1,4 +1,5 @@
 /** Public, browser-safe vocabulary shared by generated Remote consumers. */
+export type * from '../updates/contracts.ts'
 export type * from '../gateway/contracts/account.ts'
 export type * from '../gateway/contracts/models.ts'
 export type * from '../execution/contracts/sessions.ts'

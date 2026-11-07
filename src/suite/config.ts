@@ -8,8 +8,13 @@ import { executionLimitsSchema, type ExecutionLimits } from '../execution/contra
 export { executionLimitsSchema } from '../execution/contracts/limits.ts'
 export type { LoginChoice } from '../setup/contracts.ts'
 export interface Config {
+  /** Check stable OPL releases without downloading or installing them automatically. */
+  updateAutomatic: Volatile<boolean>
+  updatePolicy: Volatile<import('../updates/contracts.ts').OplUpdatePolicy>
   /** Whether the activity pill counts retained conversation steps or every historical step. */
   conversationStats: Volatile<'current' | 'history'>
+  /** Keep the desktop window and taskbar title fixed instead of following the active Session. */
+  fixedWindowTitle: Volatile<boolean>
   /** Execution deadlines in milliseconds, excluding explicitly surfaced human waits. */
   executionLimits: ExecutionLimits
   /** Last built-in permission preset selected by the user for future native Sessions. */
@@ -27,7 +32,17 @@ export interface Config {
   wakeDistro: Volatile<string>
 }
 export const Config = z.object({
+  updateAutomatic: z.boolean().default(true).volatile(),
+  updatePolicy: z
+    .object({
+      mode: z.union(['notify', 'on-launch', 'idle']).default('notify'),
+      idleMinutes: z.number().step(1).min(1).max(120).default(5),
+      countdownSeconds: z.number().step(1).min(15).max(300).default(30),
+    })
+    .default({})
+    .volatile(),
   conversationStats: z.union(['current', 'history']).default('current').volatile(),
+  fixedWindowTitle: z.boolean().default(true).volatile(),
   executionLimits: executionLimitsSchema,
   lastPermissionPreset: z
     .union(['read-only', 'workspace-write', 'danger-full-access'])

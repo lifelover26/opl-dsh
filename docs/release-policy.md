@@ -33,11 +33,11 @@ DSH 与 OPL App Stable/Nightly 共用 [Framework 发布说明策略](https://git
 
 ## 自动更新
 
-安装器从 GitHub `releases/latest` 解析稳定联合 Release；维护启动器每小时检查一次。更新器依次校验 stable channel、canonical tag、release manifest、GitHub 资产摘要、增强包摘要和逐文件清单，全部一致后才安装。官方桌面更新继续由官方 feed、SHA-512、签名和版本校验负责；运行中的 profile 不替换，失败保留当前版本并写入更新状态。
+OPL Host 启动后异步检查 GitHub `releases/latest`，随后每六小时检查一次；用户可在通用设置关闭自动检查或手动检查。发现新版本只显示提示，点击「下次启动时更新」才下载兼容增强包。更新器校验 stable channel、canonical tag、release manifest、GitHub 资产摘要、增强包摘要和逐文件清单，套件启动器在所有 profile 已退出后才安装已准备的包；失败保留安装和更新计划。
 
-含未提交源码的本地构建安装后标记为验收候选，维护启动器保留该版本，不自动以公开 Release 覆盖。重新安装从干净源码构建的正式发布包后清除此标记，恢复自动更新。
+本地验收候选仍可检查新版本，但只有用户显式准备后才替换。延后更新要求原安装、目标包及清单声明 `updateProtocolVersion: 1`，且官方桌面版本完全一致；缺少协议声明或版本不同则使用完整安装包。
 
-直接打开官方桌面不会加载外部维护启动器。要自动执行 OPL 更新，用户应从安装器建立的 OPL 维护入口或已启用自动启动的 Codex Skill 启动；官方桌面自身的更新仍按 DeepSeek 原生机制执行。设置中的更新状态显示最近一次联合 Release 检查结果。
+增强插件加载后即可检查更新；安装已准备的增强包仍须从套件入口启动。官方桌面自身继续按 DeepSeek 原生机制更新，OPL 不修改官方签名资源。
 
 ## 历史清理
 

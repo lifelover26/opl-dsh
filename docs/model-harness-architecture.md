@@ -56,7 +56,7 @@ DeepSeek 4.1 Flash 的 DeepSeek 与 OpenAI 协议渠道默认推理档位为 `hi
 
 每个原生对话选中的组合 ID 保存在 OPL 自有的 `combination-selection.json`，用于重启后区分同一模型的多个自定义组合。它只关联官方会话 ID，不改变官方会话格式。模型选择以官方 live/cold 投影为准，冷会话通过公开 `session.projections` 读取，不借用新建会话激活历史；组合停用或模型被其他入口切换后，不再采用失配的关联。
 
-执行器使用官方 DSH、Grok Build、本机 Codex CLI 的 app-server，以及官方 Claude Agent SDK 驱动的本机 Claude Code。OPL 只做协议、权限、显示和协作映射，不实现 Agent 循环。Codex 与 Claude 的配置及会话保存在套件自有目录，不改日常 CLI 配置。OpenCode 也可承载 OPL Gateway Gemini 的三个固定组合：Gemini 4 Argon、Gemini 3.8 Flash 和 Gemini 3.1 Pro；它们仍从 Gateway 读取凭据和 OpenAI Chat Completions 路由，OpenCode 只负责 Agent 循环与工具执行。OFM 的 `big-pickle` 与官方 OpenCode 免费车道同样由 OpenCode 执行；OpenCode 不广告推理档位，这些组合不显示推理强度。Kilo 频道的 `nvidia/nemotron-3-super-120b-a12b:free` 和 `recursive/flint-v1.0:free` 由 Kilo 读取 OFM Chat 端点；`flint-40b-free` 由 OpenCode 读取 OFM Chat 端点。它们保留 OFM 作为模型来源。Antigravity 暂仅支持本机管理。
+执行器使用官方 DSH、Grok Build、本机 Codex CLI 的 app-server，以及官方 Claude Agent SDK 驱动的本机 Claude Code。OPL 只做协议、权限、显示和协作映射，不实现 Agent 循环。Codex 与 Claude 的配置及会话保存在套件自有目录，不改日常 CLI 配置。OpenCode 也可承载 OPL Gateway Gemini 的三个固定组合：Gemini 4 Argon、Gemini 3.8 Flash 和 Gemini 3.1 Pro；它们仍从 Gateway 读取凭据和 OpenAI Chat Completions 路由，OpenCode 只负责 Agent 循环与工具执行。OFM 的 `big-pickle` 与官方 OpenCode 免费车道同样由 OpenCode 执行；OpenCode 不广告推理档位，这些组合不显示推理强度。Kilo 频道的 `nvidia/nemotron-3-super-120b-a12b:free`、`recursive/flint-v1.0:free` 和 `liquid/lfm-3-1.7b:free` 由 Kilo 读取 OFM Chat 端点；`flint-40b-free` 由 OpenCode 读取 OFM Chat 端点。它们保留 OFM 作为模型来源。Antigravity 暂仅支持本机管理。
 
 Claude Code 的官方 SDK 思考增量映射到对话中的思考流，正文增量仍独立显示；签名不显示，已完成的内容块不重复追加。只展示 SDK 实际发送的思考，渠道未发送时不补写。
 

@@ -30,6 +30,7 @@ const lanes = [
   [VIBE_MODEL, 'vibe', 'EAC Mistral Large 4'],
   ['inclusionai/ling-3.1-flash-1019-free', 'kilo', 'Kilo Ling 3.1 Flash 1019'],
   ['stealth/crouton-alpha', 'kilo', 'Kilo Crouton Alpha'],
+  ['liquid/lfm-3-1.7b:free', 'kilo', 'Kilo LFM3-1.7B'],
 ] as const
 const ref = (model: string) => ({ provider: 'our-free-model', model })
 const record = { modelRef: ref(VIBE_MODEL), sandbox: 'full-access' } as HarnessSession
@@ -119,6 +120,7 @@ describe('new OFM channel pairings', () => {
     ['minimaxai/minimax-m3.1-flash', buildOpenCodeRouteConfig, 'oplopencode'],
     ['inclusionai/ling-3.1-flash-1019-free', buildKiloRouteConfig, 'oplkilo'],
     ['stealth/crouton-alpha', buildKiloRouteConfig, 'oplkilo'],
+    ['liquid/lfm-3-1.7b:free', buildKiloRouteConfig, 'oplkilo'],
   ] as const)(
     'writes the exact %s model and its owning relay into CLI config',
     (model, build, provider) => {

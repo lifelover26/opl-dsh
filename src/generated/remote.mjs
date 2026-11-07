@@ -3702,6 +3702,256 @@ const _one_person_lab_dsh_opl_oplSetup_status_result$schema = () => (_one_person
   'officialProvider': z.string().optional(),
   'officialPhase': z.string().optional(),
 }))
+let _one_person_lab_dsh_opl_oplUpdates_activity_result$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_activity_result$schema = () => (_one_person_lab_dsh_opl_oplUpdates_activity_result$schema$value ??= z.void())
+let _one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0$schema = () => (_one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0$schema$value ??= z.boolean())
+let _one_person_lab_dsh_opl_oplUpdates_automatic_result$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_automatic_result$schema = () => (_one_person_lab_dsh_opl_oplUpdates_automatic_result$schema$value ??= z.object({
+  'installedVersion': z.string(),
+  'officialVersion': z.string(),
+  'localCandidate': z.boolean(),
+  'automatic': z.boolean(),
+  'checking': z.boolean(),
+  'preparing': z.boolean(),
+  'checkedAt': z.union([z.literal(null), z.string()]),
+  'lastSuccessAt': z.union([z.literal(null), z.string()]),
+  'error': z.union([z.literal(null), z.literal("check-failed"), z.literal("prepare-failed")]),
+  'release': z.union([z.literal(null), z.object({
+  'version': z.string(),
+  'officialVersion': z.string(),
+  'url': z.string(),
+  'publishedAt': z.string(),
+  'compatibility': z.union([z.literal("enhancement"), z.literal("full-suite")]),
+})]),
+  'pendingVersion': z.union([z.literal(null), z.string()]),
+  'policy': z.object({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}).optional(),
+  'restart': z.union([z.undefined(), z.object({
+  'phase': z.union([z.literal("failed"), z.literal("waiting"), z.literal("countdown"), z.literal("handoff")]),
+  'dueAt': z.union([z.literal(null), z.string()]),
+  'reason': z.union([z.literal(null), z.literal("busy"), z.literal("activity-unknown"), z.literal("other-profile"), z.literal("desktop-unavailable"), z.literal("update-failed")]),
+})]).optional(),
+}))
+let _one_person_lab_dsh_opl_oplUpdates_cancel_result$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_cancel_result$schema = () => (_one_person_lab_dsh_opl_oplUpdates_cancel_result$schema$value ??= z.object({
+  'installedVersion': z.string(),
+  'officialVersion': z.string(),
+  'localCandidate': z.boolean(),
+  'automatic': z.boolean(),
+  'checking': z.boolean(),
+  'preparing': z.boolean(),
+  'checkedAt': z.union([z.literal(null), z.string()]),
+  'lastSuccessAt': z.union([z.literal(null), z.string()]),
+  'error': z.union([z.literal(null), z.literal("check-failed"), z.literal("prepare-failed")]),
+  'release': z.union([z.literal(null), z.object({
+  'version': z.string(),
+  'officialVersion': z.string(),
+  'url': z.string(),
+  'publishedAt': z.string(),
+  'compatibility': z.union([z.literal("enhancement"), z.literal("full-suite")]),
+})]),
+  'pendingVersion': z.union([z.literal(null), z.string()]),
+  'policy': z.object({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}).optional(),
+  'restart': z.union([z.undefined(), z.object({
+  'phase': z.union([z.literal("failed"), z.literal("waiting"), z.literal("countdown"), z.literal("handoff")]),
+  'dueAt': z.union([z.literal(null), z.string()]),
+  'reason': z.union([z.literal(null), z.literal("busy"), z.literal("activity-unknown"), z.literal("other-profile"), z.literal("desktop-unavailable"), z.literal("update-failed")]),
+})]).optional(),
+}))
+let _one_person_lab_dsh_opl_oplUpdates_check_result$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_check_result$schema = () => (_one_person_lab_dsh_opl_oplUpdates_check_result$schema$value ??= z.object({
+  'installedVersion': z.string(),
+  'officialVersion': z.string(),
+  'localCandidate': z.boolean(),
+  'automatic': z.boolean(),
+  'checking': z.boolean(),
+  'preparing': z.boolean(),
+  'checkedAt': z.union([z.literal(null), z.string()]),
+  'lastSuccessAt': z.union([z.literal(null), z.string()]),
+  'error': z.union([z.literal(null), z.literal("check-failed"), z.literal("prepare-failed")]),
+  'release': z.union([z.literal(null), z.object({
+  'version': z.string(),
+  'officialVersion': z.string(),
+  'url': z.string(),
+  'publishedAt': z.string(),
+  'compatibility': z.union([z.literal("enhancement"), z.literal("full-suite")]),
+})]),
+  'pendingVersion': z.union([z.literal(null), z.string()]),
+  'policy': z.object({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}).optional(),
+  'restart': z.union([z.undefined(), z.object({
+  'phase': z.union([z.literal("failed"), z.literal("waiting"), z.literal("countdown"), z.literal("handoff")]),
+  'dueAt': z.union([z.literal(null), z.string()]),
+  'reason': z.union([z.literal(null), z.literal("busy"), z.literal("activity-unknown"), z.literal("other-profile"), z.literal("desktop-unavailable"), z.literal("update-failed")]),
+})]).optional(),
+}))
+let _one_person_lab_dsh_opl_oplUpdates_policy_parameter_0$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_policy_parameter_0$schema = () => (_one_person_lab_dsh_opl_oplUpdates_policy_parameter_0$schema$value ??= z.object({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}))
+let _one_person_lab_dsh_opl_oplUpdates_policy_result$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_policy_result$schema = () => (_one_person_lab_dsh_opl_oplUpdates_policy_result$schema$value ??= z.object({
+  'installedVersion': z.string(),
+  'officialVersion': z.string(),
+  'localCandidate': z.boolean(),
+  'automatic': z.boolean(),
+  'checking': z.boolean(),
+  'preparing': z.boolean(),
+  'checkedAt': z.union([z.literal(null), z.string()]),
+  'lastSuccessAt': z.union([z.literal(null), z.string()]),
+  'error': z.union([z.literal(null), z.literal("check-failed"), z.literal("prepare-failed")]),
+  'release': z.union([z.literal(null), z.object({
+  'version': z.string(),
+  'officialVersion': z.string(),
+  'url': z.string(),
+  'publishedAt': z.string(),
+  'compatibility': z.union([z.literal("enhancement"), z.literal("full-suite")]),
+})]),
+  'pendingVersion': z.union([z.literal(null), z.string()]),
+  'policy': z.object({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}).optional(),
+  'restart': z.union([z.undefined(), z.object({
+  'phase': z.union([z.literal("failed"), z.literal("waiting"), z.literal("countdown"), z.literal("handoff")]),
+  'dueAt': z.union([z.literal(null), z.string()]),
+  'reason': z.union([z.literal(null), z.literal("busy"), z.literal("activity-unknown"), z.literal("other-profile"), z.literal("desktop-unavailable"), z.literal("update-failed")]),
+})]).optional(),
+}))
+let _one_person_lab_dsh_opl_oplUpdates_postpone_result$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_postpone_result$schema = () => (_one_person_lab_dsh_opl_oplUpdates_postpone_result$schema$value ??= z.object({
+  'installedVersion': z.string(),
+  'officialVersion': z.string(),
+  'localCandidate': z.boolean(),
+  'automatic': z.boolean(),
+  'checking': z.boolean(),
+  'preparing': z.boolean(),
+  'checkedAt': z.union([z.literal(null), z.string()]),
+  'lastSuccessAt': z.union([z.literal(null), z.string()]),
+  'error': z.union([z.literal(null), z.literal("check-failed"), z.literal("prepare-failed")]),
+  'release': z.union([z.literal(null), z.object({
+  'version': z.string(),
+  'officialVersion': z.string(),
+  'url': z.string(),
+  'publishedAt': z.string(),
+  'compatibility': z.union([z.literal("enhancement"), z.literal("full-suite")]),
+})]),
+  'pendingVersion': z.union([z.literal(null), z.string()]),
+  'policy': z.object({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}).optional(),
+  'restart': z.union([z.undefined(), z.object({
+  'phase': z.union([z.literal("failed"), z.literal("waiting"), z.literal("countdown"), z.literal("handoff")]),
+  'dueAt': z.union([z.literal(null), z.string()]),
+  'reason': z.union([z.literal(null), z.literal("busy"), z.literal("activity-unknown"), z.literal("other-profile"), z.literal("desktop-unavailable"), z.literal("update-failed")]),
+})]).optional(),
+}))
+let _one_person_lab_dsh_opl_oplUpdates_prepare_result$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_prepare_result$schema = () => (_one_person_lab_dsh_opl_oplUpdates_prepare_result$schema$value ??= z.object({
+  'installedVersion': z.string(),
+  'officialVersion': z.string(),
+  'localCandidate': z.boolean(),
+  'automatic': z.boolean(),
+  'checking': z.boolean(),
+  'preparing': z.boolean(),
+  'checkedAt': z.union([z.literal(null), z.string()]),
+  'lastSuccessAt': z.union([z.literal(null), z.string()]),
+  'error': z.union([z.literal(null), z.literal("check-failed"), z.literal("prepare-failed")]),
+  'release': z.union([z.literal(null), z.object({
+  'version': z.string(),
+  'officialVersion': z.string(),
+  'url': z.string(),
+  'publishedAt': z.string(),
+  'compatibility': z.union([z.literal("enhancement"), z.literal("full-suite")]),
+})]),
+  'pendingVersion': z.union([z.literal(null), z.string()]),
+  'policy': z.object({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}).optional(),
+  'restart': z.union([z.undefined(), z.object({
+  'phase': z.union([z.literal("failed"), z.literal("waiting"), z.literal("countdown"), z.literal("handoff")]),
+  'dueAt': z.union([z.literal(null), z.string()]),
+  'reason': z.union([z.literal(null), z.literal("busy"), z.literal("activity-unknown"), z.literal("other-profile"), z.literal("desktop-unavailable"), z.literal("update-failed")]),
+})]).optional(),
+}))
+let _one_person_lab_dsh_opl_oplUpdates_status_result$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_status_result$schema = () => (_one_person_lab_dsh_opl_oplUpdates_status_result$schema$value ??= z.object({
+  'installedVersion': z.string(),
+  'officialVersion': z.string(),
+  'localCandidate': z.boolean(),
+  'automatic': z.boolean(),
+  'checking': z.boolean(),
+  'preparing': z.boolean(),
+  'checkedAt': z.union([z.literal(null), z.string()]),
+  'lastSuccessAt': z.union([z.literal(null), z.string()]),
+  'error': z.union([z.literal(null), z.literal("check-failed"), z.literal("prepare-failed")]),
+  'release': z.union([z.literal(null), z.object({
+  'version': z.string(),
+  'officialVersion': z.string(),
+  'url': z.string(),
+  'publishedAt': z.string(),
+  'compatibility': z.union([z.literal("enhancement"), z.literal("full-suite")]),
+})]),
+  'pendingVersion': z.union([z.literal(null), z.string()]),
+  'policy': z.object({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}).optional(),
+  'restart': z.union([z.undefined(), z.object({
+  'phase': z.union([z.literal("failed"), z.literal("waiting"), z.literal("countdown"), z.literal("handoff")]),
+  'dueAt': z.union([z.literal(null), z.string()]),
+  'reason': z.union([z.literal(null), z.literal("busy"), z.literal("activity-unknown"), z.literal("other-profile"), z.literal("desktop-unavailable"), z.literal("update-failed")]),
+})]).optional(),
+}))
+let _one_person_lab_dsh_opl_oplUpdates_watch_result$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_watch_result$schema = () => (_one_person_lab_dsh_opl_oplUpdates_watch_result$schema$value ??= z.object({
+  'installedVersion': z.string(),
+  'officialVersion': z.string(),
+  'localCandidate': z.boolean(),
+  'automatic': z.boolean(),
+  'checking': z.boolean(),
+  'preparing': z.boolean(),
+  'checkedAt': z.union([z.literal(null), z.string()]),
+  'lastSuccessAt': z.union([z.literal(null), z.string()]),
+  'error': z.union([z.literal(null), z.literal("check-failed"), z.literal("prepare-failed")]),
+  'release': z.union([z.literal(null), z.object({
+  'version': z.string(),
+  'officialVersion': z.string(),
+  'url': z.string(),
+  'publishedAt': z.string(),
+  'compatibility': z.union([z.literal("enhancement"), z.literal("full-suite")]),
+})]),
+  'pendingVersion': z.union([z.literal(null), z.string()]),
+  'policy': z.object({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}).optional(),
+  'restart': z.union([z.undefined(), z.object({
+  'phase': z.union([z.literal("failed"), z.literal("waiting"), z.literal("countdown"), z.literal("handoff")]),
+  'dueAt': z.union([z.literal(null), z.string()]),
+  'reason': z.union([z.literal(null), z.literal("busy"), z.literal("activity-unknown"), z.literal("other-profile"), z.literal("desktop-unavailable"), z.literal("update-failed")]),
+})]).optional(),
+}))
 let _one_person_lab_dsh_opl_taskFeedback_ack_parameter_0$schema$value
 const _one_person_lab_dsh_opl_taskFeedback_ack_parameter_0$schema = () => (_one_person_lab_dsh_opl_taskFeedback_ack_parameter_0$schema$value ??= z.object({
   'taskId': z.string().readonly(),
@@ -4618,6 +4868,14 @@ let _one_person_lab_dsh_opl_oplSetup_finish_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_oplSetup_finish_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplSetup_finish_parameter_0_strict$schema$value ??= z.union([z.literal("official"), z.literal("gateway"), z.literal("later")]))
 let _one_person_lab_dsh_opl_oplSetup_official_key_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_oplSetup_official_key_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplSetup_official_key_parameter_0_strict$schema$value ??= z.string())
+let _one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0_strict$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0_strict$schema$value ??= z.boolean())
+let _one_person_lab_dsh_opl_oplUpdates_policy_parameter_0_strict$schema$value
+const _one_person_lab_dsh_opl_oplUpdates_policy_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplUpdates_policy_parameter_0_strict$schema$value ??= z.strictObject({
+  'mode': z.union([z.literal("idle"), z.literal("notify"), z.literal("on-launch")]),
+  'idleMinutes': z.number(),
+  'countdownSeconds': z.number(),
+}))
 let _one_person_lab_dsh_opl_taskFeedback_ack_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_taskFeedback_ack_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_taskFeedback_ack_parameter_0_strict$schema$value ??= z.strictObject({
   'taskId': z.string().readonly(),
@@ -6434,6 +6692,165 @@ export const TYPERT_REMOTE = createTypertRemoteInfo({
         jsonSchema: {"type":"object","properties":{"completed":{"type":"boolean"},"choice":{"type":"string","enum":["official","undecided","gateway","later"]},"gatewayReady":{"type":"boolean"},"officialProvider":{"type":"string"},"officialPhase":{"type":"string"}},"required":["completed","choice","gatewayReady"],"additionalProperties":true},
       },
       sourceLocation: {"file":"src/setup/host/index.ts","line":26,"column":3},
+    },
+    'oplUpdates/activity': {
+      service: 'oplUpdates',
+      description: 'Actual Client input postpones an idle restart.',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl#oplUpdates/activity:result',
+        create: _one_person_lab_dsh_opl_oplUpdates_activity_result$schema,
+        jsonSchemaError: 'typert tool schema: unsupported void value',
+      },
+      sourceLocation: {"file":"src/updates/host/index.ts","line":79,"column":3},
+    },
+    'oplUpdates/automatic': {
+      service: 'oplUpdates',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'enabled',
+          description: 'Whether the Host checks after startup and every six hours.',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@one-person-lab/dsh-opl#oplUpdates/automatic:enabled',
+            create: _one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0$schema,
+            jsonSchema: {"type":"boolean"},
+          },
+          strictCodec: {
+            mode: 'strict',
+            typeSymbol: '@one-person-lab/dsh-opl#oplUpdates/automatic:enabled',
+            create: _one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0_strict$schema,
+            jsonSchema: {"type":"boolean"},
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdateStatus',
+        create: _one_person_lab_dsh_opl_oplUpdates_automatic_result$schema,
+        jsonSchema: {"type":"object","properties":{"installedVersion":{"type":"string"},"officialVersion":{"type":"string"},"localCandidate":{"type":"boolean"},"automatic":{"type":"boolean"},"checking":{"type":"boolean"},"preparing":{"type":"boolean"},"checkedAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"lastSuccessAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"error":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["check-failed","prepare-failed"]}]},"release":{"oneOf":[{"type":"null","const":null},{"type":"object","properties":{"version":{"type":"string"},"officialVersion":{"type":"string"},"url":{"type":"string"},"publishedAt":{"type":"string"},"compatibility":{"type":"string","enum":["enhancement","full-suite"]}},"required":["version","officialVersion","url","publishedAt","compatibility"],"additionalProperties":true}]},"pendingVersion":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"policy":{"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":true},"restart":{"type":"object","properties":{"phase":{"type":"string","enum":["failed","waiting","countdown","handoff"]},"dueAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"reason":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["busy","activity-unknown","other-profile","desktop-unavailable","update-failed"]}]}},"required":["phase","dueAt","reason"],"additionalProperties":true}},"required":["installedVersion","officialVersion","localCandidate","automatic","checking","preparing","checkedAt","lastSuccessAt","error","release","pendingVersion"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/updates/host/index.ts","line":49,"column":3},
+    },
+    'oplUpdates/cancel': {
+      service: 'oplUpdates',
+      description: 'Cancel a download or prepared update without removing the installed release.',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdateStatus',
+        create: _one_person_lab_dsh_opl_oplUpdates_cancel_result$schema,
+        jsonSchema: {"type":"object","properties":{"installedVersion":{"type":"string"},"officialVersion":{"type":"string"},"localCandidate":{"type":"boolean"},"automatic":{"type":"boolean"},"checking":{"type":"boolean"},"preparing":{"type":"boolean"},"checkedAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"lastSuccessAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"error":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["check-failed","prepare-failed"]}]},"release":{"oneOf":[{"type":"null","const":null},{"type":"object","properties":{"version":{"type":"string"},"officialVersion":{"type":"string"},"url":{"type":"string"},"publishedAt":{"type":"string"},"compatibility":{"type":"string","enum":["enhancement","full-suite"]}},"required":["version","officialVersion","url","publishedAt","compatibility"],"additionalProperties":true}]},"pendingVersion":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"policy":{"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":true},"restart":{"type":"object","properties":{"phase":{"type":"string","enum":["failed","waiting","countdown","handoff"]},"dueAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"reason":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["busy","activity-unknown","other-profile","desktop-unavailable","update-failed"]}]}},"required":["phase","dueAt","reason"],"additionalProperties":true}},"required":["installedVersion","officialVersion","localCandidate","automatic","checking","preparing","checkedAt","lastSuccessAt","error","release","pendingVersion"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/updates/host/index.ts","line":61,"column":3},
+    },
+    'oplUpdates/check': {
+      service: 'oplUpdates',
+      description: 'Check the stable release metadata; simultaneous checks share one request.',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdateStatus',
+        create: _one_person_lab_dsh_opl_oplUpdates_check_result$schema,
+        jsonSchema: {"type":"object","properties":{"installedVersion":{"type":"string"},"officialVersion":{"type":"string"},"localCandidate":{"type":"boolean"},"automatic":{"type":"boolean"},"checking":{"type":"boolean"},"preparing":{"type":"boolean"},"checkedAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"lastSuccessAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"error":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["check-failed","prepare-failed"]}]},"release":{"oneOf":[{"type":"null","const":null},{"type":"object","properties":{"version":{"type":"string"},"officialVersion":{"type":"string"},"url":{"type":"string"},"publishedAt":{"type":"string"},"compatibility":{"type":"string","enum":["enhancement","full-suite"]}},"required":["version","officialVersion","url","publishedAt","compatibility"],"additionalProperties":true}]},"pendingVersion":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"policy":{"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":true},"restart":{"type":"object","properties":{"phase":{"type":"string","enum":["failed","waiting","countdown","handoff"]},"dueAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"reason":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["busy","activity-unknown","other-profile","desktop-unavailable","update-failed"]}]}},"required":["phase","dueAt","reason"],"additionalProperties":true}},"required":["installedVersion","officialVersion","localCandidate","automatic","checking","preparing","checkedAt","lastSuccessAt","error","release","pendingVersion"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/updates/host/index.ts","line":43,"column":3},
+    },
+    'oplUpdates/policy': {
+      service: 'oplUpdates',
+      description: 'Persist the explicitly chosen compatible-update policy.',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'policy',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdatePolicy',
+            create: _one_person_lab_dsh_opl_oplUpdates_policy_parameter_0$schema,
+            jsonSchema: {"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":true},
+          },
+          strictCodec: {
+            mode: 'strict',
+            typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdatePolicy',
+            create: _one_person_lab_dsh_opl_oplUpdates_policy_parameter_0_strict$schema,
+            jsonSchema: {"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":false},
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdateStatus',
+        create: _one_person_lab_dsh_opl_oplUpdates_policy_result$schema,
+        jsonSchema: {"type":"object","properties":{"installedVersion":{"type":"string"},"officialVersion":{"type":"string"},"localCandidate":{"type":"boolean"},"automatic":{"type":"boolean"},"checking":{"type":"boolean"},"preparing":{"type":"boolean"},"checkedAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"lastSuccessAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"error":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["check-failed","prepare-failed"]}]},"release":{"oneOf":[{"type":"null","const":null},{"type":"object","properties":{"version":{"type":"string"},"officialVersion":{"type":"string"},"url":{"type":"string"},"publishedAt":{"type":"string"},"compatibility":{"type":"string","enum":["enhancement","full-suite"]}},"required":["version","officialVersion","url","publishedAt","compatibility"],"additionalProperties":true}]},"pendingVersion":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"policy":{"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":true},"restart":{"type":"object","properties":{"phase":{"type":"string","enum":["failed","waiting","countdown","handoff"]},"dueAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"reason":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["busy","activity-unknown","other-profile","desktop-unavailable","update-failed"]}]}},"required":["phase","dueAt","reason"],"additionalProperties":true}},"required":["installedVersion","officialVersion","localCandidate","automatic","checking","preparing","checkedAt","lastSuccessAt","error","release","pendingVersion"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/updates/host/index.ts","line":67,"column":3},
+    },
+    'oplUpdates/postpone': {
+      service: 'oplUpdates',
+      description: 'Keep the downloaded package and restart the idle interval.',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdateStatus',
+        create: _one_person_lab_dsh_opl_oplUpdates_postpone_result$schema,
+        jsonSchema: {"type":"object","properties":{"installedVersion":{"type":"string"},"officialVersion":{"type":"string"},"localCandidate":{"type":"boolean"},"automatic":{"type":"boolean"},"checking":{"type":"boolean"},"preparing":{"type":"boolean"},"checkedAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"lastSuccessAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"error":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["check-failed","prepare-failed"]}]},"release":{"oneOf":[{"type":"null","const":null},{"type":"object","properties":{"version":{"type":"string"},"officialVersion":{"type":"string"},"url":{"type":"string"},"publishedAt":{"type":"string"},"compatibility":{"type":"string","enum":["enhancement","full-suite"]}},"required":["version","officialVersion","url","publishedAt","compatibility"],"additionalProperties":true}]},"pendingVersion":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"policy":{"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":true},"restart":{"type":"object","properties":{"phase":{"type":"string","enum":["failed","waiting","countdown","handoff"]},"dueAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"reason":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["busy","activity-unknown","other-profile","desktop-unavailable","update-failed"]}]}},"required":["phase","dueAt","reason"],"additionalProperties":true}},"required":["installedVersion","officialVersion","localCandidate","automatic","checking","preparing","checkedAt","lastSuccessAt","error","release","pendingVersion"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/updates/host/index.ts","line":73,"column":3},
+    },
+    'oplUpdates/prepare': {
+      service: 'oplUpdates',
+      description: 'Download and verify the explicitly chosen update for the next stopped launch.',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdateStatus',
+        create: _one_person_lab_dsh_opl_oplUpdates_prepare_result$schema,
+        jsonSchema: {"type":"object","properties":{"installedVersion":{"type":"string"},"officialVersion":{"type":"string"},"localCandidate":{"type":"boolean"},"automatic":{"type":"boolean"},"checking":{"type":"boolean"},"preparing":{"type":"boolean"},"checkedAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"lastSuccessAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"error":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["check-failed","prepare-failed"]}]},"release":{"oneOf":[{"type":"null","const":null},{"type":"object","properties":{"version":{"type":"string"},"officialVersion":{"type":"string"},"url":{"type":"string"},"publishedAt":{"type":"string"},"compatibility":{"type":"string","enum":["enhancement","full-suite"]}},"required":["version","officialVersion","url","publishedAt","compatibility"],"additionalProperties":true}]},"pendingVersion":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"policy":{"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":true},"restart":{"type":"object","properties":{"phase":{"type":"string","enum":["failed","waiting","countdown","handoff"]},"dueAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"reason":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["busy","activity-unknown","other-profile","desktop-unavailable","update-failed"]}]}},"required":["phase","dueAt","reason"],"additionalProperties":true}},"required":["installedVersion","officialVersion","localCandidate","automatic","checking","preparing","checkedAt","lastSuccessAt","error","release","pendingVersion"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/updates/host/index.ts","line":55,"column":3},
+    },
+    'oplUpdates/status': {
+      service: 'oplUpdates',
+      description: 'Read local state without waiting for the release server.',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdateStatus',
+        create: _one_person_lab_dsh_opl_oplUpdates_status_result$schema,
+        jsonSchema: {"type":"object","properties":{"installedVersion":{"type":"string"},"officialVersion":{"type":"string"},"localCandidate":{"type":"boolean"},"automatic":{"type":"boolean"},"checking":{"type":"boolean"},"preparing":{"type":"boolean"},"checkedAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"lastSuccessAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"error":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["check-failed","prepare-failed"]}]},"release":{"oneOf":[{"type":"null","const":null},{"type":"object","properties":{"version":{"type":"string"},"officialVersion":{"type":"string"},"url":{"type":"string"},"publishedAt":{"type":"string"},"compatibility":{"type":"string","enum":["enhancement","full-suite"]}},"required":["version","officialVersion","url","publishedAt","compatibility"],"additionalProperties":true}]},"pendingVersion":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"policy":{"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":true},"restart":{"type":"object","properties":{"phase":{"type":"string","enum":["failed","waiting","countdown","handoff"]},"dueAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"reason":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["busy","activity-unknown","other-profile","desktop-unavailable","update-failed"]}]}},"required":["phase","dueAt","reason"],"additionalProperties":true}},"required":["installedVersion","officialVersion","localCandidate","automatic","checking","preparing","checkedAt","lastSuccessAt","error","release","pendingVersion"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/updates/host/index.ts","line":37,"column":3},
+    },
+    'oplUpdates/watch': {
+      service: 'oplUpdates',
+      description: 'Publish state invalidations until this caller disconnects or the plugin unloads.',
+      mode: 'stream',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#OplUpdateStatus',
+        create: _one_person_lab_dsh_opl_oplUpdates_watch_result$schema,
+        jsonSchema: {"type":"object","properties":{"installedVersion":{"type":"string"},"officialVersion":{"type":"string"},"localCandidate":{"type":"boolean"},"automatic":{"type":"boolean"},"checking":{"type":"boolean"},"preparing":{"type":"boolean"},"checkedAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"lastSuccessAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"error":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["check-failed","prepare-failed"]}]},"release":{"oneOf":[{"type":"null","const":null},{"type":"object","properties":{"version":{"type":"string"},"officialVersion":{"type":"string"},"url":{"type":"string"},"publishedAt":{"type":"string"},"compatibility":{"type":"string","enum":["enhancement","full-suite"]}},"required":["version","officialVersion","url","publishedAt","compatibility"],"additionalProperties":true}]},"pendingVersion":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"policy":{"type":"object","properties":{"mode":{"type":"string","enum":["idle","notify","on-launch"]},"idleMinutes":{"type":"number"},"countdownSeconds":{"type":"number"}},"required":["mode","idleMinutes","countdownSeconds"],"additionalProperties":true},"restart":{"type":"object","properties":{"phase":{"type":"string","enum":["failed","waiting","countdown","handoff"]},"dueAt":{"oneOf":[{"type":"null","const":null},{"type":"string"}]},"reason":{"oneOf":[{"type":"null","const":null},{"type":"string","enum":["busy","activity-unknown","other-profile","desktop-unavailable","update-failed"]}]}},"required":["phase","dueAt","reason"],"additionalProperties":true}},"required":["installedVersion","officialVersion","localCandidate","automatic","checking","preparing","checkedAt","lastSuccessAt","error","release","pendingVersion"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/updates/host/index.ts","line":85,"column":10},
     },
     'taskFeedback/ack': {
       service: 'taskFeedback',

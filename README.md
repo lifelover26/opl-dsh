@@ -74,7 +74,7 @@ brew install --cask gaofeng21cn/opl-dsh/opl-dsh
 
 ## 更新与数据
 
-官方桌面通过 DeepSeek 自身的机制更新；OPL 增强通过维护入口或已启用自动启动的 Codex Skill 检查联合 Release。**直接打开官方桌面不会触发 OPL 更新器**，也可重新运行最新安装器更新。Homebrew 用户可运行：
+官方桌面通过 DeepSeek 自身的机制更新。OPL 增强在启动后异步检查正式 Release，运行期间每 6 小时检查一次；新版本在侧边栏提示，可在「通用设置 → 更新」手动检查或关闭自动检查。点击「下次启动时更新」才下载并校验兼容增强，退出应用后通过套件入口启动时安装；需要升级官方桌面时使用完整安装包。也可重新运行最新安装器更新。Homebrew 用户可运行：
 
 ```sh
 brew upgrade --cask gaofeng21cn/opl-dsh/opl-dsh

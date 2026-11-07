@@ -248,29 +248,6 @@ export function CoordinationSection({
           </details>
         </div>
       </details>
-      <details className={css.details}>
-        <summary>OPL 增强更新</summary>
-        <p className={css.muted}>
-          当前官方桌面版本 {status?.version ?? '—'}，OPL 增强版本{' '}
-          {status?.enhancementVersion ?? '—'}。通过 OPL
-          维护启动入口检查并安装兼容增强；直接打开官方桌面不会触发此检查。应用运行中不更换插件，网络不可用时继续使用当前版本。官方桌面可独立更新。
-        </p>
-        <p className={css.muted}>
-          最近检查：
-          {status?.update.checkedAt
-            ? new Date(status.update.checkedAt).toLocaleString()
-            : '尚无检查记录'}{' '}
-          ·{' '}
-          {status?.update.state === 'updated'
-            ? '增强已更新'
-            : status?.update.state === 'current'
-              ? '当前无需更新'
-              : status?.update.state === 'deferred'
-                ? '更新未完成，仍使用已安装版本'
-                : '尚无结果'}
-        </p>
-        {status?.update.message && <p className={css.muted}>{status.update.message}</p>}
-      </details>
       {notice && (
         <p className={css.notice} role={status ? 'status' : 'alert'}>
           {notice}

@@ -41,7 +41,8 @@ export function MessageEditAction({
     (!choice && !recovery && !retryable && !(snapshot.state?.supported && unavailable))
   )
     return null
-  const busy = snapshot.state?.busy === true || (snapshot.state?.pending === true && !recovery)
+  const busy = snapshot.state?.busy === true
+  const pending = snapshot.state?.pending === true && !recovery
   const label = unavailable?.retryable
     ? messageEditCopy.retry
     : recovery
@@ -51,17 +52,19 @@ export function MessageEditAction({
     ? messageEditCopy.stop
     : unavailable
       ? `${messageEditUnavailableCopy[unavailable.reason]}${unavailable.retryable ? '，点击重试' : ''}`
-      : retainsImages && !recovery
-        ? '编辑消息，保留原图片'
-        : label
+      : pending
+        ? '编辑结果尚未确认'
+        : retainsImages && !recovery
+          ? '编辑消息，保留原图片'
+          : label
   return (
     <Tooltip label={hint} side="bottom">
       <button
         type="button"
         className={css.action}
         aria-label={label}
-        aria-disabled={busy || (unavailable && !unavailable.retryable) || undefined}
-        data-unavailable={busy || unavailable !== undefined || undefined}
+        aria-disabled={busy || pending || (unavailable && !unavailable.retryable) || undefined}
+        data-unavailable={busy || pending || unavailable !== undefined || undefined}
         onClick={async () => {
           const latestSnapshot = session.getSnapshot()
           if (

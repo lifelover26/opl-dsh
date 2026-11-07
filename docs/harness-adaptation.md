@@ -41,15 +41,18 @@ OFM 来源统一使用 `Our Free Model` 写法，区域渠道保留 `region-limi
 | Flint v1.0 Free（recursive/flint-v1.0:free）                                                                                  | Kilo Code，经 OFM 转发          | Chat      |
 | Kilo Ling 3.1 Flash 1019（inclusionai/ling-3.1-flash-1019-free）                                                              | Kilo Code，经 OFM 转发          | Chat      |
 | Kilo Crouton Alpha（stealth/crouton-alpha）                                                                                  | Kilo Code，经 OFM 转发          | Chat      |
+| Kilo LFM3-1.7B（liquid/lfm-3-1.7b:free）                                                                                     | Kilo Code，经 OFM 转发          | Chat      |
 | Flint 40B Free（flint-40b-free）                                                                                              | OpenCode，经 OFM 转发           | Chat      |
 | GPT-OSS 20B                                                                                                                   | Codex CLI                       | Responses |
 | Kilo Step 5 Preview（stepfun/step-5-preview-free）                                                                            | StepCode                        | Chat      |
 | Ling、LongCat、North Mini Code、Nemotron 3.5、Space Bunny、OpenRouter Free                                                    | OpenCode                        | Chat      |
 | OPL Gateway Gemini 4 Argon、Gemini 3.8 Flash、Gemini 3.1 Pro                                                                  | OpenCode                        | Chat      |
-| Nemotron Nano Omni、LFM、Inkling Small、Inkling、Gemma 4 31B                                                                  | Pi Coding Agent                 | Chat      |
+| Nemotron Nano Omni、LFM2.5、Inkling Small、Inkling、Gemma 4 31B                                                               | Pi Coding Agent                 | Chat      |
 | Dots、Glyph、Kilo Auto Free、Kilo Beam、Xing 4.0                                                                              | Kilo Code                       | Chat      |
 
 表格描述适配器配对，不是当前在线可用性承诺；模型必须仍在来源目录中且通过启动前检查。Cat Jam、MiMo v2.6 Flash、Muse Spark 1.3、Longcat 2.5、OpenCode 的 DeepSeek/GLM/Beam/Nemotron 免费条目、Space Bunny 和 Big Pickle 的精确裸 ID 使用 OpenCode 官方免费通道。Kilo 频道的 Nemotron 3 Super 120B 使用 Kilo 执行器并经 OFM Chat 转发，不折叠成 OpenCode 路线。Flint 的 `flint-40b-free` 与 EAC 的 `opencode/flint-40b-free` 均由 OpenCode 经 OFM Chat 转发，保留各自的完整 ID；`recursive/flint-v1.0:free` 由 Kilo 执行并经 OFM 转发。同名模型不互相替换。
+
+OFM 的 Kilo 目录对 `liquid/lfm-3-1.7b:free` 声明 `low`、`medium`、`high` 三档推理强度，默认 `high`，且不提供关闭思考。当前 OPL 适配使用的官方 Kilo ACP 自定义 provider 没有可写的 effort 配置项，因此不把来源档位伪装成 Kilo 选项；显式档位请求会在发送前拒绝，未指定档位时保留上游默认设置。
 
 EAC 的 `opencode/nemotron-3.5-lightning-free`、`opencode/nemotron-3.5-super-vl-free` 和 `opencode/flint-40b-free` 保留完整 ID，使用 OFM 转发，不改成裸 ID 的 OpenCode 直连通道。Pi 的 `thinkingmachines/inkling:free` 与已有的 `thinkingmachines/inkling-small:free` 分开配置；`google/gemma-4-31b-it:free` 不提供推理档位菜单。EAC 的 `deepseek-ai/deepseek-v4.1-flash` 在新模型发现中推荐 DSH；其他未知模型不会因此变成推荐项，组合仍需用户选择添加。
 

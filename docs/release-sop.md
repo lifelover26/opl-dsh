@@ -293,9 +293,9 @@ Cask 失败不回滚已经公开的 Release；修复 Cask 后重新回读即可�
 稳定发布必须实际验证两个用户入口：
 
 - 首次安装：`install.sh`/DMG/EXE 能读取 `releases/latest`，校验 `SHA256SUMS`、联合清单、canonical tag 和 payload 文件后再安装。
-- 已安装用户：维护入口或已启用自动启动的 Codex Skill 读取 GitHub latest；每小时最多检查一次；profile 正在运行、网络失败、版本未变或摘要不匹配时保留当前安装并写入状态，不替换正在使用的 profile。
+- 已安装用户：Host 在启动后及每六小时读取 GitHub latest；通用设置可手动检查和关闭自动检查。检查只下载元数据与清单，显式准备后才下载增强包。维护入口只在所有 profile 已退出时安装待更新包；取消、活动 profile、版本不匹配及摘要失败不得替换当前安装。原安装和目标包的安全更新协议必须均为版本 1，否则使用完整安装包。
 
-直接打开官方 DeepSeek Harness 不会加载外部 OPL 更新器。官方桌面继续由 DeepSeek feed、SHA-512、签名和版本检查负责升级；这两个更新责任必须在 Release Note 和用户文档中分开说明。
+OPL 插件加载后即可发现新版本，套件入口负责退出后的安装。官方桌面继续由 DeepSeek feed、SHA-512、签名和版本检查负责升级；这两个更新责任必须在 Release Note 和用户文档中分开说明。
 
 ## 8. 可选的历史版本清理
 

@@ -9,6 +9,7 @@ export interface InstallationReceipt {
   launcher: string
   suiteVersion?: string
   officialVersion?: string
+  suiteSha256: string
 }
 export function installationPaths(
   receipt: unknown,

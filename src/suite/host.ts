@@ -1,6 +1,7 @@
 import { GatewayModelsService } from '../gateway/host/model-service.ts'
 import { SetupService } from '../setup/host/index.ts'
 import { CoordinationService } from '../collaboration/host/settings-service.ts'
+import { UpdateService } from '../updates/host/index.ts'
 import TaskFeedbackService from '../collaboration/host/feedback/index.ts'
 import AutoReviewService from '../auto-review/host/index.ts'
 /** OPL account and collaboration contributions for an unmodified DSH Desktop. */
@@ -28,6 +29,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.plugin(GatewayModelsService)
   ctx.plugin(SetupService)
   ctx.plugin(CoordinationService)
+  ctx.plugin(UpdateService)
   ctx.plugin(AutoReviewService, config.toolAutoReview.get())
   ctx.plugin(TaskFeedbackService, {
     wakeTransport: config.wakeTransport.get(),

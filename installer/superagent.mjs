@@ -5,6 +5,7 @@ import { isAbsolute, join } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { launchIndependent } from './windows-lifecycle.mjs'
+import { acquireSuiteLaunch } from './update-transaction.mjs'
 
 const execute = promisify(execFile)
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
@@ -49,6 +50,15 @@ export async function openSuperagent(installed, { start } = {}) {
     await unlink(lock)
   }
   await writeFile(lock, JSON.stringify({ pid: process.pid }), { flag: 'wx', mode: 0o600 })
+  let suiteLaunch
+  try {
+    suiteLaunch = await acquireSuiteLaunch(installed.suiteRoot)
+  } catch (error) {
+    await unlink(lock).catch((unlinkError) => {
+      if (unlinkError.code !== 'ENOENT') throw unlinkError
+    })
+    throw error
+  }
   try {
     const binding = await read(join(profile, 'control.json')).catch(() => undefined)
     const launch = await read(join(root, 'launch.json')).catch(() => undefined)
@@ -100,11 +110,20 @@ export async function openSuperagent(installed, { start } = {}) {
       }) + '\n',
       { mode: 0o600 },
     )
+    // The dedicated setup process takes this reservation while it publishes its own launcher.
+    await suiteLaunch.release()
     const started = start
       ? await start({ home, root, app: installed.app })
       : launchIndependent({
           command: executable,
-          args: [join(installed.release, 'setup.mjs'), home, root, installed.app, '--no-update'],
+          args: [
+            join(installed.release, 'setup.mjs'),
+            home,
+            root,
+            installed.app,
+            '--no-update',
+            `--suite-root=${installed.suiteRoot}`,
+          ],
           env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
           label: 'superagent',
         })
@@ -147,6 +166,7 @@ export async function openSuperagent(installed, { start } = {}) {
     }
     throw new Error('SuperAgent 未在 90 秒内就绪，请检查独立目录中的 desktop.log。')
   } finally {
+    await suiteLaunch.release()
     await unlink(lock)
   }
 }
