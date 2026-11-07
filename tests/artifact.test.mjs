@@ -32,6 +32,7 @@ test('tarball checksum and contents bind the installer to an external plugin', a
   assert.equal(pkg.name, '@one-person-lab/dsh-opl')
   assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-llm'], '*')
   assert.equal(manifest.version, manifest.officialVersion)
+  assert.equal(manifest.updateProtocolVersion, 1)
   assert.equal(manifest.enhancementVersion, pkg.version)
   const companion = manifest.superagent
   assert.equal(companion.upstreamCommit, '6337fc823ce20251c8de8085948165c81aaa701e')

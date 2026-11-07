@@ -49,6 +49,7 @@ export function displayModelName(ref: ModelRef, name?: string): string {
     if (id === 'mistralai/mistral-large-4-1t-a52b') return 'EAC Mistral Large 4'
     if (id === 'inclusionai/ling-3.1-flash-1019-free') return 'Kilo Ling 3.1 Flash 1019'
     if (id === 'stealth/crouton-alpha') return 'Kilo Crouton Alpha'
+    if (id === 'liquid/lfm-3-1.7b:free') return 'Kilo LFM3-1.7B'
     if (id === 'minimax-m3.1-flash-free') return 'MiniMax M3.1 Flash Free'
     if (id === 'minimax/minimax-m3.1-flash:free') return 'Kilo MiniMax M3.1 Flash'
     if (id === 'nvidia/nemotron-3-super-120b-a12b:free') return 'Kilo Nemotron 3 Super'

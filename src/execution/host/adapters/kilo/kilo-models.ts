@@ -43,6 +43,13 @@
  * `kilo-auto/free` is a routing entry, not a fixed model. This adapter pins and verifies
  * only the exact id the source published. It never resolves, guesses, or records what such
  * an entry might route to, and it never substitutes a concrete model for it.
+ *
+ * The public OFM Kilo listing also advertises `liquid/lfm-3-1.7b:free` as a free text model
+ * with tool support and reasoning support. OFM's Kilo catalog maps the `liquid/*` family to
+ * `reasoning: { effort }` with `low`, `medium`, and `high` (default `high`); disabling
+ * reasoning is not offered for this family. The pinned Kilo ACP custom-provider surface does
+ * not expose a writable effort option, so this adapter keeps that upstream default and refuses
+ * explicit effort requests instead of inventing a Kilo mapping.
  */
 import type { ModelRef } from '../../../contracts/catalog.ts'
 
@@ -80,6 +87,7 @@ export const KILO_OFM_MODELS: readonly string[] = [
   'dots-studio/dots-3-note-preview:free',
   'stealth/glyph-cluster',
   'stealth/crouton-alpha',
+  'liquid/lfm-3-1.7b:free',
   'kilo-auto/free',
   'nvidia/nemotron-3-super-120b-a12b:free',
   'nvidia/nemotron-3.5-super-vl:free',

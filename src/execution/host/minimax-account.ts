@@ -137,6 +137,11 @@ export class MiniMaxAccount {
   }
 
   /** Read one region's local account state without spawning the CLI or a browser. */
+  /** Login and logout remain active until their owned CLI process has settled. */
+  updateBusy(): boolean {
+    return !!this.pending || !!this.logoutOperation
+  }
+
   async status(region: Region): Promise<MiniMaxAccountStatus> {
     assertRegion(region)
     const config = await this.configuration()

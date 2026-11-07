@@ -21,3 +21,9 @@ The native Claude bridge includes Claude Agent SDK 0.3.283.
 Copyright Anthropic PBC. All rights reserved.
 Its license notice is preserved in licenses/claude-agent-sdk.md.
 The Claude Code executable is supplied by the user's official installation.
+
+The bundled OPL App logo is reproduced from gaofeng21cn/one-person-lab-app.
+The source repository's LICENSE at the selected commit applies under Apache
+License, Version 2.0; its full text is included in licenses/opl-app-logo-apache-2.0.txt.
+Source asset: https://raw.githubusercontent.com/gaofeng21cn/one-person-lab-app/75cadab2427e00f8ae41e5fba7c8ec504f6a7905/assets/branding/opl-app-logo.png
+Source commit: 75cadab2427e00f8ae41e5fba7c8ec504f6a7905

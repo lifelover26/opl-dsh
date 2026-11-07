@@ -16,23 +16,21 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 40px;
   font-size: 21px;
   font-weight: 650;
+  line-height: 1.2;
   letter-spacing: -0.7px;
 }
 .brandLight {
   font-weight: 400;
 }
 .brandMark {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--dsw-alias-label-primary, #0f1115);
-  color: var(--dsw-alias-label-primary-inverted, #fff);
-  font-size: 21px;
-  font-weight: 500;
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  object-fit: cover;
 }
 .welcomeHeading {
   margin: 12px 0 4px;

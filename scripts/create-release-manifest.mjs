@@ -11,6 +11,7 @@ const project = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const asset = 'OPL-DSH-Enhancements.zip'
 const bytes = await readFile(join(dist, asset))
 const enhancementVersion = artifact.enhancementVersion ?? project.version
+if (artifact.updateProtocolVersion !== 1) throw new Error('构建包未声明安全的延后更新协议')
 const officialVersion = artifact.officialVersion
 const feedUrls = {
   'mac-arm64': 'https://download.deepseek.com/dsh-desk/feeds/mac-arm64/nightly-mac.yml',
@@ -58,6 +59,8 @@ const manifest = {
   enhancement: {
     product: 'OPL DSH Enhancements',
     version: enhancementVersion,
+    updateProtocolVersion: artifact.updateProtocolVersion,
+    unattendedUpdateProtocolVersion: artifact.unattendedUpdateProtocolVersion,
     asset,
     sha256: 'sha256:' + createHash('sha256').update(bytes).digest('hex'),
     size: bytes.length,

@@ -1,0 +1,49 @@
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.link {
+  align-self: flex-start;
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.notice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: var(--dsw-radius-md);
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 12px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.notice:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+.noticeGroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.timingFields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.timingFields > label {
+  flex: 1 1 160px;
+  max-width: 220px;
+}

@@ -1111,6 +1111,29 @@ export class HarnessService {
   assertRuntimeAvailable(): void {
     this.runtimeMaintenance.assertAvailable()
   }
+  /** Report actual work and in-flight runtime changes before an idle update. */
+  updateBusy(): boolean {
+    return (
+      this.runtimeBusy() ||
+      this.starting.size > 0 ||
+      this.selectionChanges.size > 0 ||
+      this.reasoningPreflights.size > 0 ||
+      this.minimaxAccount.updateBusy()
+    )
+  }
+  /** Drain owned writes after the caller has frozen every task admission path. */
+  async drainForUpdate(): Promise<void> {
+    await this.ready
+    await this.selectionsReady
+    if (this.updateBusy()) throw Error('仍有活动任务，不能更新')
+    await this.writeQueue
+    await this.externalEfforts.drain()
+    await Promise.all(this.titleUpdates.values())
+    await this.flushRecords()
+    await this.messageEditStore.drain()
+    await this.externalEditJournal.drain()
+    if (this.updateBusy()) throw Error('更新排空期间出现活动任务')
+  }
   /**
    * Exclude reviewer settings changes from CLI admission and native model requests.
    * @param operation - Validation and durable settings publication owned by Auto Review.

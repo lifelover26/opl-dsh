@@ -39,6 +39,7 @@ async function mount(readAccount: () => Promise<GatewayAccountStatus>, wide = tr
     settingsOpen: false,
     readAccount,
     bindModelNavigation: vi.fn(),
+    bindSettingsNavigation: vi.fn<(navigate: (() => void) | undefined) => void>(),
     openSettings,
     openOnboarding,
     t: (key: keyof typeof zh) => zh[key],
@@ -61,6 +62,16 @@ it('shows the OPL email and retains settings and account navigation', async () =
 it('does not infer a login from ready model credentials', async () => {
   const view = await mount(async () => status())
   expect(view.container.textContent).toBe('未登录')
+})
+
+it('opens update notices through General settings and releases the navigation callback', async () => {
+  const view = await mount(async () => status())
+  const navigate = view.props.bindSettingsNavigation.mock.calls.at(-1)?.[0]
+  expect(navigate).toBeTypeOf('function')
+  navigate!()
+  expect(view.openOnboarding).toHaveBeenCalledWith('opl-update-navigation')
+  await act(async () => view.root.unmount())
+  expect(view.props.bindSettingsNavigation).toHaveBeenLastCalledWith(undefined)
 })
 
 it('updates after account changes and ignores an earlier pending read', async () => {

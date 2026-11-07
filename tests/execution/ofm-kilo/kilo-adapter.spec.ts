@@ -195,6 +195,7 @@ describe('Kilo 声明面', () => {
       'dots-studio/dots-3-note-preview:free',
       'stealth/glyph-cluster',
       'stealth/crouton-alpha',
+      'liquid/lfm-3-1.7b:free',
       'kilo-auto/free',
       'nvidia/nemotron-3-super-120b-a12b:free',
       'nvidia/nemotron-3.5-super-vl:free',
@@ -206,6 +207,7 @@ describe('Kilo 声明面', () => {
     // 每个 id 保持原样，不合并、不折叠、不拆分斜杠或冒号。
     expect(new Set(KILO_OFM_MODELS).size).toBe(KILO_OFM_MODELS.length)
     expect(KILO_OFM_MODELS).toContain('stealth/glyph-cluster')
+    expect(KILO_OFM_MODELS).toContain('liquid/lfm-3-1.7b:free')
     // free/auto 路由条目按路由条目保留，不被替换成某个具体底层模型。
     expect(KILO_OFM_MODELS).toContain('kilo-auto/free')
     expect(KILO_OFM_MODELS).toContain('nvidia/nemotron-3-super-120b-a12b:free')
@@ -223,6 +225,17 @@ describe('Kilo 声明面', () => {
     }
     expect(kiloAdapter.matches({ provider: 'other-source', model: MODEL })).toBe(false)
     expect(kiloAdapter.matches({ provider: KILO_OFM_PROVIDER, model: 'unknown-model' })).toBe(false)
+  })
+
+  it('保留 LFM3 的 OFM 推理声明，不伪造 Kilo ACP 档位', () => {
+    const model = 'liquid/lfm-3-1.7b:free'
+    const route = JSON.parse(buildKiloRouteConfig({ ...ROUTE, model }, model).content) as {
+      provider: Record<string, { models: Record<string, Record<string, unknown>> }>
+    }
+    expect(route.provider[KILO_ROUTE_PROVIDER_ID].models[model]).toEqual({ name: model })
+    expect(() => assertNoKiloEffort('high', (message) => new Error(message))).toThrow(
+      /未广告任何推理档位/,
+    )
   })
 
   it('能力只声明官方真正提供的接口', () => {

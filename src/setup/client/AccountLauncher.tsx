@@ -19,16 +19,22 @@ export function AccountLauncher({
   openOnboarding,
   readAccount,
   bindModelNavigation,
+  bindSettingsNavigation,
   t,
 }: PropsRuntime<'settings.launcher'> &
   PropsLocale<'settings.oplGateway'> & {
     readAccount: () => Promise<GatewayAccountStatus>
     bindModelNavigation: (navigate: (() => void) | undefined) => void
+    bindSettingsNavigation?: (navigate: (() => void) | undefined) => void
   }) {
   useEffect(() => {
     bindModelNavigation(() => openOnboarding('opl-model-navigation'))
     return () => bindModelNavigation(undefined)
   }, [bindModelNavigation, openOnboarding])
+  useEffect(() => {
+    bindSettingsNavigation?.(() => openOnboarding('opl-update-navigation'))
+    return () => bindSettingsNavigation?.(undefined)
+  }, [bindSettingsNavigation, openOnboarding])
   const [open, setOpen] = useState(false)
   const [account, setAccount] = useState<GatewayAccountStatus>()
   const [failed, setFailed] = useState(false)

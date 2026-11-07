@@ -400,6 +400,35 @@ export async function verifyDesktopClient(
         notifications: true,
         nativeGeneralItems: true,
       }
+      const updateToggle = 'document.querySelector("[data-opl-panel=updates] [role=switch]")'
+      await waitFor(
+        `Boolean(${updateToggle} && !${updateToggle}.disabled)`,
+        '更新设置未从真实 Host 加载',
+      )
+      const updateBefore = await pipe.evaluate(
+        session,
+        `${updateToggle}.getAttribute('aria-checked')`,
+      )
+      await pipe.evaluate(session, `${updateToggle}.click()`)
+      await waitFor(
+        `${updateToggle}.getAttribute('aria-checked')!==${JSON.stringify(updateBefore)} && !${updateToggle}.disabled`,
+        '自动检查更新开关未保存',
+      )
+      await selectPanel()
+      await waitFor(
+        `${updateToggle}.getAttribute('aria-checked')!==${JSON.stringify(updateBefore)} && !${updateToggle}.disabled`,
+        '重进设置后自动检查更新偏好丢失',
+      )
+      await pipe.evaluate(session, `${updateToggle}.click()`)
+      await waitFor(
+        `${updateToggle}.getAttribute('aria-checked')===${JSON.stringify(updateBefore)} && !${updateToggle}.disabled`,
+        '自动检查更新开关未恢复',
+      )
+      result.generalPreferences.updates = {
+        hostLoaded: true,
+        automaticSaved: true,
+        automaticRestored: true,
+      }
       const countSelector =
         'document.querySelector("[data-opl-preference=conversation-counts] button")'
       await waitFor(

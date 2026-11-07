@@ -29,6 +29,7 @@ import {
   OFM_PROVIDER,
 } from '../execution/host/ofm-source/index.ts'
 import z from '@deepseek-ai/schemastery'
+import { installUpdateRuntime } from '../updates/host/runtime-admission.ts'
 
 export interface Config {
   executionLimits: ProgressWatchdogLimits
@@ -67,6 +68,8 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   const harness = createHarnessService(ctx, {
     readOfm: () => ofmOwner.read('/summary'),
   })
+  const updateRuntime = installUpdateRuntime(ctx, harness)
+  ctx.provide('oplUpdateRuntime', updateRuntime)
   harness.configureProgressLimits(config.executionLimits)
   ctx.provide('oplExternalModelSources', harness.modelSources)
   applyOfmModelSource(ctx, {
@@ -107,7 +110,10 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   // session controller cannot list or select them, so no message would ever route.
   ctx.llm.registerAdapter([MINIMAX_CODE_PROVIDER], new MiniMaxCodeModelAdapter())
   new ExecutionService(ctx, harness)
-  ctx.effect(() => () => harness.dispose())
+  ctx.effect(() => async () => {
+    await harness.dispose()
+    updateRuntime.drained('harness')
+  })
   installCollaborationTools(ctx, harness)
   installComputerUse(ctx)
   installLegacyHarnessChannel(ctx)

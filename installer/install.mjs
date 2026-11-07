@@ -94,6 +94,8 @@ async function closeDesktop(pid) {
 if (existsSync(bindingPath)) {
   const binding = JSON.parse(readFileSync(bindingPath, 'utf8'))
   if (alive(binding.pid)) {
+    if (flags.includes('--update-if-stopped'))
+      throw new Error('Desktop 仍在运行，已保留待更新包；退出后重新启动再更新')
     await idleTasks(binding)
     await closeDesktop(binding.pid)
   }

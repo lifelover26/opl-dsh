@@ -76,7 +76,7 @@ const clientBuild = await bundle({
   outfile: join(output, 'client.cjs'),
   external: ['react', 'react/*'],
   plugins: [officialClientRuntime],
-  loader: { '.css': 'local-css' },
+  loader: { '.css': 'local-css', '.png': 'dataurl' },
   tsconfigRaw: { compilerOptions: { jsx: 'react-jsx' } },
 })
 const client = await readFile(join(output, 'client.cjs'), 'utf8')
@@ -133,6 +133,10 @@ await cp(
   join(root, 'node_modules/@anthropic-ai/claude-agent-sdk/LICENSE.md'),
   join(output, 'package/licenses/claude-agent-sdk.md'),
 )
+await cp(
+  join(root, 'licenses/opl-app-logo-apache-2.0.txt'),
+  join(output, 'package/licenses/opl-app-logo-apache-2.0.txt'),
+)
 for (const file of ['LICENSE', 'NOTICE']) await cp(join(root, file), join(output, 'package', file))
 // Windows' bundled bsdtar accepts drive-qualified paths; Git Bash tar treats them as remote archives.
 const tar =
@@ -179,6 +183,10 @@ for (const file of [
   'superagent.mjs',
   'desktop-platform.mjs',
   'update.mjs',
+  'update-discovery.mjs',
+  'update-runner.mjs',
+  'update-transaction.mjs',
+  'desktop-update.mjs',
   'release-manifest.mjs',
   'skill-install.mjs',
   'installation-paths.mjs',
@@ -237,6 +245,8 @@ const officialVersion =
 const artifact = {
   version: officialVersion,
   officialVersion,
+  updateProtocolVersion: 1,
+  unattendedUpdateProtocolVersion: 1,
   superagent,
   enhancementVersion: version,
   sourceCommit,

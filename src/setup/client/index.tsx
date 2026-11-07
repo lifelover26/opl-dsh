@@ -8,7 +8,10 @@ export const inject = ['slots', 'locale', 'remote.oplSetup']
 /** Account availability is checked only when choosing Gateway; official setup remains usable. */
 export function apply(
   ctx: Context,
-  navigation: { bindModelNavigation: (navigate: (() => void) | undefined) => void },
+  navigation: {
+    bindModelNavigation: (navigate: (() => void) | undefined) => void
+    bindSettingsNavigation?: (navigate: (() => void) | undefined) => void
+  },
 ): void {
   const call = remoteCall(ctx.remote.oplSetup)
   const account = () => {
@@ -73,7 +76,17 @@ export function apply(
         id: 'opl-model-navigation',
         order: 101,
       },
-      ModelNavigationStep,
+      (props) => <SectionNavigationStep {...props} section="models" />,
+    ),
+  )
+  ctx.slots.inject('settings.onboarding', () =>
+    ctx.slots.register(
+      {
+        name: 'settings.onboarding',
+        id: 'opl-update-navigation',
+        order: 102,
+      },
+      (props) => <SectionNavigationStep {...props} section="general" />,
     ),
   )
   ctx.slots.inject('settings.launcher', () =>
@@ -85,6 +98,9 @@ export function apply(
         inject: () => ({
           readAccount: actions.status,
           bindModelNavigation: navigation.bindModelNavigation,
+          ...(navigation.bindSettingsNavigation
+            ? { bindSettingsNavigation: navigation.bindSettingsNavigation }
+            : {}),
         }),
       },
       AccountLauncher,
@@ -95,18 +111,20 @@ function SkipAccountStep({ complete }: { complete: () => void }) {
   useEffect(complete, [complete])
   return null
 }
-function ModelNavigationStep({
+function SectionNavigationStep({
   complete,
   openSection,
   explicit,
+  section,
 }: {
   complete: () => void
   openSection: (id: string) => void
   explicit?: boolean
+  section: string
 }) {
   useEffect(() => {
     complete()
-    if (explicit) openSection('models')
-  }, [complete, openSection, explicit])
+    if (explicit) openSection(section)
+  }, [complete, openSection, explicit, section])
   return null
 }

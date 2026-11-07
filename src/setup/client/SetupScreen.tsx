@@ -7,6 +7,7 @@ import {
 } from '../../gateway/client/OplGatewaySection.tsx'
 import type { SetupStatus } from '../contracts.ts'
 import type { LoginChoice } from '../contracts.ts'
+import oplAppLogo from './opl-app-logo.png'
 import css from './SetupScreen.module.css'
 
 type Choice = Exclude<LoginChoice, 'undecided'>
@@ -133,9 +134,7 @@ export function SetupScreen(props: OplGatewaySectionProps & SetupActions & { exp
       className={css.setup}
     >
       <div className={css.brand}>
-        <span className={css.brandMark} aria-hidden>
-          O
-        </span>
+        <img className={css.brandMark} src={oplAppLogo} alt="" aria-hidden="true" />
         <span>
           OPL <span className={css.brandLight}>DSH</span>
         </span>
