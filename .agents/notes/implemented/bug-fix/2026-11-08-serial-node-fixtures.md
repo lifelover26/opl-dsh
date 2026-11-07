@@ -1,6 +1,6 @@
 # Node fixture test isolation
 
-The Node integration tests run with one test-file worker at a time. Several update and installer fixtures temporarily replace built-in subprocess or filesystem exports; the Node test runner can otherwise execute those files concurrently and let one fixture observe another file's mock. Serial file execution keeps the production code unchanged while making the CI acceptance deterministic. Individual tests remain asynchronous within their file.
+The Node integration tests run with one test-file worker at a time. Several update and installer fixtures temporarily replace built-in subprocess or filesystem exports; the Node test runner can otherwise execute those files concurrently and let one fixture observe another file's mock. The update installer calls the default `node:child_process` object so its test replacement is observed consistently on every supported platform. Individual tests remain asynchronous within their file.
 
 ## Verification
 

@@ -13,7 +13,7 @@ import {
 } from 'node:fs/promises'
 import { basename, join, dirname, resolve, isAbsolute } from 'node:path'
 import { createHash, randomUUID } from 'node:crypto'
-import { spawnSync } from 'node:child_process'
+import childProcess from 'node:child_process'
 import { inflateRawSync, crc32 } from 'node:zlib'
 import { installationPaths } from './installation-paths.mjs'
 import {
@@ -184,7 +184,7 @@ export function readOfficialVersion(application) {
       : join(application, 'Contents/MacOS/DeepSeek Harness')
   const resources = process.platform === 'win32' ? 'resources' : 'Contents/Resources'
   const manifest = join(application, resources, 'app.asar/package.json')
-  const result = spawnSync(
+  const result = childProcess.spawnSync(
     executable,
     ['-e', `process.stdout.write(require(${JSON.stringify(manifest)}).version)`],
     {
@@ -529,7 +529,7 @@ function runInstaller(payload, application, root, current, candidate = false) {
     process.platform === 'win32'
       ? join(application, 'DeepSeek Harness.exe')
       : join(application, 'Contents/MacOS/DeepSeek Harness')
-  const result = spawnSync(
+  const result = childProcess.spawnSync(
     executable,
     [
       join(payload, 'install.mjs'),
