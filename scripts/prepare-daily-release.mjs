@@ -1,9 +1,12 @@
 /** Daily GitHub-owned release preparation; all packaging and qualification stay in the existing workflow. */
 import { execFileSync, spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { appendFile, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { writeDailyReleaseNotes } from './daily-release-notes.mjs'
+import { readOfficialDesktopFeeds } from './official-desktop-feeds.mjs'
+import { validateReleaseManifest } from '../installer/release-manifest.mjs'
 
 const repository = 'gaofeng21cn/opl-dsh'
 const productPaths = [
@@ -33,6 +36,34 @@ const git = (root, args) =>
     stdio: ['ignore', 'pipe', 'pipe'],
   }).trim()
 const stable = /^\d+\.\d+\.\d+$/
+const officialVersionPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
+const frozenOfficialVersion = (root, tag) =>
+  git(root, ['for-each-ref', '--format=%(contents)', `refs/tags/${tag}`]).match(
+    /^Official DeepSeek Harness: (\S+)$/m,
+  )?.[1]
+
+/** Bind the comparison to the public Latest asset bytes, never Release-note prose. */
+export function readPublishedOfficialVersion(latest, command = execFileSync) {
+  const asset = latest.assets?.find((asset) => asset.name === 'release-manifest.json')
+  if (!asset || !Number.isSafeInteger(asset.id) || !/^sha256:[a-f0-9]{64}$/.test(asset.digest))
+    throw Error('Public Latest has no digest-bound release manifest')
+  const bytes = command(
+    'gh',
+    [
+      'api',
+      `repos/${repository}/releases/assets/${asset.id}`,
+      '-H',
+      'Accept: application/octet-stream',
+    ],
+    { stdio: ['ignore', 'pipe', 'pipe'] },
+  )
+  if (
+    `sha256:${createHash('sha256').update(bytes).digest('hex')}` !== asset.digest ||
+    bytes.length !== asset.size
+  )
+    throw Error('Public Latest release manifest checksum differs')
+  return validateReleaseManifest(JSON.parse(bytes), { tagName: latest.tag_name }).official.version
+}
 const compare = (a, b) => {
   const left = a.split('.').map(Number)
   const right = b.split('.').map(Number)
@@ -41,11 +72,20 @@ const compare = (a, b) => {
 }
 
 /** Decide from public Latest and real product paths, excluding derived Cask and docs-only changes. */
-export async function planDailyRelease(root, latest) {
+export async function planDailyRelease(
+  root,
+  latest,
+  { officialVersion, publishedOfficialVersion } = {},
+) {
   const project = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
   if (!stable.test(project.version)) throw Error('OPL version is not stable SemVer')
   if (git(root, ['status', '--porcelain'])) throw Error('Release preparation requires clean source')
   const currentTag = `opl-dsh-v${project.version}`
+  for (const version of [officialVersion, publishedOfficialVersion])
+    if (version !== undefined && !officialVersionPattern.test(version))
+      throw Error('Invalid official desktop version')
+  const upstreamChanged =
+    officialVersion && publishedOfficialVersion && officialVersion !== publishedOfficialVersion
   if (latest) {
     const publishedVersion = latest.tag_name?.replace(/^opl-dsh-v/, '')
     if (
@@ -65,7 +105,8 @@ export async function planDailyRelease(root, latest) {
       '--',
       ...productPaths,
     ])
-    if (!changes) return { action: 'skip', reason: '没有未发布的增强层改动' }
+    if (!changes && !upstreamChanged)
+      return { action: 'skip', reason: '没有未发布的增强层改动或官方 DSH 版本变化' }
     if (compare(project.version, publishedVersion) <= 0) {
       const parts = publishedVersion.split('.').map(Number)
       parts[2]++
@@ -89,7 +130,11 @@ export async function planDailyRelease(root, latest) {
       '--',
       ...productPaths,
     ])
-    if (productChanges) {
+    const frozenOfficial = frozenOfficialVersion(root, currentTag)
+    if (
+      productChanges ||
+      (frozenOfficial && officialVersion && frozenOfficial !== officialVersion)
+    ) {
       // A frozen tag keeps its original product bytes. Later product fixes need
       // a new identity; runner/docs-only repairs can still resume the old tag.
       const parts = project.version.split('.').map(Number)
@@ -111,14 +156,19 @@ export async function planDailyRelease(root, latest) {
   return { action: 'prepare', version: project.version, baseline: latest?.tag_name }
 }
 
-export async function prepareDailyRelease(root) {
+export async function prepareDailyRelease(root, { request = fetch } = {}) {
   if (process.env.GITHUB_REPOSITORY !== repository) throw Error('Unexpected release repository')
   const ref = process.env.GITHUB_REF
+  const feeds = await readOfficialDesktopFeeds(request)
+  const officialVersion = feeds['mac-arm64'].version
   let candidate
   if (/^refs\/tags\/opl-dsh-v\d+\.\d+\.\d+$/.test(ref ?? '')) {
     const tag = ref.slice('refs/tags/'.length)
     const version = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version
     if (tag !== `opl-dsh-v${version}`) throw Error('Tag differs from the package version')
+    const frozenOfficial = frozenOfficialVersion(root, tag)
+    if (frozenOfficial && frozenOfficial !== officialVersion)
+      throw Error('Official feeds changed after this tag was frozen; prepare from main')
     candidate = { action: 'resume', tag, sourceCommit: git(root, ['rev-parse', `${tag}^{commit}`]) }
   } else {
     if (ref !== 'refs/heads/main') throw Error('Daily preparation requires main')
@@ -131,9 +181,10 @@ export async function prepareDailyRelease(root) {
     if (response.status !== 0 && !/HTTP 404/.test(response.stderr))
       throw Error('Cannot read public Latest; no version or tag was written')
     const latest = response.status === 0 ? JSON.parse(response.stdout) : undefined
-    candidate = await planDailyRelease(root, latest)
+    const publishedOfficialVersion = latest && readPublishedOfficialVersion(latest)
+    candidate = await planDailyRelease(root, latest, { officialVersion, publishedOfficialVersion })
     if (candidate.action === 'prepare') {
-      const changes = git(root, [
+      let changes = git(root, [
         'log',
         '--no-merges',
         `--format=- %s ([查看提交](https://github.com/${repository}/commit/%H))`,
@@ -141,6 +192,13 @@ export async function prepareDailyRelease(root) {
         '--',
         ...productPaths,
       ])
+      if (publishedOfficialVersion && publishedOfficialVersion !== officialVersion)
+        changes = [
+          `- 跟随官方 DeepSeek Harness：\`${publishedOfficialVersion}\` → \`${officialVersion}\`；按既有双平台流程重新验收联合版本。`,
+          changes,
+        ]
+          .filter(Boolean)
+          .join('\n')
       const notesFile = join(root, 'docs', `release-notes-${candidate.version}.md`)
       // A maintainer's prepared notes remain authoritative.
       try {
@@ -167,6 +225,8 @@ export async function prepareDailyRelease(root) {
             version: candidate.version,
             baseline: candidate.baseline ?? null,
             sourceCommit: git(root, ['rev-parse', 'HEAD']),
+            officialVersion,
+            publishedOfficialVersion: publishedOfficialVersion ?? null,
             commitsMarkdown: changes,
             commitDetails: git(root, [
               'log',
@@ -213,7 +273,13 @@ export async function prepareDailyRelease(root) {
       if (git(root, ['diff', '--cached', '--name-only']))
         git(root, ['commit', '-m', `release: prepare OPL DSH v${candidate.version}`])
       candidate.tag = `opl-dsh-v${candidate.version}`
-      git(root, ['tag', '-a', candidate.tag, '-m', `OPL DSH v${candidate.version}`])
+      git(root, [
+        'tag',
+        '-a',
+        candidate.tag,
+        '-m',
+        `OPL DSH v${candidate.version}\n\nOfficial DeepSeek Harness: ${officialVersion}`,
+      ])
       // Never force main or reuse a tag. The same run continues with these exact bytes:
       // tag pushes made with GITHUB_TOKEN intentionally do not trigger another workflow.
       git(root, ['push', '--atomic', 'origin', 'HEAD:main', `refs/tags/${candidate.tag}`])
@@ -223,10 +289,11 @@ export async function prepareDailyRelease(root) {
         throw Error('Remote tag readback differs')
     }
   }
+  candidate.officialVersion = officialVersion
   if (candidate.tag)
     await appendFile(
       process.env.GITHUB_OUTPUT,
-      `tag=${candidate.tag}\nsource_commit=${candidate.sourceCommit}\n`,
+      `tag=${candidate.tag}\nsource_commit=${candidate.sourceCommit}\nofficial_version=${officialVersion}\n`,
     )
   await appendFile(
     process.env.GITHUB_STEP_SUMMARY,

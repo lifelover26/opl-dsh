@@ -737,49 +737,78 @@ test('immutable transaction identity cannot be overwritten through a stage trans
 })
 
 test('the existing updater joins only the runner install stage and excludes prepare/cancel', async (t) => {
-  const value = await offered(t)
-  const lease = await claimUpdateTransaction(value.root, value.lease)
-  const pendingBefore = await readFile(join(value.root, 'enhancement-pending.json'), 'utf8')
-  await assert.rejects(prepareUpdate(value.root, value.application), { code: 'update-in-progress' })
-  await assert.rejects(cancelPreparedUpdate(value.root), { code: 'update-in-progress' })
-  await refreshEnhancements(value.root, value.application, { transaction: lease })
-  assert.equal(await readFile(join(value.root, 'enhancement-pending.json'), 'utf8'), pendingBefore)
-  await transitionUpdateTransaction(value.root, lease, 'installing')
-  let installs = 0
-  const originalSpawn = childProcess.spawnSync
-  const mocked = t.mock.method(childProcess, 'spawnSync', (command, args, options) => {
-    if (!String(command).startsWith(value.application)) return originalSpawn(command, args, options)
-    if (args[0] === '-e') return { status: 0, stdout: officialVersion, stderr: '' }
-    assert.ok(args.includes('--update-if-stopped'))
-    assert.ok(args.includes('--no-launch'))
-    installs++
-    const artifact = JSON.parse(readFileSync(join(value.stage, 'payload/artifact.json'), 'utf8'))
-    const release = join(value.root, 'releases', artifact.suiteSha256)
-    mkdirSync(release, { recursive: true })
-    cpSync(join(value.stage, 'payload'), release, { recursive: true })
-    writeFileSync(
-      join(value.root, 'installation.json'),
-      JSON.stringify({
-        ...value.receipt,
-        release,
-        suiteVersion: artifact.enhancementVersion,
-        suiteSha256: artifact.suiteSha256,
-        enhancementSha256: artifact.sha256,
-      }) + '\n',
-    )
-    return { status: 0, stdout: '', stderr: '' }
-  })
-  syncBuiltinESMExports()
-  t.after(() => {
-    mocked.mock.restore()
-    syncBuiltinESMExports()
-  })
-  await refreshEnhancements(value.root, value.application, { transaction: lease })
-  assert.equal(installs, 1)
-  assert.equal((await json(join(value.root, 'installation.json'))).suiteVersion, '0.2.56')
-  assert.equal((await json(join(value.root, 'enhancement-update.json'))).state, 'updated')
-  assert.equal((await readUpdateTransaction(value.root)).stage, 'installing')
-  await finishUpdateTransaction(value.root, lease, { stage: 'failed', failure: 'fixture-finished' })
+  // The runner is hosted on Linux in source CI, while installation is supported
+  // only on Windows x64 and macOS arm64. Exercise both admitted targets without
+  // weakening the production platform check or launching an official binary.
+  for (const [platform, arch] of [
+    ['win32', 'x64'],
+    ['darwin', 'arm64'],
+  ]) {
+    await t.test(`${platform}-${arch}`, async (t) => {
+      for (const [key, value] of [
+        ['platform', platform],
+        ['arch', arch],
+      ]) {
+        const descriptor = Object.getOwnPropertyDescriptor(process, key)
+        Object.defineProperty(process, key, { ...descriptor, value })
+        t.after(() => Object.defineProperty(process, key, descriptor))
+      }
+      const value = await offered(t)
+      const lease = await claimUpdateTransaction(value.root, value.lease)
+      const pendingBefore = await readFile(join(value.root, 'enhancement-pending.json'), 'utf8')
+      await assert.rejects(prepareUpdate(value.root, value.application), {
+        code: 'update-in-progress',
+      })
+      await assert.rejects(cancelPreparedUpdate(value.root), { code: 'update-in-progress' })
+      await refreshEnhancements(value.root, value.application, { transaction: lease })
+      assert.equal(
+        await readFile(join(value.root, 'enhancement-pending.json'), 'utf8'),
+        pendingBefore,
+      )
+      await transitionUpdateTransaction(value.root, lease, 'installing')
+      let installs = 0
+      const originalSpawn = childProcess.spawnSync
+      const mocked = t.mock.method(childProcess, 'spawnSync', (command, args, options) => {
+        if (!String(command).startsWith(value.application))
+          return originalSpawn(command, args, options)
+        if (args[0] === '-e') return { status: 0, stdout: officialVersion, stderr: '' }
+        assert.ok(args.includes('--update-if-stopped'))
+        assert.ok(args.includes('--no-launch'))
+        installs++
+        const artifact = JSON.parse(
+          readFileSync(join(value.stage, 'payload/artifact.json'), 'utf8'),
+        )
+        const release = join(value.root, 'releases', artifact.suiteSha256)
+        mkdirSync(release, { recursive: true })
+        cpSync(join(value.stage, 'payload'), release, { recursive: true })
+        writeFileSync(
+          join(value.root, 'installation.json'),
+          JSON.stringify({
+            ...value.receipt,
+            release,
+            suiteVersion: artifact.enhancementVersion,
+            suiteSha256: artifact.suiteSha256,
+            enhancementSha256: artifact.sha256,
+          }) + '\n',
+        )
+        return { status: 0, stdout: '', stderr: '' }
+      })
+      syncBuiltinESMExports()
+      t.after(() => {
+        mocked.mock.restore()
+        syncBuiltinESMExports()
+      })
+      await refreshEnhancements(value.root, value.application, { transaction: lease })
+      assert.equal(installs, 1)
+      assert.equal((await json(join(value.root, 'installation.json'))).suiteVersion, '0.2.56')
+      assert.equal((await json(join(value.root, 'enhancement-update.json'))).state, 'updated')
+      assert.equal((await readUpdateTransaction(value.root)).stage, 'installing')
+      await finishUpdateTransaction(value.root, lease, {
+        stage: 'failed',
+        failure: 'fixture-finished',
+      })
+    })
+  }
 })
 
 test('the existing stopped launcher preserves an independently failed plan without retry', async (t) => {
