@@ -50,9 +50,8 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 const dom = createTestDom()
 const { act } = React
 const { HarnessSettings } = await import('../../src/execution/client/HarnessSettings.tsx')
-const { ExecutionCatalogSection } = await import(
-  '../../src/execution/client/ExecutionCatalogSection.tsx'
-)
+const { ExecutionCatalogSection } =
+  await import('../../src/execution/client/ExecutionCatalogSection.tsx')
 const { ExecutionSettings } = await import('../../src/execution/client/ExecutionSettings.tsx')
 const { createRoot } = await import('react-dom/client')
 
@@ -66,6 +65,7 @@ type Node = {
   click: () => boolean
   dispatchEvent: (type: string) => boolean
   getAttribute: (name: string) => string | null
+  setAttribute: (name: string, value: string) => void
 }
 
 /**
@@ -120,6 +120,9 @@ function completeDom() {
   Object.defineProperty(proto, 'type', {
     get(this: Node) {
       return this.getAttribute('type') ?? ''
+    },
+    set(this: Node, value: string) {
+      this.setAttribute('type', value)
     },
     configurable: true,
   })
@@ -1053,10 +1056,13 @@ describe('每个外部 Harness 独立的代理设置', () => {
 
   it('不可用组合可逐项移除，保留配置且不改变其他项', async () => {
     const data = unavailableCatalog()
-    Object.assign(data.models.find((item) => item.ref.model === 'missing-kimi')!, {
-      unavailableKind: 'catalog-missing',
-      reason: 'OFM 当前目录已移除此模型，保留原组合配置',
-    })
+    Object.assign(
+      data.models.find((item) => item.ref.model === 'missing-kimi')!,
+      {
+        unavailableKind: 'catalog-missing',
+        reason: 'OFM 当前目录已移除此模型，保留原组合配置',
+      },
+    )
     const { call, stored } = fixture(data)
     const view = await open(call, ExecutionCatalogSection)
     const missing = walk(view).find(

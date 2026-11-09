@@ -13,12 +13,7 @@ export interface OplUpdateRestart {
   phase: 'waiting' | 'countdown' | 'handoff' | 'failed'
   dueAt: string | null
   reason:
-    | 'busy'
-    | 'activity-unknown'
-    | 'other-profile'
-    | 'desktop-unavailable'
-    | 'update-failed'
-    | null
+    'busy' | 'activity-unknown' | 'other-profile' | 'desktop-unavailable' | 'update-failed' | null
 }
 
 /** Public update status contains release metadata, never local installer paths. */

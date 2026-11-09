@@ -52,8 +52,7 @@ for (const entry of cases) {
           const followup = body.messages.at(-1)?.role === 'tool'
           if (followup && entry.adapter.id === 'kilo') {
             const assistant = body.messages.findLast((m) => m.role === 'assistant') as
-              | { reasoning_content?: string }
-              | undefined
+              { reasoning_content?: string } | undefined
             if (assistant?.reasoning_content !== '') {
               response.writeHead(400).end('{"error":"Missing reasoning_content"}')
               return

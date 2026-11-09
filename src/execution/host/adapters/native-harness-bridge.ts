@@ -48,8 +48,7 @@ const imageInputSetting = process.env.OPL_NATIVE_IMAGE_INPUT
 const imageInput = imageInputSetting === '1' && (kind === 'codex' || kind === 'claude')
 type ImageMimeType = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
 type NativePromptPart =
-  | { type: 'text'; text: string }
-  | { type: 'image'; data: string; mimeType: ImageMimeType }
+  { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: ImageMimeType }
 
 function imageMimeType(value: unknown): value is ImageMimeType {
   return (

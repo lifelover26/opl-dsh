@@ -326,8 +326,7 @@ export { grokConfiguration } from './adapters/grok.ts'
 export { nativeHarnessMatches, defaultHarness } from './adapters/index.ts'
 export class HarnessService {
   private minimaxLoginAttempt:
-    | { region: MiniMaxAccountLoginRequest['region']; cancelled: boolean }
-    | undefined
+    { region: MiniMaxAccountLoginRequest['region']; cancelled: boolean } | undefined
   private readonly minimaxAccount = new MiniMaxAccount(async () => {
     const harness = (await this.catalogStore.get()).harnesses.find(
       (item) => item.id === 'minimax-code',
@@ -3048,9 +3047,9 @@ export class HarnessService {
       const lastTurn = record.turns.at(-1)
       const terminalEdit = Boolean(
         ['opencode', 'kilo'].includes(record.harnessRef) &&
-          intent?.phase === 'settled' &&
-          lastTurn?.state === 'failed' &&
-          lastTurn.operationId.startsWith('message-edit:'),
+        intent?.phase === 'settled' &&
+        lastTurn?.state === 'failed' &&
+        lastTurn.operationId.startsWith('message-edit:'),
       )
       const preparedChoice = externalPreparedChoice(
         record,

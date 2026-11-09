@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { runInNewContext } from 'node:vm'
-import ts from 'typescript'
+import { transformSync } from 'esbuild'
 const held = vi.hoisted(() => ({
   shell: undefined as undefined | (() => Promise<{ env: Record<string, string>; shell: string }>),
 }))
@@ -102,7 +102,7 @@ describe('Chief Step final checks', () => {
     )
     const start = source.indexOf('function handleDialog('),
       end = source.indexOf('/** Resolve the pending permission asks', start)
-    const code = ts.transpile(source.slice(start, end))
+    const code = transformSync(source.slice(start, end), { loader: 'ts', target: 'es2024' }).code
     const writes: string[] = [],
       requests: unknown[] = []
     const env = {

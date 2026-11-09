@@ -12,6 +12,7 @@
  */
 
 import { z } from 'zod'
+import { officialValidationSchema } from '../../../compat/host/validation-schema.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 import type {
@@ -324,16 +325,18 @@ export const taskFeedbackDomainSpec = defineDomain({
   name: 'task_feedback',
   version: 1,
   global: {
-    schema: z.object({
-      /** Deliveries ever enqueued, so a delivery id stays unique across restarts. */
-      deliveryCount: z.number().int().nonnegative(),
-    }),
+    schema: officialValidationSchema(
+      z.object({
+        /** Deliveries ever enqueued, so a delivery id stays unique across restarts. */
+        deliveryCount: z.number().int().nonnegative(),
+      }),
+    ),
     initial: { deliveryCount: 0 },
   },
   tables: {
-    tasks: domainTable<string, TaskRecordState>(taskRecord),
-    outbox: domainTable<string, DeliveryRecordState>(deliveryRecord),
-    receipts: domainTable<string, ReceiptRecordState>(receiptRecord),
+    tasks: domainTable<string, TaskRecordState>(officialValidationSchema(taskRecord)),
+    outbox: domainTable<string, DeliveryRecordState>(officialValidationSchema(deliveryRecord)),
+    receipts: domainTable<string, ReceiptRecordState>(officialValidationSchema(receiptRecord)),
   },
 })
 

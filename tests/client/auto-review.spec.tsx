@@ -64,12 +64,10 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 // `./dom.ts` installs the process DOM on import, before React DOM is loaded.
 const dom = createTestDom()
 completeDom()
-const { AutoReviewSection, serviceReady, disabledReasonKey, saveBlockedReasonKey } = await import(
-  '../../src/auto-review/client/AutoReviewSection.tsx'
-)
-const { AutoReviewSettingsStore, effectivePreferences } = await import(
-  '../../src/auto-review/client/controller.ts'
-)
+const { AutoReviewSection, serviceReady, disabledReasonKey, saveBlockedReasonKey } =
+  await import('../../src/auto-review/client/AutoReviewSection.tsx')
+const { AutoReviewSettingsStore, effectivePreferences } =
+  await import('../../src/auto-review/client/controller.ts')
 const { AUTO_REVIEW_NAMESPACE, en, zh } = await import('../../src/auto-review/client/locales.ts')
 const { advertisedEffort, budgetIsSubmittable, withFixedEffort, withFixedRoute, routeKey } =
   await import('../../src/auto-review/client/preferences.ts')

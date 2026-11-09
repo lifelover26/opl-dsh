@@ -2,6 +2,7 @@
 import { z as stateSchema } from 'zod'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { officialValidationSchema } from '../../../compat/host/validation-schema.ts'
 
 /**
  * Build the pattern for one tool-invocation tag name, in either spelling an
@@ -73,29 +74,31 @@ export const feedbackSessionFacts: ProjectionDefinition<'taskFeedbackFacts', Fee
   {
     key: 'taskFeedbackFacts',
     stateVersion: 3,
-    stateSchema: stateSchema.object({
-      openTurn: stateSchema.number().int().nonnegative().nullable(),
-      pendingInstructions: stateSchema.array(stateSchema.string()),
-      instructions: stateSchema.record(
-        stateSchema.string(),
-        stateSchema.object({
-          seq: stateSchema.number().int().nonnegative(),
-          turn: stateSchema.number().int().nonnegative().nullable(),
-        }),
-      ),
-      finalToolSyntax: stateSchema.record(
-        stateSchema.string(),
-        stateSchema.array(stateSchema.string()),
-      ),
-      pendingApprovals: stateSchema.record(
-        stateSchema.string(),
-        stateSchema.object({
-          seq: stateSchema.number().int().nonnegative(),
-          toolName: stateSchema.string(),
-        }),
-      ),
-      lastApprovalSeq: stateSchema.number().int().nonnegative(),
-    }),
+    stateSchema: officialValidationSchema(
+      stateSchema.object({
+        openTurn: stateSchema.number().int().nonnegative().nullable(),
+        pendingInstructions: stateSchema.array(stateSchema.string()),
+        instructions: stateSchema.record(
+          stateSchema.string(),
+          stateSchema.object({
+            seq: stateSchema.number().int().nonnegative(),
+            turn: stateSchema.number().int().nonnegative().nullable(),
+          }),
+        ),
+        finalToolSyntax: stateSchema.record(
+          stateSchema.string(),
+          stateSchema.array(stateSchema.string()),
+        ),
+        pendingApprovals: stateSchema.record(
+          stateSchema.string(),
+          stateSchema.object({
+            seq: stateSchema.number().int().nonnegative(),
+            toolName: stateSchema.string(),
+          }),
+        ),
+        lastApprovalSeq: stateSchema.number().int().nonnegative(),
+      }),
+    ),
     init: (): FeedbackSessionFacts => ({
       openTurn: null,
       pendingInstructions: [],

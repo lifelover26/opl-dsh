@@ -366,23 +366,21 @@ export function apply(ctx: Context, config: Config): void {
     const web = webCtx.get('web')
     if (web === undefined) return
     const apiKeyEnv = credentialRef(CODEX_API_KEY_REF)
-    const provider = new OplGatewaySearchProvider(
-      (): OplGatewaySearchProviderOptions => ({
-        apiKeyEnv,
-        resolveApiKey: async () => {
-          if (!gatewayGroupEnabled(ctx, 'codex')) return undefined
-          const credentials = webCtx.get('credentials')
-          return credentials === undefined
-            ? launchEnvironmentOf(webCtx).get(apiKeyEnv)?.value
-            : (await credentials.resolve(apiKeyEnv))?.value
-        },
-        baseURL: options().baseURL,
-        model: OPL_GATEWAY_SEARCH_DEFAULT_MODEL,
-        fallbackModels: OPL_GATEWAY_SEARCH_FALLBACK_MODELS,
-        maxOutputTokens: OPL_GATEWAY_SEARCH_DEFAULT_MAX_OUTPUT_TOKENS,
-        timeoutMs: OPL_GATEWAY_SEARCH_DEFAULT_TIMEOUT_MS,
-      }),
-    )
+    const provider = new OplGatewaySearchProvider((): OplGatewaySearchProviderOptions => ({
+      apiKeyEnv,
+      resolveApiKey: async () => {
+        if (!gatewayGroupEnabled(ctx, 'codex')) return undefined
+        const credentials = webCtx.get('credentials')
+        return credentials === undefined
+          ? launchEnvironmentOf(webCtx).get(apiKeyEnv)?.value
+          : (await credentials.resolve(apiKeyEnv))?.value
+      },
+      baseURL: options().baseURL,
+      model: OPL_GATEWAY_SEARCH_DEFAULT_MODEL,
+      fallbackModels: OPL_GATEWAY_SEARCH_FALLBACK_MODELS,
+      maxOutputTokens: OPL_GATEWAY_SEARCH_DEFAULT_MAX_OUTPUT_TOKENS,
+      timeoutMs: OPL_GATEWAY_SEARCH_DEFAULT_TIMEOUT_MS,
+    }))
     webCtx.effect(() => web.registerSearchProvider(provider), 'llm-opl-gateway: web search')
   })
 }

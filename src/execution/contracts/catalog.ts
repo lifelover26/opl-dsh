@@ -3,9 +3,7 @@ import type { CodexGitBashRuntime } from './codex-runtime.ts'
 export * from '../../shared/models.ts'
 /** Network routing for this external CLI and its children; omission inherits Desktop. */
 export type HarnessProxy =
-  | { mode: 'inherit' }
-  | { mode: 'direct' }
-  | { mode: 'custom'; url: string }
+  { mode: 'inherit' } | { mode: 'direct' } | { mode: 'custom'; url: string }
 export interface HarnessDefinition {
   id: string
   name: string
@@ -39,8 +37,10 @@ export type OfmDiscoveryStatus =
   | { kind: 'excluded'; reason: string; label: string }
   | { kind: 'unknown'; label: string }
 
-export interface OfmDiscoveryItem
-  extends Pick<ModelDefinition, 'available' | 'reason' | 'unavailableKind'> {
+export interface OfmDiscoveryItem extends Pick<
+  ModelDefinition,
+  'available' | 'reason' | 'unavailableKind'
+> {
   modelRef: ModelRef
   name: string
   status: OfmDiscoveryStatus

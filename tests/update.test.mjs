@@ -164,12 +164,10 @@ function remote(t, value, override) {
 
 async function fixture(t, { localCandidate = false, originalPatch = {} } = {}) {
   // Simulate a supported target for installer logic on Linux-only unit-test hosts.
-  if (
-    !(
-      (process.platform === 'win32' && process.arch === 'x64') ||
-      (process.platform === 'darwin' && process.arch === 'arm64')
-    )
-  ) {
+  if (!(
+    (process.platform === 'win32' && process.arch === 'x64') ||
+    (process.platform === 'darwin' && process.arch === 'arm64')
+  )) {
     for (const [key, value] of [
       ['platform', 'win32'],
       ['arch', 'x64'],

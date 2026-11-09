@@ -151,9 +151,7 @@ export function effortConfirmed(route: AutoReviewRouteOption, effort: string | n
  * permits a call.
  */
 export type ReviewerRouteAvailability =
-  | 'advertised'
-  | 'provider-not-registered'
-  | 'model-not-advertised'
+  'advertised' | 'provider-not-registered' | 'model-not-advertised'
 
 /**
  * Classify one exact route against the live advertised catalog.

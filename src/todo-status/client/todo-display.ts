@@ -31,11 +31,7 @@ export type RecordedTodoStatus = TodoItem['status']
  * longer running, so a stopped Session can never show an endless spinner.
  */
 export type TodoDisplayState =
-  | 'done'
-  | 'pending'
-  | 'recorded-in-progress'
-  | 'unfinished'
-  | 'unfinished-unknown'
+  'done' | 'pending' | 'recorded-in-progress' | 'unfinished' | 'unfinished-unknown'
 
 /** One rendered todo row. */
 export interface TodoRowView {

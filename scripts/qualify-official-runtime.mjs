@@ -531,6 +531,19 @@ try {
       env: { ...environment, ELECTRON_RUN_AS_NODE: '1' },
     })
   evidence.checks.isolatedInstallation = true
+  const sourcePackage = JSON.parse(await readFile(join(repo, 'package.json'), 'utf8'))
+  evidence.checks.dependencyIsolation = JSON.parse(
+    await run(
+      executable(),
+      [
+        join(repo, 'scripts/qualification-dependencies.mjs'),
+        app,
+        profile,
+        sourcePackage.devDependencies.zod,
+      ],
+      { env: { ...environment, ELECTRON_RUN_AS_NODE: '1' } },
+    ),
+  )
   modelPluginFixture = await startModelPluginFixture()
   Object.assign(environment, modelPluginFixture.environment)
   const historyProject = join(root, 'test-project')
