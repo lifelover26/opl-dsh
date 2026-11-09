@@ -21,7 +21,33 @@ updates:
       time: "03:00"
       timezone: Asia/Shanghai
     groups:
-      npm:
+      # Keep official peer cohorts separate from OPL-owned dependency updates.
+      dsh-runtime-cohort:
+        applies-to: version-updates
+        patterns:
+          - "@deepseek-ai/*"
+      react-runtime:
+        applies-to: version-updates
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      npm-minor-patch:
+        applies-to: version-updates
         patterns:
           - "*"
-    open-pull-requests-limit: 2
+        exclude-patterns:
+          - "@deepseek-ai/*"
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "typescript"
+          - "@types/node"
+          - "zod"
+        update-types:
+          - minor
+          - patch
+    # Zod/compiler updates and all security updates remain independent.
+    open-pull-requests-limit: 10
