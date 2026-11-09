@@ -98,6 +98,10 @@ CLI 维护回读绕过版本缓存，并检查安装器返回的实际安装目�
 
 TaskFeedback 的事件投影、纯状态决策、持久回执与投递调度分别位于 `session-facts.ts`、`state.ts`、`receipts.ts`、`delivery.ts`。Remote 服务仍负责唯一的恢复与编排，不再增加一套通知数据库。
 
+## MCP Apps 与无 UI 交接
+
+`src/mcp-apps` 只提供当前 Agent 作用域的只读能力诊断，复用官方工具注册、step admission 与审批，不保存 MCP 连接或领域状态。当前官方公开 API 的缺口与后续薄宿主接入条件见 [MCP Apps 支持范围](mcp-apps.md)。
+
 ## 数据位置与恢复
 
 | 内容                     | 权威位置                                                                                                                 |

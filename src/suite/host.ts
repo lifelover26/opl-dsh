@@ -11,6 +11,7 @@ import * as control from './execution.ts'
 import * as nativeModelProviders from '../compat/host/model-providers.ts'
 import * as gitBash from '../shell/host/git-bash.ts'
 import * as conversationStats from '../conversation-stats/host/index.ts'
+import * as mcpApps from '../mcp-apps/host/index.ts'
 import { Config } from './config.ts'
 export { Config } from './config.ts'
 
@@ -25,6 +26,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.plugin(gateway, structuredClone(config.gateway.get()) as gateway.OplGatewayConfig)
   ctx.plugin(control, { executionLimits: config.executionLimits })
   ctx.plugin(conversationStats)
+  ctx.plugin(mcpApps)
   ctx.plugin(nativeModelProviders)
   ctx.plugin(GatewayModelsService)
   ctx.plugin(SetupService)

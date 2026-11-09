@@ -8,6 +8,9 @@ import { setTimeout as delay } from 'node:timers/promises'
 
 export const MODEL_PLUGIN_FIXTURE = 'opl-qualification-free'
 const fixtureTool = 'list_harness_combinations'
+const diagnosticTool = 'inspect_mcp_app_host'
+const renamedDiagnosticTool =
+  'clint_' + createHash('sha256').update(diagnosticTool).digest('hex').slice(0, 12)
 const renamedFixtureTool =
   'clint_' + createHash('sha256').update(fixtureTool).digest('hex').slice(0, 12)
 
@@ -31,18 +34,50 @@ export async function startModelPluginFixture() {
       for await (const part of req) bytes += part
       const body = JSON.parse(bytes)
       const usedTool = body.messages?.some((message) => message.role === 'tool')
-      const toolName = body.tools
+      const diagnosticName = body.tools
+        ?.map((tool) => tool.function?.name)
+        .find((name) => name === diagnosticTool || name === renamedDiagnosticTool)
+      let hostDiagnostic
+      for (const message of body.messages ?? []) {
+        if (message.role !== 'tool' || typeof message.content !== 'string') continue
+        try {
+          const value = JSON.parse(message.content)
+          if (value.oplPresentation === 'tools-only')
+            hostDiagnostic = {
+              oplPresentation: value.oplPresentation,
+              officialBridge: value.officialBridge,
+              nextAction: value.nextAction,
+            }
+        } catch {
+          /* Another tool result is not this diagnostic. */
+        }
+      }
+      const diagnosticRequested = body.messages?.some(
+        (message) =>
+          message.role === 'assistant' &&
+          message.tool_calls?.some((call) => call.function?.name === diagnosticName),
+      )
+      const ownerToolName = body.tools
         ?.map((tool) => tool.function?.name)
         .find((name) => name === fixtureTool || name === renamedFixtureTool)
+      const toolName =
+        usedTool && diagnosticName && !diagnosticRequested ? diagnosticName : ownerToolName
       const hasTool = toolName !== undefined
-      requests.push({ model: body.model, usedTool: !!usedTool, hasTool, toolName, path: req.url })
-      const tool = !usedTool && hasTool
+      requests.push({
+        model: body.model,
+        usedTool: !!usedTool,
+        hasTool,
+        toolName,
+        path: req.url,
+        ...(hostDiagnostic ? { hostDiagnostic } : {}),
+      })
+      const tool = hasTool && (!usedTool || (diagnosticName && !diagnosticRequested))
       const delta = tool
         ? {
             tool_calls: [
               {
                 index: 0,
-                id: 'ofm-fixture-call',
+                id: toolName === diagnosticName ? 'ofm-diagnostic-call' : 'ofm-fixture-call',
                 type: 'function',
                 function: { name: toolName, arguments: '{}' },
               },

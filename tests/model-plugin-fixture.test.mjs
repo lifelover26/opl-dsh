@@ -65,3 +65,47 @@ for (const renamed of [false, true])
       await fixture.close()
     }
   })
+
+test('the official fixture requests and records the host diagnostic after the owner tool', async () => {
+  const fixture = await startModelPluginFixture()
+  try {
+    const url = fixture.environment.OUR_FREE_MODEL_BASE + '/inference/openai/v1/chat/completions'
+    const tools = ['list_harness_combinations', 'inspect_mcp_app_host'].map((name) => ({
+      type: 'function',
+      function: { name, parameters: { type: 'object' } },
+    }))
+    const messages = [
+      {
+        role: 'assistant',
+        tool_calls: [{ id: 'ofm-fixture-call', function: { name: 'list_harness_combinations' } }],
+      },
+      { role: 'tool', tool_call_id: 'ofm-fixture-call', content: '[]' },
+    ]
+    const send = async () =>
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ model: MODEL_PLUGIN_FIXTURE, tools, messages }),
+        })
+      ).text()
+    assert.match(await send(), /"name":"inspect_mcp_app_host"/)
+    messages.push({
+      role: 'assistant',
+      tool_calls: [{ id: 'ofm-diagnostic-call', function: { name: 'inspect_mcp_app_host' } }],
+    })
+    messages.push({
+      role: 'tool',
+      tool_call_id: 'ofm-diagnostic-call',
+      content: JSON.stringify({
+        oplPresentation: 'tools-only',
+        officialBridge: { version: null, assessment: 'unavailable-version' },
+        nextAction: 'discover-owner-tool',
+      }),
+    })
+    assert.match(await send(), /MODEL_PLUGIN_VERIFIED/)
+    assert.equal(fixture.requests.at(-1).hostDiagnostic.oplPresentation, 'tools-only')
+  } finally {
+    await fixture.close()
+  }
+})

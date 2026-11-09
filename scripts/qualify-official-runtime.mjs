@@ -590,6 +590,11 @@ try {
   )
   if (!modelPluginFixture.requests.some((request) => request.usedTool))
     throw new Error('原版模型插件未完成官方工具调用后的模型回复')
+  const mcpAppHost = modelPluginFixture.requests.find(
+    (request) => request.hostDiagnostic,
+  )?.hostDiagnostic
+  if (!mcpAppHost) throw new Error('原版桌面未回读 MCP Apps 宿主诊断结果')
+  evidence.checks.mcpAppHost = mcpAppHost
   evidence.checks.modelPluginRequests = modelPluginFixture.requests
   if (evidence.checks.runtime.harnessTranscript)
     evidence.checks.transcriptClient = await verifyHarnessTranscriptClient(

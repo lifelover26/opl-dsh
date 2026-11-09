@@ -52,6 +52,7 @@ brew install --cask gaofeng21cn/opl-dsh/opl-dsh
 - **Auto Review 工具审批**：支持专用 codex-auto-review、独立 reviewer，以及 [BambooNode StartLux](docs/bamboo-startlux-auto-review.md) 和 [Jev](docs/jev-auto-review.md) 决策模型；默认关闭。见[工具审批](docs/auto-review.md)。
 - **MiniMax 官方账号**：通过 mcode 登录中国站或国际站，支持登录状态、退出、取消授权与超时处理。见[MiniMax 账号与 mcode](docs/minimax-code.md)。
 - **对话体验**：不选工作区也可开始新对话；支持[编辑消息并原地重发](docs/stop-edit.md)，轮次与步数可选当前对话或历史累计；[Todo](docs/todo-status.md)展示真实记录状态；可启用[后台任务系统通知](docs/desktop-notifications.md)。
+- **Agent 应用交接**：`inspect_mcp_app_host` 按当前对话检查工具和资源能力；无嵌入式 UI 时保留原 owner 的结构化结果与专业应用入口。见 [MCP Apps 支持范围](docs/mcp-apps.md)。
 - **网页搜索**：登录 Gateway 后，原生 `web_search` 统一使用 GPT-6.1 Sol 搜索，无需额外配置。
 
 ### 常用执行组合
