@@ -57,7 +57,7 @@ jobs:
       - name: Verify shared SuperAgent tests on Windows
         if: matrix.os == 'windows-latest'
         # Bound parallel SQLite/fixture I/O on the hosted Windows disk; retain test deadlines.
-        run: npm test --workspace dsh-superagent -- --maxWorkers=2
+        run: npm test --workspace dsh-superagent -- --maxWorkers=1
       - name: Verify Windows native launcher and ACL regressions
         if: matrix.os == 'windows-latest'
         run: |
