@@ -2777,6 +2777,11 @@ export class HarnessService {
     signal?.throwIfAborted()
     const current = agent.model.current()
     if (!current) return
+    // New Agents inherit live global defaults until their first selection is
+    // recorded. Freeze that inherited choice before awaits so another Session's
+    // background default save cannot change this creation. select is a no-op
+    // when the same selection is already recorded on this Session.
+    agent.model.select(current)
     const binding = this.selections[agent.session.id]
     const catalog = await this.executionCatalog()
     const definition = this.combinationFor(agent.session.id, catalog, current)
