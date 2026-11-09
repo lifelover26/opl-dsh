@@ -27,6 +27,7 @@ import {
   type DomainFacility,
 } from '@deepseek-ai/dsh-storage-domain'
 import { z } from 'zod'
+import { officialValidationSchema } from '../../compat/host/validation-schema.ts'
 
 /** Domain name; the official unit-name grammar allows no hyphen. */
 export const AUTO_REVIEW_DOMAIN = 'opl_auto_review'
@@ -138,7 +139,7 @@ export const autoReviewDomainSpec = defineDomain({
   version: 1,
   layout: 'per-record',
   tables: {
-    reviews: domainTable<string, ReviewRecord>(reviewRecordSchema),
+    reviews: domainTable<string, ReviewRecord>(officialValidationSchema(reviewRecordSchema)),
   },
 })
 

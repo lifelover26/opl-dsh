@@ -79,9 +79,8 @@ describe('pool adapter identity', () => {
   })
 
   it('claims no isolation for full access', async () => {
-    const { poolPermissionPlan } = await import(
-      '../../../src/execution/host/adapters/pool/pool-permissions.ts'
-    )
+    const { poolPermissionPlan } =
+      await import('../../../src/execution/host/adapters/pool/pool-permissions.ts')
     expect(poolPermissionPlan('full-access')).toEqual({
       mode: 'always-allow',
       sandbox: 'disabled',

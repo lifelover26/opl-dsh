@@ -450,12 +450,7 @@ export function installUpdateAdmission(ctx: Context, gate: UpdateAdmission): () 
 
 /** Only live work prevents applying an update; completed feedback history remains readable. */
 export type UpdateActivityReason =
-  | 'admission'
-  | 'agent'
-  | 'queue'
-  | 'session'
-  | 'harness'
-  | 'feedback'
+  'admission' | 'agent' | 'queue' | 'session' | 'harness' | 'feedback'
 
 /** Activity observations collected from the owners of native and external execution. */
 export interface UpdateActivityInspection {
@@ -469,8 +464,7 @@ export interface UpdateActivityCalls {
   harness(): PromiseLike<{ readonly busy: boolean }> | { readonly busy: boolean }
   /** Read taskFeedback.tasks(); completed tasks and historical notification receipts do not block. */
   feedbackTasks():
-    | PromiseLike<readonly Pick<TaskRecord, 'state'>[]>
-    | readonly Pick<TaskRecord, 'state'>[]
+    PromiseLike<readonly Pick<TaskRecord, 'state'>[]> | readonly Pick<TaskRecord, 'state'>[]
 }
 
 /**

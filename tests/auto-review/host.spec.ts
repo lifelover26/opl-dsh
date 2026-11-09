@@ -238,8 +238,7 @@ function createSettings(overrides: Partial<FlatConfig> = {}): SettingsStub {
         throw Object.assign(new Error('synthetic: conflict'), { code: 'SETTINGS_CONFLICT' })
       }
       const incoming = (patch as Record<string, unknown>)[AUTO_REVIEW_FIELD] as
-        | Partial<FlatConfig>
-        | undefined
+        Partial<FlatConfig> | undefined
       if (incoming !== undefined) Object.assign(section, incoming)
       revision += 1
       writes += 1

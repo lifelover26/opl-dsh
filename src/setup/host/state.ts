@@ -18,16 +18,14 @@ export async function officialProvider(ctx: Context): Promise<string | undefined
   })) as { status?: string }
   if (account.status === 'credential-stored') return 'deepseek-account'
   const value = ctx.settings.describe().find((item) => item.ns === 'llm-deepseek')?.value as
-    | { apiKeyEnv?: string }
-    | undefined
+    { apiKeyEnv?: string } | undefined
   if (value?.apiKeyEnv && (await ctx.credentials.resolve(credentialRef(value.apiKeyEnv))))
     return 'deepseek-official'
   return undefined
 }
 export async function setupStatus(ctx: Context): Promise<SetupStatus> {
   const settings = ctx.settings.describe().find((item) => item.ns === 'opl-suite')?.value as
-    | { loginChoice?: LoginChoice; setupCompleted?: boolean }
-    | undefined
+    { loginChoice?: LoginChoice; setupCompleted?: boolean } | undefined
   const gateway = await ctx.get('oplGatewayAccount')?.status()
   const account = (await invokeHostRemote(ctx, {
     namespace: 'account',

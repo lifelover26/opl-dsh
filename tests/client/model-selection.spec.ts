@@ -277,9 +277,8 @@ describe('OPL model button selection projection', () => {
   })
 
   it('keeps CLI effort separate from an automatic native provider effort', async () => {
-    const { ModelSelectionState } = await import(
-      '../../src/execution/client/use-model-selection.ts'
-    )
+    const { ModelSelectionState } =
+      await import('../../src/execution/client/use-model-selection.ts')
     const face = createFace({ next: selection.current, lastUsed: null })
     let chosen: string | undefined = 'low'
     const state = new ModelSelectionState(async () => ({

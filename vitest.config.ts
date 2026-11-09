@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config'
-import ts from 'typescript'
+import { transformSync } from 'esbuild'
 
 export default defineConfig({
   plugins: [
@@ -9,17 +9,17 @@ export default defineConfig({
       transform(code, id) {
         const file = id.split('?')[0]!
         if (!/\.[cm]?tsx?$/.test(file) || !/^\s*@[A-Za-z_$][\w$]*/m.test(code)) return
-        const result = ts.transpileModule(code, {
-          fileName: file,
-          compilerOptions: {
-            target: ts.ScriptTarget.ES2024,
-            module: ts.ModuleKind.ESNext,
-            sourceMap: true,
-          },
+        const result = transformSync(code, {
+          sourcefile: file,
+          loader: file.endsWith('x') ? 'tsx' : 'ts',
+          target: 'es2024',
+          format: 'esm',
+          sourcemap: 'external',
+          tsconfigRaw: { compilerOptions: { experimentalDecorators: false } },
         })
         return {
-          code: result.outputText.replace(/\n?\/\/# sourceMappingURL=.*$/u, '\n'),
-          map: result.sourceMapText,
+          code: result.code,
+          map: result.map,
         }
       },
     },

@@ -173,13 +173,7 @@ export interface TaskResumeRequest {
  * handled, and `resumed` means one new attempt was submitted and registered.
  */
 export type TaskResumeDecision =
-  | 'not-applicable'
-  | 'superseded'
-  | 'running'
-  | 'budget-exhausted'
-  | 'busy'
-  | 'consumed'
-  | 'resumed'
+  'not-applicable' | 'superseded' | 'running' | 'budget-exhausted' | 'busy' | 'consumed' | 'resumed'
 
 /** The new attempt one resume submitted, when it submitted one. */
 export interface TaskResumeAttempt {

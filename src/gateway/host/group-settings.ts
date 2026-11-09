@@ -7,8 +7,7 @@ export function gatewayGroupEnabled(ctx: Context, id: GatewayGroupId): boolean {
     .get('settings')
     ?.describe({ redactSecrets: true })
     .find((item) => item.ns === 'opl-suite')?.value as
-    | { gatewayGroups?: Record<string, boolean> }
-    | undefined
+    { gatewayGroups?: Record<string, boolean> } | undefined
   // Preserve existing routes on upgrade; new optional groups require activation.
   // Preserve the historical activation of existing paid routes. The default
   // DeepSeek model is independent of the OpenAI-protocol route; its duplicate

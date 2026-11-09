@@ -17,13 +17,7 @@ import type {
 import { STOP_EDIT_COPY } from './stop-edit-locales.ts'
 
 export type StopEditPhase =
-  | 'idle'
-  | 'loading'
-  | 'choosing'
-  | 'stopping'
-  | 'rewinding'
-  | 'done'
-  | 'error'
+  'idle' | 'loading' | 'choosing' | 'stopping' | 'rewinding' | 'done' | 'error'
 
 export interface StopEditView {
   phase: StopEditPhase

@@ -185,16 +185,14 @@ export function nativeStopEditRuntime(source: NativeSessionSource): StopEditRunt
     capability: () => ({ ready: true }),
     boundaries: async (_record, sessionId) => {
       const { messages, headSeq } = locate(sessionId)
-      return messages.map(
-        (message): StopEditBoundary => ({
-          id: `dsh:${message.seq}`,
-          contentHead: contentHead(message.text),
-          attachmentCount: message.attachments.length,
-          first: message.index === 0,
-          // 日志头位置就是这一份历史的新鲜度；恢复后用它拒绝过期选择。
-          historyVersion: String(headSeq),
-        }),
-      )
+      return messages.map((message): StopEditBoundary => ({
+        id: `dsh:${message.seq}`,
+        contentHead: contentHead(message.text),
+        attachmentCount: message.attachments.length,
+        first: message.index === 0,
+        // 日志头位置就是这一份历史的新鲜度；恢复后用它拒绝过期选择。
+        historyVersion: String(headSeq),
+      }))
     },
     plan: async ({ sessionId, boundary }) => {
       const { target } = planOf(sessionId, boundary.id)

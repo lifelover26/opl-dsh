@@ -354,8 +354,7 @@ function redact(secret: string | undefined, text: string): string {
 
 /** What the helper said, once the marker prefix is removed. */
 type Reply =
-  | { readonly ok: true; readonly payload: string }
-  | { readonly ok: false; readonly code: string }
+  { readonly ok: true; readonly payload: string } | { readonly ok: false; readonly code: string }
 
 /**
  * Pull the reply out of whatever else reached the pipe.

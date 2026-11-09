@@ -35,9 +35,8 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
 // `./dom.ts` installs the process DOM on import, before React DOM is loaded.
 const dom = createTestDom()
 const { createRoot } = await import('react-dom/client')
-const { MiniMaxAccountSection } = await import(
-  '../../src/execution/client/MiniMaxAccountSection.tsx'
-)
+const { MiniMaxAccountSection } =
+  await import('../../src/execution/client/MiniMaxAccountSection.tsx')
 
 type Region = 'cn' | 'global'
 type Node = {

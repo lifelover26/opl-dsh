@@ -299,9 +299,8 @@ describe('StepCode launch refuses before anything is launched', () => {
 
 describe('StepCode credential handling', () => {
   it('never writes a literal key into the provider config it generates', async () => {
-    const { buildStepModelsConfig } = await import(
-      '../../../src/execution/host/adapters/step/step-config.ts'
-    )
+    const { buildStepModelsConfig } =
+      await import('../../../src/execution/host/adapters/step/step-config.ts')
     const doc = JSON.stringify(
       buildStepModelsConfig({
         provider: 'p',
