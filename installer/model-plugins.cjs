@@ -18,6 +18,8 @@ const MODEL_PLUGINS = [
     version: '2.8.0',
     source:
       'https://github.com/Ebony-Vinyl/dsh-our-free-model/releases/download/v2.8.0/dsh-our-free-model-2.8.0.tgz',
+    assetSource:
+      'https://api.github.com/repos/Ebony-Vinyl/dsh-our-free-model/releases/assets/697326242',
     sha256: '2dc255aeddd46d1f37ed53916ab0cbfe2081412ace8ae3d2c59b38b9b78eba3b',
   },
 ]
@@ -31,7 +33,17 @@ async function prepareModelPlugin({ dir, plugin, fetchImpl = fetch }) {
       throw Error(`模型插件归档校验失败：${plugin.name}`)
     return archive
   }
-  const response = await fetchImpl(plugin.source, { signal: AbortSignal.timeout(120_000) })
+  const signal = AbortSignal.timeout(120_000)
+  let response = await fetchImpl(plugin.source, { signal })
+  // The release page route may fail while GitHub's exact asset route is healthy.
+  // Try that same pinned archive once, within the original download deadline.
+  if ([502, 503, 504].includes(response.status) && plugin.assetSource) {
+    await response.body?.cancel()
+    response = await fetchImpl(plugin.assetSource, {
+      signal,
+      headers: { Accept: 'application/octet-stream', 'X-GitHub-Api-Version': '2022-11-28' },
+    })
+  }
   if (!response.ok) throw Error(`模型插件下载失败：${plugin.name}（HTTP ${response.status}）`)
   const bytes = Buffer.from(await response.arrayBuffer())
   if (digest(bytes) !== plugin.sha256) throw Error(`模型插件归档校验失败：${plugin.name}`)

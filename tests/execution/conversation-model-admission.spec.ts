@@ -38,7 +38,11 @@ async function fixture(
   harnessRef = 'kilo',
   nativeFirst = false,
   manual = true,
-  options: { initialEffort?: string | null; initialize?: boolean } = {},
+  options: {
+    initialEffort?: string | null
+    initialize?: boolean
+    recordInitialSelection?: boolean
+  } = {},
 ) {
   const root = await mkdtemp(join(tmpdir(), 'opl-request-admission-'))
   cleanups.push(() => rm(root, { recursive: true, force: true }))
@@ -77,7 +81,8 @@ async function fixture(
       ? {}
       : { reasoningEffort: ReasoningEffortId(options.initialEffort ?? 'high') }),
   }
-  session.append('model/selection', choice)
+  if (options.recordInitialSelection !== false) session.append('model/selection', choice)
+  const defaults = { ...choice }
   const agentModel = new AgentModel(
     () => {
       let state = modelSelectionProjectionDefinition.init(
@@ -89,7 +94,7 @@ async function fixture(
       return state
     },
     session,
-    { provider, model },
+    defaults,
   )
   const selection = {
     get current(): ModelSelection {
@@ -181,6 +186,7 @@ async function fixture(
     signal,
     registration,
     initialize,
+    defaults,
   }
 }
 
@@ -322,6 +328,39 @@ it('preserves an explicit native effort through initialization and request admis
   expect(await f.request()).toBe(f.selection.assembled)
   expect(f.selection.assembled.reasoningEffort).toBe('low')
   expect(f.session.snapshotEvents()).toEqual(before)
+})
+
+it('freezes a new Session default before another Session saves the global default', async () => {
+  const f = await fixture('gpt-5.5', 'dsh', false, true, {
+    initialEffort: null,
+    initialize: false,
+    recordInitialSelection: false,
+  })
+  const entered = Promise.withResolvers<void>()
+  const release = Promise.withResolvers<void>()
+  f.metadata.mockImplementationOnce(async (ownedProvider, id) => {
+    entered.resolve()
+    await release.promise
+    return {
+      provider: ownedProvider,
+      id,
+      name: id,
+      reasoning: {
+        efforts: [{ id: ReasoningEffortId('medium'), name: 'Medium' }],
+        defaultEffort: ReasoningEffortId('medium'),
+      },
+    }
+  })
+  const initialized = f.initialize()
+  const accepted = expect(initialized).resolves.toBeUndefined()
+  await entered.promise
+  f.defaults.model = 'different-session-default'
+  release.resolve()
+  await accepted
+  expect(f.selection.current).toEqual({ provider, model: 'gpt-5.5', reasoningEffort: 'medium' })
+  expect(f.defaults.model).toBe('different-session-default')
+  expect(await f.request()).toBe(f.selection.assembled)
+  expect(f.wire).not.toHaveBeenCalled()
 })
 
 it('records the native picker default before the following step is frozen', async () => {
