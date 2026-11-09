@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - '.gitattributes'
       - 'package.json'
       - 'package-lock.json'
       - 'build.mjs'
@@ -17,6 +18,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.gitattributes'
       - 'package.json'
       - 'package-lock.json'
       - 'build.mjs'
