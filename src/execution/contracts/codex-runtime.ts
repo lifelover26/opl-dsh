@@ -7,8 +7,7 @@ export interface CodexGitBashRuntime {
 }
 /** Switching runtime never changes Session permissions or sends a model prompt. */
 export type CodexRuntimeRequest =
-  | { mode: 'official' }
-  | { mode: 'git-bash'; version: string; source?: string }
+  { mode: 'official' } | { mode: 'git-bash'; version: string; source?: string }
 export interface CodexRuntimeResult {
   mode: 'official' | 'git-bash'
   command: string

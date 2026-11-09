@@ -87,12 +87,7 @@ export function writeAdoptedFingerprint(
 
 /** Outcome of one adoption attempt, for diagnostics and tests. */
 export type AdoptionOutcome =
-  | 'no-account'
-  | 'kept-operator-key'
-  | 'adopted'
-  | 'refreshed'
-  | 'unchanged'
-  | 'unavailable'
+  'no-account' | 'kept-operator-key' | 'adopted' | 'refreshed' | 'unchanged' | 'unavailable'
 
 /**
  * Bring the credentials seam in line with the OPL account binding.

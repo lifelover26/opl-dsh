@@ -26,6 +26,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { Session, SessionEvent, TurnEndReason } from '@deepseek-ai/dsh-session'
 import type { ProjectionDefinition, ProjectionHandle } from '@deepseek-ai/dsh-session-projection'
+import { officialValidationSchema } from '../../compat/host/validation-schema.ts'
 import type { SessionWaitOutcome, SessionWaitRequest, SessionWaitValue } from '../contracts/wait.ts'
 
 /** Projection key carrying the facts one wait needs. */
@@ -81,7 +82,7 @@ export const sessionWaitProjectionDefinition = {
   // from a cancelled turn pending forever, which made every later wait report
   // `needs-input` for an approval the Session had already abandoned.
   stateVersion: 2,
-  stateSchema: sessionWaitSchema,
+  stateSchema: officialValidationSchema(sessionWaitSchema),
   init: () => ({
     lastEndTurn: null,
     lastEndReason: null,

@@ -4,7 +4,7 @@
  * The code under test lives in `src/execution/host/adapters/grok.ts`. These run
  * under plain `node --test`, which cannot import that module directly (its
  * import graph uses TypeScript parameter properties), so the module is
- * transpiled here with the repository's own TypeScript and imported with only
+ * transpiled here with the repository's own esbuild and imported with only
  * its collaborators stubbed. Every assertion therefore runs against the real
  * source file, and a stale `dist/` cannot make them pass.
  *
@@ -20,7 +20,7 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import ts from 'typescript'
+import { transformSync } from 'esbuild'
 
 const source = fileURLToPath(new URL('../src/execution/host/adapters/grok.ts', import.meta.url))
 const root = mkdtempSync(join(tmpdir(), 'opl-grok-perm-'))
@@ -48,9 +48,11 @@ async function loadAdapter() {
   let code = readFileSync(source, 'utf8')
   for (const specifier of Object.keys(STUBS))
     code = code.replaceAll(`'${specifier}'`, `'./${specifier.replace(/[^a-z]/gi, '_')}.mjs'`)
-  const transpiled = ts.transpileModule(code, {
-    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-  }).outputText
+  const transpiled = transformSync(code, {
+    loader: 'ts',
+    format: 'esm',
+    target: 'es2022',
+  }).code
   const file = join(root, 'grok.mjs')
   writeFileSync(file, transpiled)
   return import(pathToFileURL(file).href)

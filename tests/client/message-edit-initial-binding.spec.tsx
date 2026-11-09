@@ -193,12 +193,10 @@ async function fixture() {
     generation: snapshotStore({ id: 1, host: { home: '' } }),
   }
   let editState: MessageEditState = { ...available(), supported: false, choices: [] }
-  const readState = vi.fn(
-    async (): Promise<RemoteResult<MessageEditState>> => ({
-      ok: true,
-      value: editState,
-    }),
-  )
+  const readState = vi.fn(async (): Promise<RemoteResult<MessageEditState>> => ({
+    ok: true,
+    value: editState,
+  }))
   const prompt = vi.fn()
   const registrations: Registration[] = []
   const slots = new SlotCore()

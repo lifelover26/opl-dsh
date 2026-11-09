@@ -1,19 +1,8 @@
-import { readFileSync } from 'node:fs'
-import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
+import * as ts from 'typescript/unstable/ast'
+import { withTypeScriptSources } from '../../scripts/lib/typescript-source.mjs'
 
-const source = ts.createSourceFile(
-  'ExecutionCatalogSection.tsx',
-  readFileSync(
-    new URL('../../src/execution/client/ExecutionCatalogSection.tsx', import.meta.url),
-    'utf8',
-  ),
-  ts.ScriptTarget.Latest,
-  true,
-  ts.ScriptKind.TSX,
-)
-
-function detailsPanels() {
+function detailsPanels(source: ts.SourceFile) {
   const panels: Array<{ panel: string; hasOpen: boolean; text: string }> = []
   const visit = (node: ts.Node) => {
     if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === 'details') {
@@ -33,15 +22,20 @@ function detailsPanels() {
         })
       }
     }
-    ts.forEachChild(node, visit)
+    node.forEachChild(visit)
   }
   visit(source)
   return panels
 }
 
+const path = new URL('../../src/execution/client/ExecutionCatalogSection.tsx', import.meta.url)
+const { text, panels } = withTypeScriptSources([path], (sourceFile) => {
+  const source = sourceFile(path)
+  return { text: source.getText(), panels: detailsPanels(source) }
+})
+
 describe('执行组合分区', () => {
   it('按模型与 Harness 配对关系分组，不按用户编辑状态分组', () => {
-    const text = source.getText()
     expect(text).toContain('data-opl-panel="official-combinations"')
     expect(text).toContain('data-opl-panel="custom-combination-list"')
     expect(text).toContain('data-opl-panel="recommended-combinations"')
@@ -53,7 +47,6 @@ describe('执行组合分区', () => {
   })
 
   it('列表默认展开且可折叠，添加表单默认折叠', () => {
-    const panels = detailsPanels()
     expect(panels.find((panel) => panel.panel === 'combination-list')).toMatchObject({
       hasOpen: true,
     })

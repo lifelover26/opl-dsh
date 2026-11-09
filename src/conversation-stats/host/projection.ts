@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { ConversationCounts } from '../contracts/index.ts'
 import { messageEditMarker } from '../../execution/contracts/message-edit.ts'
+import { officialValidationSchema } from '../../compat/host/validation-schema.ts'
 
 interface ClosedStep {
   readonly seq: number
@@ -74,7 +75,7 @@ const stateSchema: z.ZodType<ConversationCountsState> = z
 export const conversationCountsProjection = {
   key: 'oplConversationCounts',
   stateVersion: 1,
-  stateSchema,
+  stateSchema: officialValidationSchema(stateSchema),
   init: (): ConversationCountsState => ({
     counts: { turns: 0, steps: 0 },
     closedSteps: [],
@@ -128,7 +129,7 @@ export const conversationCountsProjection = {
     }
   },
   wire: {
-    viewSchema: countsSchema,
+    viewSchema: officialValidationSchema(countsSchema),
     view: (state) => state.counts,
   },
 } satisfies ProjectionDefinition<'oplConversationCounts', ConversationCountsState>

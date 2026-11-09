@@ -102,8 +102,7 @@ export function updateOperations(ctx: Context): UpdateOperations {
     installed: installation,
     automatic: () => {
       const value = ctx.settings.describe().find((entry) => entry.ns === 'opl-suite')?.value as
-        | { updateAutomatic?: boolean }
-        | undefined
+        { updateAutomatic?: boolean } | undefined
       return value?.updateAutomatic !== false
     },
     saveAutomatic: (enabled) => ctx.settings.update('opl-suite', { updateAutomatic: enabled }),

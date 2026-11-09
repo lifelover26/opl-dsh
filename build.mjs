@@ -96,7 +96,10 @@ const externalImports = [
     name.startsWith('@') ? name.split('/').slice(0, 2).join('/') : name.split('/')[0],
   )
 const peers = Object.fromEntries(
-  [...new Set([...externalImports, 'zod'])].sort().map((name) => [name, '*']),
+  [...new Set(externalImports)]
+    .filter((name) => name !== 'zod')
+    .sort()
+    .map((name) => [name, '*']),
 )
 await writeFile(
   join(output, 'package/package.json'),
@@ -114,6 +117,7 @@ await writeFile(
         './package.json': './package.json',
       },
       peerDependencies: peers,
+      dependencies: { zod: project.devDependencies.zod },
       dsh: {
         bundle: { patch: './cordis.patch.yml' },
         client: {

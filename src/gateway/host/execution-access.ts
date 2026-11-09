@@ -29,8 +29,7 @@ export async function resolveGatewayExecution(
   if (!group || !gatewayGroupEnabled(ctx, group.id)) throw Error('此分组已停用，请在账号页激活')
   const settings = ctx.get('settings')?.describe()
   const suite = settings?.find((item) => item.ns === 'opl-suite')?.value as
-    | { gateway?: { baseURL?: string; apiKeyEnv?: string; models?: ModelDraft[] } }
-    | undefined
+    { gateway?: { baseURL?: string; apiKeyEnv?: string; models?: ModelDraft[] } } | undefined
   const providers = settings?.find((item) => item.ns === 'llm-pi-ai')?.value as
     | {
         providers?: Record<

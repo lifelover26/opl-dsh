@@ -22,9 +22,8 @@ if (args.length === 1 && ['--version', '-v'].includes(args[0])) {
   process.stdout.write(candidate.version + '\n')
 } else if (args[0] === 'acp') {
   const { runTuiAcpCommand } = await import('../official/chunks/run-acp-command-HJTGJSHA.js')
-  const { createTuiRuntime, shutdownTuiRuntime } = await import(
-    '../official/chunks/lifecycle-GP7HDNAT.js'
-  )
+  const { createTuiRuntime, shutdownTuiRuntime } =
+    await import('../official/chunks/lifecycle-GP7HDNAT.js')
   const input = new PassThrough()
   const output = new PassThrough()
   let bridge

@@ -44,8 +44,7 @@ async function points(context: ExternalEditContext): Promise<GrokPoint[]> {
   const result: GrokPoint[] = []
   for (const item of body.rewind_points) {
     const point = item as
-      | { prompt_index?: unknown; prompt_preview?: unknown; has_file_changes?: unknown }
-      | undefined
+      { prompt_index?: unknown; prompt_preview?: unknown; has_file_changes?: unknown } | undefined
     if (
       !point ||
       typeof point.prompt_index !== 'number' ||

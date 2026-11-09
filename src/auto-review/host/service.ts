@@ -184,15 +184,7 @@ const ROUTE_FAILURE_TEXT: Readonly<Record<ReviewerRouteDiagnostic, string>> = {
 
 /** The stage a review failed at; used only to pick a fixed reason fragment. */
 type ReviewFailureCategory =
-  | 'facts'
-  | 'route'
-  | 'record'
-  | 'timeout'
-  | 'cancelled'
-  | 'provider'
-  | 'output'
-  | 'gate'
-  | 'stale'
+  'facts' | 'route' | 'record' | 'timeout' | 'cancelled' | 'provider' | 'output' | 'gate' | 'stale'
 
 /** The stage→category mapping for a thrown failure. */
 const STAGE_CATEGORY: Readonly<Record<ReviewStage, ReviewFailureCategory>> = {

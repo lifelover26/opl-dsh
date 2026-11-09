@@ -6,13 +6,7 @@ import { updatePolicy, validUpdatePolicy } from './policy.ts'
 
 /** One foreground request owns the accepted status until it completes or is superseded. */
 export type UpdateOperation =
-  | 'status'
-  | 'check'
-  | 'automatic'
-  | 'policy'
-  | 'prepare'
-  | 'cancel'
-  | 'postpone'
+  'status' | 'check' | 'automatic' | 'policy' | 'prepare' | 'cancel' | 'postpone'
 export type UpdateFailure = `${UpdateOperation}-failed`
 
 /** Accepted Host facts and the current Client request. */
