@@ -35,6 +35,5 @@ console.log(
   JSON.stringify({
     plugin: { path: pluginPath, zod: ownZod },
     official,
-    react: dependency(runtime, 'react'),
   }),
 )
