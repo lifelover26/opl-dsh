@@ -1,2 +1,5 @@
 # Unified diff blank context lines retain their required space prefix.
 scripts/codex-candidate/patches/*.patch whitespace=-blank-at-eol
+
+# Typert emits LF on every platform; keep generated contracts byte-stable.
+src/generated/* text eol=lf
