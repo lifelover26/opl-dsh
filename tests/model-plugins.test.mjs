@@ -67,6 +67,84 @@ test('a verified archive can be reused without a download', async () => {
   })
 })
 
+for (const status of [502, 503, 504])
+  test(`HTTP ${status} uses the same GitHub asset once and verifies its archive`, async () => {
+    await profile({}, async (dir) => {
+      const requests = []
+      let cancelled = false
+      const archive = await prepareModelPlugin({
+        dir,
+        plugin: fixturePlugin,
+        fetchImpl: async (url, options) => {
+          requests.push({ url, options })
+          if (requests.length === 1)
+            return new Response(
+              new ReadableStream({
+                cancel() {
+                  cancelled = true
+                },
+              }),
+              { status },
+            )
+          assert.equal(cancelled, true)
+          assert.equal(url, fixturePlugin.assetSource)
+          assert.equal(options.headers.Accept, 'application/octet-stream')
+          assert.equal(options.signal, requests[0].options.signal)
+          return new Response(archiveBytes)
+        },
+      })
+      assert.deepEqual(
+        requests.map(({ url }) => url),
+        [fixturePlugin.source, fixturePlugin.assetSource],
+      )
+      assert.deepEqual(await readFile(archive), archiveBytes)
+    })
+  })
+
+for (const status of [403, 404])
+  test(`HTTP ${status} is rejected without changing the download route`, async () => {
+    await profile({}, async (dir) => {
+      const requests = []
+      await assert.rejects(
+        prepareModelPlugin({
+          dir,
+          plugin: fixturePlugin,
+          fetchImpl: async (url) => {
+            requests.push(url)
+            return new Response('unavailable', { status })
+          },
+        }),
+        new RegExp(`HTTP ${status}`),
+      )
+      assert.deepEqual(requests, [fixturePlugin.source])
+    })
+  })
+
+test('a corrupt archive from the GitHub asset route never reaches the installer', async () => {
+  await profile({}, async (dir) => {
+    const requests = []
+    await assert.rejects(
+      installModelPlugins({
+        dir,
+        plugins: [fixturePlugin],
+        fetchImpl: async (url) => {
+          requests.push(url)
+          return requests.length === 1
+            ? new Response('unavailable', { status: 504 })
+            : new Response('wrong archive')
+        },
+        install: async () => assert.fail('corrupt recovery archive must not be installed'),
+      }),
+      /归档校验失败/,
+    )
+    assert.deepEqual(requests, [fixturePlugin.source, fixturePlugin.assetSource])
+    await assert.rejects(
+      readFile(join(dir, 'vendor', `${fixturePlugin.name}-${fixturePlugin.version}.tgz`)),
+      { code: 'ENOENT' },
+    )
+  })
+})
+
 test('a changed cached archive is retained and rejected before installation', async () => {
   await profile({}, async (dir) => {
     const archive = await prepareModelPlugin({
@@ -98,14 +176,24 @@ for (const response of [
 ])
   test(`${response.name} leaves the profile unchanged and never invokes the manager`, async () => {
     await profile({ dependencies: { 'user-plugin': '1.0.0' } }, async (dir) => {
+      const requests = []
       await assert.rejects(
         installModelPlugins({
           dir,
           plugins: [fixturePlugin],
-          fetchImpl: async () => response.create(),
+          fetchImpl: async (url) => {
+            requests.push(url)
+            return response.create()
+          },
           install: async () => assert.fail('invalid archive must not reach the manager'),
         }),
         response.error,
+      )
+      assert.deepEqual(
+        requests,
+        response.name === 'failed download'
+          ? [fixturePlugin.source, fixturePlugin.assetSource]
+          : [fixturePlugin.source],
       )
       assert.deepEqual(JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')), {
         dependencies: { 'user-plugin': '1.0.0' },
