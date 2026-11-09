@@ -48,6 +48,7 @@ test('tarball checksum and contents bind the installer to an external plugin', a
   assert.equal(original.name, 'dsh-superagent')
   assert.equal(original.peerDependencies['@deepseek-ai/dsh-session'], '0.2.2-rc.1')
   assert.equal(original.dependencies['proper-lockfile'], '4.1.2')
+  assert.equal(original.dependencies.zod, '4.6.7')
   const originalClient = await readFile(
     new URL('superagent-package/package/lib/client.js', output),
     'utf8',

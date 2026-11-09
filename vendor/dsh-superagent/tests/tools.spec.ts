@@ -17,6 +17,19 @@ const words = (count: number) => Array.from({ length: count }, () => 'word').joi
 const read = (resource: string, page: { offset?: number; limit?: number } = {}) =>
   h.runTool(h.runtime.masterId, 'orchestrator_read', { resource, ...page })
 
+it.each([21, 20_000])('rejects %i routing decisions before inspecting their contents', async (length) => {
+  const inspect = vi.fn(() => { throw new Error('oversized decisions must not be inspected') })
+  const decisions = Array.from({ length }, () => 0)
+  Object.defineProperty(decisions, 0, { get: inspect })
+  const decide = vi.spyOn(h.runtime.engine, 'decide')
+
+  await expect(h.runTool(h.runtime.masterId, 'orchestrator_route', { decisions })).rejects.toMatchObject({
+    issues: [{ code: 'too_big', path: ['decisions'], maximum: 20 }],
+  })
+  expect(inspect).not.toHaveBeenCalled()
+  expect(decide).not.toHaveBeenCalled()
+})
+
 it('reads the lists, a ticket, a decision, the settings, the prompts and the models as resources', async () => {
   const { ticket, trigger } = await h.acceptedTicket(feishu('1', '@bot 修一下回归'))
   await h.acceptedTicket(feishu('2', '@bot 再修一个'))
