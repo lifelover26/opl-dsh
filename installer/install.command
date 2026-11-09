@@ -9,7 +9,7 @@ APP="$APPS/DeepSeek Harness.app"
 if [[ "$(uname -s)" != Darwin || "$(uname -m)" != arm64 ]]; then
   echo '此安装器支持 Apple Silicon Mac。'; exit 1
 fi
-mkdir -p "$ROOT/cache" "$APPS"
+mkdir -p "$ROOT/cache" "$ROOT/runtime" "$APPS"
 LOCK="$ROOT/install.lock"
 if ! mkdir "$LOCK" 2>/dev/null; then
   OWNER_PID="$(cat "$LOCK/pid" 2>/dev/null || true)"
