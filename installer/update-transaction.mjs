@@ -1,5 +1,5 @@
 /** Serialize Suite launches and one durable, independently owned enhancement update. */
-import { open, readFile, lstat, mkdir, rename, unlink, rm } from 'node:fs/promises'
+import { open, readFile, lstat, mkdir, rename, unlink, rm, link } from 'node:fs/promises'
 import { join, resolve, isAbsolute } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
@@ -60,7 +60,9 @@ async function json(path, optional = false) {
 }
 
 async function write(path, value, exclusive = false) {
-  const temporary = exclusive ? path : `${path}.${randomUUID()}.tmp`
+  // Readers must only see complete records. A hard link publishes the fully
+  // written same-directory temporary file atomically without replacing an owner.
+  const temporary = `${path}.${randomUUID()}.tmp`
   let handle
   try {
     handle = await open(temporary, 'wx', 0o600)
@@ -68,10 +70,11 @@ async function write(path, value, exclusive = false) {
     await handle.sync()
     await handle.close()
     handle = undefined
-    if (!exclusive) await rename(temporary, path)
+    if (exclusive) await link(temporary, path)
+    else await rename(temporary, path)
   } finally {
     await handle?.close()
-    if (!exclusive) await rm(temporary, { force: true })
+    await rm(temporary, { force: true })
   }
 }
 
