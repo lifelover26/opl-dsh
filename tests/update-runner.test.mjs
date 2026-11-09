@@ -1,7 +1,16 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdtemp, mkdir, readFile, writeFile, rm, cp, unlink, lstat } from 'node:fs/promises'
+import fsPromises, {
+  mkdtemp,
+  mkdir,
+  readFile,
+  writeFile,
+  rm,
+  cp,
+  unlink,
+  lstat,
+} from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createServer } from 'node:http'
@@ -300,6 +309,56 @@ test('simultaneous verified requests create one transaction', async (t) => {
   assert.equal(results.find((row) => row.status === 'rejected').reason.code, 'update-in-progress')
   const lease = results.find((row) => row.status === 'fulfilled').value
   await finishUpdateTransaction(value.root, lease, { stage: 'cancelled' })
+})
+
+test('a competing request never observes a partially written Suite gate', async (t) => {
+  const value = await fixture(t)
+  const gate = join(value.root, 'enhancement-suite-gate.lock')
+  const entered = Promise.withResolvers(),
+    resume = Promise.withResolvers()
+  const originalOpen = fsPromises.open
+  let paused = false
+  const mocked = t.mock.method(fsPromises, 'open', async (path, ...args) => {
+    const handle = await originalOpen(path, ...args)
+    if (!paused && (path === gate || String(path).startsWith(`${gate}.`))) {
+      paused = true
+      const write = handle.writeFile.bind(handle)
+      handle.writeFile = async (...writeArgs) => {
+        entered.resolve()
+        await resume.promise
+        return write(...writeArgs)
+      }
+    }
+    return handle
+  })
+  syncBuiltinESMExports()
+  const settle = (promise) => Promise.allSettled([promise]).then(([result]) => result)
+  let first, second
+  try {
+    first = settle(value.prepare())
+    await entered.promise
+    second = await settle(value.prepare())
+  } finally {
+    resume.resolve()
+    mocked.mock.restore()
+    syncBuiltinESMExports()
+  }
+  const results = [await first, second]
+  assert.equal(results.filter((row) => row.status === 'fulfilled').length, 1)
+  const rejection = results.find((row) => row.status === 'rejected').reason
+  assert.equal(rejection.code, 'update-in-progress', rejection.stack)
+  const lease = results.find((row) => row.status === 'fulfilled').value
+  await finishUpdateTransaction(value.root, lease, { stage: 'cancelled' })
+})
+
+test('an existing malformed Suite gate is preserved instead of reclaimed', async (t) => {
+  const value = await fixture(t)
+  const gate = join(value.root, 'enhancement-suite-gate.lock')
+  const incomplete = '{"id":'
+  await writeFile(gate, incomplete)
+  await assert.rejects(value.prepare(), SyntaxError)
+  assert.equal(await readFile(gate, 'utf8'), incomplete)
+  assert.equal(await readUpdateTransaction(value.root), null)
 })
 
 test('handoff is claimed once and an obsolete owner cannot finish it', async (t) => {
