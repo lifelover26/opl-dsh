@@ -60,6 +60,7 @@ jobs:
         run: |
           node node_modules/vitest/vitest.mjs run tests/execution/harness-registry.spec.ts -t "probes a cmd shim"
           node --test tests/native-bridge.test.mjs tests/windows-acl.test.mjs tests/windows-official-installer.test.mjs
+          node --test tests/update-runner.test.mjs
       - name: Download verified official desktop and run isolated qualification
         run: node scripts/qualify-official-runtime.mjs --download --evidence dist/official-qualification.json
       - uses: actions/upload-artifact@v7
