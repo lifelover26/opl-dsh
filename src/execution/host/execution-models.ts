@@ -29,7 +29,12 @@ import {
   officialOpenCodeModel,
   OFM_INACTIVE_DEFAULT_HARNESSES,
 } from './ofm-source/selection-policy.ts'
-import { OFM_PROVIDER, OFM_PROVIDERS, isExcludedOfmModel } from './ofm-source/provider.ts'
+import {
+  OFM_PROVIDER,
+  OFM_PROVIDERS,
+  isExcludedOfmModel,
+  isOfmVirtualModelId,
+} from './ofm-source/provider.ts'
 import { ofmModelReadiness, type OfmModelReadiness } from './ofm-source/readiness.ts'
 import { BAMBOO_STARTLUX_MODEL } from './adapters/bamboo.ts'
 import { JEV_DECISION_MODEL, JEV_TYPESAFE_MODEL } from './adapters/jev.ts'
@@ -224,8 +229,10 @@ export class ExecutionModelResolver {
       ? new Set(
           rawCatalog.flatMap((entry) => {
             if (entry === null || typeof entry !== 'object' || !('id' in entry)) return []
+            if ('channel' in entry && (entry as { channel?: unknown }).channel === 'combo')
+              return []
             const id = (entry as { id?: unknown }).id
-            return typeof id === 'string' && id ? [id] : []
+            return typeof id === 'string' && id && !isOfmVirtualModelId(id) ? [id] : []
           }),
         )
       : undefined
@@ -282,7 +289,8 @@ export class ExecutionModelResolver {
       for (const entry of rawCatalog) {
         if (entry === null || typeof entry !== 'object' || !('id' in entry)) continue
         const id = (entry as { id?: unknown }).id
-        if (typeof id !== 'string' || !id) continue
+        if (typeof id !== 'string' || !id || isOfmVirtualModelId(id)) continue
+        if ('channel' in entry && (entry as { channel?: unknown }).channel === 'combo') continue
         const ref = { provider: OFM_PROVIDER, model: id }
         if (isHiddenOfmSelection(ref) || isRetiredModel(ref)) continue
         const readiness = ofmModelReadiness(rawSummary, ref, automaticHarness(ref) !== 'dsh')

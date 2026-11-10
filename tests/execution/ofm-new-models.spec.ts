@@ -31,6 +31,7 @@ const lanes = [
   ['inclusionai/ling-3.1-flash-1019-free', 'kilo', 'Kilo Ling 3.1 Flash 1019'],
   ['stealth/crouton-alpha', 'kilo', 'Kilo Crouton Alpha'],
   ['liquid/lfm-3-1.7b:free', 'kilo', 'Kilo LFM3-1.7B'],
+  ['thinkingmachines/inkling-2-small:free', 'kilo', 'Kilo Inkling 2 Small'],
 ] as const
 const ref = (model: string) => ({ provider: 'our-free-model', model })
 const record = { modelRef: ref(VIBE_MODEL), sandbox: 'full-access' } as HarnessSession
@@ -121,6 +122,7 @@ describe('new OFM channel pairings', () => {
     ['inclusionai/ling-3.1-flash-1019-free', buildKiloRouteConfig, 'oplkilo'],
     ['stealth/crouton-alpha', buildKiloRouteConfig, 'oplkilo'],
     ['liquid/lfm-3-1.7b:free', buildKiloRouteConfig, 'oplkilo'],
+    ['thinkingmachines/inkling-2-small:free', buildKiloRouteConfig, 'oplkilo'],
   ] as const)(
     'writes the exact %s model and its owning relay into CLI config',
     (model, build, provider) => {

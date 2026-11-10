@@ -5,7 +5,7 @@ const { createRequire } = require('node:module')
 const { mkdirSync, writeFileSync, readFileSync, existsSync } = require('node:fs')
 const { installModelPlugins, preserveModelPlugins } = require('./model-plugins.cjs')
 const { officialPnpm } = require('./official-pnpm.cjs')
-const [application, home, archive, companion] = process.argv.slice(2)
+const [application, home, archive, companion, ...flags] = process.argv.slice(2)
 const officialBundles = [
   '@deepseek-ai/dsh-experimental-agent-team-profile',
   '@deepseek-ai/dsh-experimental-auto-review',
@@ -59,8 +59,36 @@ async function main() {
     )
     if (result.exitCode !== 0) throw new Error('Plugin installation failed')
   }
+  const restoreBundles = async (bundles) => {
+    const { withFileLock } = await load('@deepseek-ai/dsh-atomic-write')
+    const { stopped } = require('./ofm-owner.cjs')
+    await withFileLock(
+      join(dir, 'package.json'),
+      async () => {
+        await stopped(dir)
+        const manifest = boot.readProfileManifest('dsh', dir)
+        boot.writeProfileBundles(dir, manifest, bundles)
+      },
+      { waitMs: 1000 },
+    )
+  }
+  if ([archive, companion, ...flags].includes('--ofm-upgrade')) {
+    // Register the independent OFM directory through the official profile operations.
+    const { MODEL_PLUGINS } = require('./model-plugins.cjs')
+    const { migrateOfmLink } = require('./ofm-upgrade.cjs')
+    const result = await migrateOfmLink({ dir, install, restoreBundles, plugin: MODEL_PLUGINS[0] })
+    process.stdout.write(JSON.stringify(result) + '\n')
+    return
+  }
   await preserveModelPlugins({ dir, install: () => install(['add', resolve(archive)]) })
-  await installModelPlugins({ dir, install })
+  await installModelPlugins({ dir, install, restoreBundles })
+  const { releaseOfmManaged } = require('./ofm-owner.cjs')
+  await releaseOfmManaged({
+    dir,
+    home,
+    installAnchor: requireRuntime.resolve('@deepseek-ai/dsh/package.json'),
+    load,
+  })
   if (companion) await install(['add', resolve(companion)])
   // Select the shipped official layers once. Their plugin-manager switches own
   // later enablement; a suite repair must not undo the person's disabled choice.

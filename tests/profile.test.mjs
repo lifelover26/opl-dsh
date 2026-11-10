@@ -5,10 +5,12 @@ import { promisify } from 'node:util'
 import { mkdtemp, mkdir, readFile, writeFile, copyFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { createRequire } from 'node:module'
 
 const run = promisify(execFile)
 const installer = fileURLToPath(new URL('../installer/profile.cjs', import.meta.url))
+const require = createRequire(import.meta.url)
 const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
 const teamBundle = '@deepseek-ai/dsh-experimental-agent-team-profile'
 const autoReviewBundle = '@deepseek-ai/dsh-experimental-auto-review'
@@ -29,6 +31,10 @@ async function runtime(t, owner, existing, { disableAndReinstall = false, teamVe
   await mkdir(payload)
   await writeFile(join(runtime, 'package.json'), '{"type":"module"}\n')
   await copyFile(installer, join(payload, 'profile.cjs'))
+  await copyFile(
+    fileURLToPath(new URL('../installer/ofm-owner.cjs', import.meta.url)),
+    join(payload, 'ofm-owner.cjs'),
+  )
   await writeFile(
     join(payload, 'model-plugins.cjs'),
     'exports.preserveModelPlugins = ({ install }) => install();\n' +
@@ -44,6 +50,12 @@ async function runtime(t, owner, existing, { disableAndReinstall = false, teamVe
     )
     await writeFile(join(dir, 'index.mjs'), source)
   }
+  for (const name of ['@deepseek-ai/cordis-plugin-include', 'yaml', 'js-yaml'])
+    await module(
+      name,
+      './index.mjs',
+      `export * from ${JSON.stringify(pathToFileURL(require.resolve(name)).href)};\n`,
+    )
   const template = `export const PROFILE_TEMPLATES = { web: { bundles: ${JSON.stringify(bundles)} } };\n`
   await module(
     '@deepseek-ai/dsh-app-boot',

@@ -196,9 +196,15 @@ describe('Kilo 声明面', () => {
       'stealth/glyph-cluster',
       'stealth/crouton-alpha',
       'liquid/lfm-3-1.7b:free',
+      'thinkingmachines/inkling-2-small:free',
       'kilo-auto/free',
+      'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
       'nvidia/nemotron-3-super-120b-a12b:free',
       'nvidia/nemotron-3.5-super-vl:free',
+      'nvidia/nemotron-3.5-lightning:free',
+      'cohere/north-mini-code:free',
+      'nvidia/nemotron-3-ultra-550b-a55b:free',
+      'openrouter/free',
       'reflection/beam-free',
       'xingchen-agi/xing4.0-29b-a4b:free',
       'recursive/flint-v1.0:free',
@@ -208,10 +214,16 @@ describe('Kilo 声明面', () => {
     expect(new Set(KILO_OFM_MODELS).size).toBe(KILO_OFM_MODELS.length)
     expect(KILO_OFM_MODELS).toContain('stealth/glyph-cluster')
     expect(KILO_OFM_MODELS).toContain('liquid/lfm-3-1.7b:free')
+    expect(KILO_OFM_MODELS).toContain('thinkingmachines/inkling-2-small:free')
     // free/auto 路由条目按路由条目保留，不被替换成某个具体底层模型。
     expect(KILO_OFM_MODELS).toContain('kilo-auto/free')
     expect(KILO_OFM_MODELS).toContain('nvidia/nemotron-3-super-120b-a12b:free')
+    expect(KILO_OFM_MODELS).toContain('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free')
     expect(KILO_OFM_MODELS).toContain('nvidia/nemotron-3.5-super-vl:free')
+    expect(KILO_OFM_MODELS).toContain('nvidia/nemotron-3.5-lightning:free')
+    expect(KILO_OFM_MODELS).toContain('cohere/north-mini-code:free')
+    expect(KILO_OFM_MODELS).toContain('nvidia/nemotron-3-ultra-550b-a55b:free')
+    expect(KILO_OFM_MODELS).toContain('openrouter/free')
     expect(KILO_OFM_MODELS).toContain('reflection/beam-free')
     expect(KILO_OFM_MODELS).toContain('xingchen-agi/xing4.0-29b-a4b:free')
     expect(KILO_OFM_MODELS).toContain('recursive/flint-v1.0:free')

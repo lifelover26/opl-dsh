@@ -83,7 +83,10 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'muse-spark-1.3-contributor-free',
     'ling-3.1-flash-free',
     'inclusionai/ling-3.1-flash',
+    'longcat-2.5-free',
     'longcat-2.5-preview-free',
+    'iceman-free',
+    'inkling-2-small-free',
     'cohere/north-mini-code:free',
     'nemotron-3.5-lightning-free',
     'nvidia/nemotron-3.5-lightning:free',
@@ -119,9 +122,15 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'stealth/glyph-cluster',
     'stealth/crouton-alpha',
     'liquid/lfm-3-1.7b:free',
+    'thinkingmachines/inkling-2-small:free',
     'kilo-auto/free',
+    'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
     'nvidia/nemotron-3-super-120b-a12b:free',
     'nvidia/nemotron-3.5-super-vl:free',
+    'nvidia/nemotron-3.5-lightning:free',
+    'cohere/north-mini-code:free',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
+    'openrouter/free',
     'reflection/beam-free',
     'xingchen-agi/xing4.0-29b-a4b:free',
     'recursive/flint-v1.0:free',
@@ -144,6 +153,16 @@ export function isExcludedOfmModel(model: string): boolean {
 /** Whether a model reference belongs to an OFM route that is excluded from DSH. */
 export function isExcludedOfmRef(ref: ModelRef): boolean {
   return OFM_PROVIDERS.includes(ref.provider) && isExcludedOfmModel(ref.model)
+}
+
+/** Virtual OFM combos are routing definitions, not models that a Harness can run. */
+export function isOfmVirtualModelId(model: string): boolean {
+  return typeof model === 'string' && model.startsWith('combo:')
+}
+
+/** Whether an OFM reference points at a virtual combo rather than a model lane. */
+export function isOfmVirtualRef(ref: ModelRef): boolean {
+  return OFM_PROVIDERS.includes(ref.provider) && isOfmVirtualModelId(ref.model)
 }
 
 /**

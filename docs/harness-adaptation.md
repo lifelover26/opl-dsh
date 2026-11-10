@@ -42,6 +42,7 @@ OFM 来源统一使用 `Our Free Model` 写法，区域渠道保留 `region-limi
 | Kilo Ling 3.1 Flash 1019（inclusionai/ling-3.1-flash-1019-free）                                                              | Kilo Code，经 OFM 转发          | Chat      |
 | Kilo Crouton Alpha（stealth/crouton-alpha）                                                                                  | Kilo Code，经 OFM 转发          | Chat      |
 | Kilo LFM3-1.7B（liquid/lfm-3-1.7b:free）                                                                                     | Kilo Code，经 OFM 转发          | Chat      |
+| Kilo Inkling 2 Small（thinkingmachines/inkling-2-small:free） | Kilo Code，经 OFM 转发 | Chat |
 | Flint 40B Free（flint-40b-free）                                                                                              | OpenCode，经 OFM 转发           | Chat      |
 | GPT-OSS 20B                                                                                                                   | Codex CLI                       | Responses |
 | Kilo Step 5 Preview（stepfun/step-5-preview-free）                                                                            | StepCode                        | Chat      |
@@ -54,7 +55,7 @@ OFM 来源统一使用 `Our Free Model` 写法，区域渠道保留 `region-limi
 
 OFM 的 Kilo 目录对 `liquid/lfm-3-1.7b:free` 声明 `low`、`medium`、`high` 三档推理强度，默认 `high`，且不提供关闭思考。当前 OPL 适配使用的官方 Kilo ACP 自定义 provider 没有可写的 effort 配置项，因此不把来源档位伪装成 Kilo 选项；显式档位请求会在发送前拒绝，未指定档位时保留上游默认设置。
 
-EAC 的 `opencode/nemotron-3.5-lightning-free`、`opencode/nemotron-3.5-super-vl-free` 和 `opencode/flint-40b-free` 保留完整 ID，使用 OFM 转发，不改成裸 ID 的 OpenCode 直连通道。Pi 的 `thinkingmachines/inkling:free` 与已有的 `thinkingmachines/inkling-small:free` 分开配置；`google/gemma-4-31b-it:free` 不提供推理档位菜单。EAC 的 `deepseek-ai/deepseek-v4.1-flash` 在新模型发现中推荐 DSH；其他未知模型不会因此变成推荐项，组合仍需用户选择添加。
+EAC 的 `opencode/nemotron-3.5-lightning-free`、`opencode/nemotron-3.5-super-vl-free` 和 `opencode/flint-40b-free` 保留完整 ID，使用 OFM 转发，不改成裸 ID 的 OpenCode 直连通道。Pi 的 `thinkingmachines/inkling:free` 与已有的 `thinkingmachines/inkling-small:free` 分开配置；Kilo 的 `thinkingmachines/inkling-2-small:free` 是独立的 Kilo Gateway 免费路由；`google/gemma-4-31b-it:free` 不提供推理档位菜单。EAC 的 `deepseek-ai/deepseek-v4.1-flash` 在新模型发现中推荐 DSH；其他未知模型不会因此变成推荐项，组合仍需用户选择添加。
 
 “OFM 新模型发现”只展示来源当前目录中的模型，不因本地保留了旧组合而补入下架条目。仍启用的旧组合在“已启用的组合”提示“目录已移除”，取消启用后不再展示；内部配置保留，不删除历史会话。模型重新上架后可再次选择添加，但不会自动恢复已取消的选择。目录读取失败只标记状态未确认，不认定模型已下架。
 

@@ -179,6 +179,8 @@ for (const file of [
   'install.mjs',
   'profile.cjs',
   'model-plugins.cjs',
+  'ofm-upgrade.cjs',
+  'ofm-owner.cjs',
   'kimi-cu.mjs',
   'kimi-cu-windows.mjs',
   'official-pnpm.cjs',

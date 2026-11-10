@@ -311,7 +311,14 @@ describe('OpenCode 声明面', () => {
     // The OpenCode free-directory lanes this round could pair, each as the exact bare id
     // the directory publishes. `nemotron-3.5-super-vl-free` stays distinct from the
     // provider-qualified `nvidia/nemotron-3.5-super-vl:free` twin asserted above.
-    for (const model of ['beam-free', 'nemotron-3.5-super-vl-free', 'glm-5.3-flash-free']) {
+    for (const model of [
+      'beam-free',
+      'nemotron-3.5-super-vl-free',
+      'glm-5.3-flash-free',
+      'longcat-2.5-free',
+      'iceman-free',
+      'inkling-2-small-free',
+    ]) {
       expect(OPENCODE_OFM_MODELS).toContain(model)
       const ref = { provider: OPENCODE_OFM_PROVIDER, model }
       expect(isOpenCodeModel(ref)).toBe(true)
@@ -764,6 +771,9 @@ describe('OpenCode shell 绑定', () => {
 it.each([
   'nemotron-3.5-lightning-free',
   'longcat-2.5-preview-free',
+  'longcat-2.5-free',
+  'iceman-free',
+  'inkling-2-small-free',
   'beam-free',
   'nemotron-3.5-super-vl-free',
   'glm-5.3-flash-free',

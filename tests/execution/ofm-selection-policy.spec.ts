@@ -39,7 +39,14 @@ const workspace = async () => {
  * The OpenCode free-directory lanes this round could pair: each is published by the owning
  * OFM plugin's live free lane, so an exact `our-free-model` combination exists to bind.
  */
-const NEW_OPENCODE_FREE_LANES = ['beam-free', 'nemotron-3.5-super-vl-free', 'glm-5.3-flash-free']
+const NEW_OPENCODE_FREE_LANES = [
+  'beam-free',
+  'nemotron-3.5-super-vl-free',
+  'glm-5.3-flash-free',
+  'longcat-2.5-free',
+  'iceman-free',
+  'inkling-2-small-free',
+]
 
 const BIG_PICKLE = { provider: 'our-free-model', model: 'big-pickle' } as const
 const BIG_PICKLE_AUTO = 'auto:["our-free-model","big-pickle"]'
@@ -491,6 +498,13 @@ it('routes only lanes the OpenCode adapter itself declares, and keeps them in th
   for (const model of NEW_OPENCODE_FREE_LANES) expect(OPENCODE_OFM_MODELS).toContain(model)
 })
 
+it('does not treat the OFM recommended combo as a model lane', () => {
+  const ref = { provider: 'our-free-model', model: 'combo:recommended-free' }
+  expect(isHiddenOfmSelection(ref)).toBe(true)
+  expect(officialOpenCodeModel(ref)).toBeUndefined()
+  expect(OPENCODE_OFM_MODELS).not.toContain(ref.model)
+})
+
 it('never routes or re-admits an excluded lane through the free-provider mapping', () => {
   for (const model of ['jev-1.13-free', 'nvidia/nemotron-3.5-content-safety:free']) {
     expect(officialOpenCodeModel({ provider: 'our-free-model', model })).toBeUndefined()
@@ -890,6 +904,36 @@ it('projects a newly discovered OFM model into recommendations and selection nam
       modelRef: ref,
       name: 'Kilo Nemotron 3 Super',
       status: { kind: 'recommended', harness: 'kilo', label: '推荐 Kilo Code' },
+    }),
+  )
+})
+
+it('recommends Kilo for the distinct Inkling 2 Small OFM lane', async () => {
+  const catalog = defaultExecutionCatalog()
+  const ref = { provider: 'our-free-model', model: 'thinkingmachines/inkling-2-small:free' }
+  const resolver = new ExecutionModelResolver(
+    {
+      get: () => undefined,
+      llm: {
+        listProviders: () => [{ id: 'our-free-model', name: 'OFM' }],
+        listConfigurableProviders: () => [],
+        listModels: async () => [],
+      },
+    } as never,
+    { get: async () => catalog } as never,
+    undefined,
+    async () => ({
+      catalog: [{ id: ref.model, name: 'Kilo Inkling 2 Small', route: ref.provider }],
+      settings: { enabled: true, forward: { enabled: true, running: true } },
+    }),
+  )
+
+  const resolved = await resolver.resolve()
+  expect(resolved.recommendations).toContainEqual(
+    expect.objectContaining({
+      modelRef: ref,
+      harnessRef: 'kilo',
+      name: 'Kilo Inkling 2 Small + Kilo Code',
     }),
   )
 })

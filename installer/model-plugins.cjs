@@ -1,12 +1,10 @@
-/** Install upstream model plugins once; their own managers retain update ownership. */
+/** Install the official model plugin through the Desktop's package manager. */
 const {
   existsSync,
   readFileSync,
-  mkdtempSync,
   mkdirSync,
   writeFileSync,
   renameSync,
-  cpSync,
   rmSync,
 } = require('node:fs')
 const { join } = require('node:path')
@@ -15,22 +13,29 @@ const { createHash, randomUUID } = require('node:crypto')
 const MODEL_PLUGINS = [
   {
     name: 'dsh-our-free-model',
-    version: '2.8.0',
+    version: '2.8.3',
     source:
-      'https://github.com/Ebony-Vinyl/dsh-our-free-model/releases/download/v2.8.0/dsh-our-free-model-2.8.0.tgz',
+      'https://github.com/Ebony-Vinyl/dsh-our-free-model/releases/download/v2.8.3/dsh-our-free-model-2.8.3.tgz',
     assetSource:
-      'https://api.github.com/repos/Ebony-Vinyl/dsh-our-free-model/releases/assets/697326242',
-    sha256: '2dc255aeddd46d1f37ed53916ab0cbfe2081412ace8ae3d2c59b38b9b78eba3b',
+      'https://api.github.com/repos/Ebony-Vinyl/dsh-our-free-model/releases/assets/723134923',
+    sha256: '8685535a657693d2d524673d6fa1d13146faa724490359aa85753269b13da60a',
+    sha512:
+      '0b3d66e9813889b01d23bb99cbd7aad0c34bf2ec0c096c48d4aba3f278f5c8f9a1f253aa40492520762c0cd7e720f47b491db694bfb29e1eb1a70a7b12c4ec74',
   },
 ]
 
 /** Keep a verified original release archive in the profile for later repair. */
 async function prepareModelPlugin({ dir, plugin, fetchImpl = fetch }) {
   const archive = join(dir, 'vendor', `${plugin.name}-${plugin.version}.tgz`)
-  const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
-  if (existsSync(archive)) {
-    if (digest(readFileSync(archive)) !== plugin.sha256)
+  const digest = (bytes, algorithm) => createHash(algorithm).update(bytes).digest('hex')
+  const verify = (bytes) => {
+    if (digest(bytes, 'sha256') !== plugin.sha256)
       throw Error(`模型插件归档校验失败：${plugin.name}`)
+    if (plugin.sha512 !== undefined && digest(bytes, 'sha512') !== plugin.sha512)
+      throw Error(`模型插件归档校验失败：${plugin.name}`)
+  }
+  if (existsSync(archive)) {
+    verify(readFileSync(archive))
     return archive
   }
   const signal = AbortSignal.timeout(120_000)
@@ -46,7 +51,7 @@ async function prepareModelPlugin({ dir, plugin, fetchImpl = fetch }) {
   }
   if (!response.ok) throw Error(`模型插件下载失败：${plugin.name}（HTTP ${response.status}）`)
   const bytes = Buffer.from(await response.arrayBuffer())
-  if (digest(bytes) !== plugin.sha256) throw Error(`模型插件归档校验失败：${plugin.name}`)
+  verify(bytes)
   mkdirSync(join(dir, 'vendor'), { recursive: true, mode: 0o700 })
   const temporary = `${archive}.${randomUUID()}`
   try {
@@ -58,43 +63,34 @@ async function prepareModelPlugin({ dir, plugin, fetchImpl = fetch }) {
   return archive
 }
 
-async function installModelPlugins({ dir, install, plugins = MODEL_PLUGINS, fetchImpl = fetch }) {
+async function installModelPlugins({
+  dir,
+  install,
+  plugins = MODEL_PLUGINS,
+  fetchImpl = fetch,
+  restoreBundles,
+}) {
   for (const plugin of plugins) {
-    const profile = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
-    if (Object.hasOwn(profile.dependencies ?? {}, plugin.name)) {
-      // Preserve user versions, sources and disabled bundles. Repair a missing
-      // installation from the existing manifest/lock rather than choosing a version.
-      if (!existsSync(join(dir, 'node_modules', plugin.name, 'package.json')))
-        await install(['install'])
+    if (plugin.name === 'dsh-our-free-model') {
+      await require('./ofm-upgrade.cjs').migrateOfmLink({
+        dir,
+        install,
+        plugin,
+        fetchImpl,
+        restoreBundles,
+      })
       continue
     }
+    const profile = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+    if (Object.hasOwn(profile.dependencies ?? {}, plugin.name)) continue
     const archive = await prepareModelPlugin({ dir, plugin, fetchImpl })
     await install(['add', archive])
   }
 }
 
-/** pnpm may re-extract unchanged tarball dependencies when updating another package. */
+/** Reconcile OPL dependencies without replacing OFM's profile-local link target. */
 async function preserveModelPlugins({ dir, install }) {
-  const retained = MODEL_PLUGINS.filter((plugin) =>
-    existsSync(join(dir, 'node_modules', plugin.name, 'package.json')),
-  )
-  if (!retained.length) return install()
-  const backup = mkdtempSync(join(dir, '.opl-model-plugins-'))
-  for (const plugin of retained)
-    cpSync(join(dir, 'node_modules', plugin.name), join(backup, plugin.name), { recursive: true })
-  try {
-    return await install()
-  } finally {
-    // The profile is stopped. Restore all original bytes, including files added
-    // by an upstream update; source/version selection remains in the profile.
-    // A failed restore retains the complete backup instead of deleting recovery.
-    for (const plugin of retained) {
-      const installed = join(dir, 'node_modules', plugin.name)
-      rmSync(installed, { recursive: true, force: true })
-      cpSync(join(backup, plugin.name), installed, { recursive: true })
-    }
-    rmSync(backup, { recursive: true })
-  }
+  return install()
 }
 
 module.exports = { MODEL_PLUGINS, prepareModelPlugin, installModelPlugins, preserveModelPlugins }

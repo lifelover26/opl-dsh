@@ -101,7 +101,7 @@ describe('user model choices', () => {
     catalog.combinations.push({
       id: 'user-default',
       name: 'My route',
-      modelRef: { provider: 'our-free-model', model: 'combo:my-route' },
+      modelRef: { provider: 'our-free-model', model: 'plugin-model' },
       harnessRef: 'dsh',
       permissionPolicy: 'workspace',
       isDefault: true,
@@ -124,13 +124,19 @@ describe('user model choices', () => {
     for (const provider of providers)
       for (const model of models) {
         const ref = { provider: provider.id, model }
-        expect(
-          projected.models.find((item) => JSON.stringify(item.ref) === JSON.stringify(ref)),
-        ).toMatchObject({ ref, available: true, source: provider.name })
+        const projectedModel = projected.models.find(
+          (item) => JSON.stringify(item.ref) === JSON.stringify(ref),
+        )
+        if (
+          ['our-free-model', 'our-free-model-region'].includes(provider.id) &&
+          model === 'combo:my-route'
+        )
+          expect(projectedModel).toBeUndefined()
+        else expect(projectedModel).toMatchObject({ ref, available: true, source: provider.name })
         const combinations = projected.combinations.filter(
           (item) => JSON.stringify(item.modelRef) === JSON.stringify(ref),
         )
-        if (provider.id === 'our-free-model' && model === 'combo:my-route')
+        if (provider.id === 'our-free-model' && model === 'plugin-model')
           expect(combinations).toHaveLength(1)
         else expect(combinations).toEqual([])
       }

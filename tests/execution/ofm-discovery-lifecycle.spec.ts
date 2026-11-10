@@ -60,6 +60,37 @@ it('a fresh installation does not discover removed models from adapter declarati
   }
 })
 
+it('does not expose an OFM virtual combo as a model or new-model discovery entry', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'opl-ofm-combo-'))
+  roots.push(root)
+  const ref = { provider: 'our-free-model', model: 'deepseek-v4.1-flash-free' }
+  const ctx = {
+    get: () => undefined,
+    llm: {
+      listProviders: () => [{ id: 'our-free-model', name: 'OFM' }],
+      listConfigurableProviders: () => [],
+      listModels: async () => [{ id: 'combo:recommended-free' }, { id: ref.model }],
+    },
+  }
+  const store = new ExecutionCatalogStore(root)
+  try {
+    const catalog = await new ExecutionModelResolver(ctx as never, store, undefined, async () => ({
+      catalog: [
+        { id: 'combo:recommended-free', channel: 'combo' },
+        { id: ref.model, route: 'our-free-model' },
+      ],
+      settings: { enabled: true, forward: { enabled: true, running: true } },
+      membership: { main: [ref.model] },
+    })).resolve()
+    expect(catalog.models.some((item) => item.ref.model === 'combo:recommended-free')).toBe(false)
+    expect(
+      catalog.ofmDiscovery?.some((item) => item.modelRef.model === 'combo:recommended-free'),
+    ).toBe(false)
+  } finally {
+    await store.dispose()
+  }
+})
+
 it.each([true, false])(
   'keeps an enabled saved missing model in combinations alone when OFM enabled is %s',
   async (enabled) => {

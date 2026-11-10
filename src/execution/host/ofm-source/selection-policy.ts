@@ -1,6 +1,6 @@
 /** Picker policy for OFM lanes rejected by their required official client. */
 import type { ModelRef } from '../../contracts/catalog.ts'
-import { OFM_PROVIDER, OFM_PROVIDERS, isExcludedOfmModel } from './provider.ts'
+import { OFM_PROVIDER, OFM_PROVIDERS, isExcludedOfmModel, isOfmVirtualModelId } from './provider.ts'
 
 /** OFM lanes still absent or incomplete in the official OpenCode directory. */
 export const OFM_CLIENT_REJECTED_MODELS: readonly string[] = [
@@ -12,7 +12,9 @@ export const OFM_CLIENT_REJECTED_MODELS: readonly string[] = [
 export function isHiddenOfmSelection(ref: ModelRef): boolean {
   return (
     OFM_PROVIDERS.includes(ref.provider) &&
-    (isExcludedOfmModel(ref.model) || OFM_CLIENT_REJECTED_MODELS.includes(ref.model))
+    (isExcludedOfmModel(ref.model) ||
+      isOfmVirtualModelId(ref.model) ||
+      OFM_CLIENT_REJECTED_MODELS.includes(ref.model))
   )
 }
 
@@ -44,8 +46,11 @@ export const OFM_OPENCODE_OFFICIAL_FREE_MODELS: readonly string[] = [
   'cat-jam-free',
   'mimo-v2.6-flash-free',
   'muse-spark-1.3-contributor-free',
+  'longcat-2.5-free',
   'nemotron-3.5-lightning-free',
   'longcat-2.5-preview-free',
+  'iceman-free',
+  'inkling-2-small-free',
   'deepseek-v4.1-flash-free',
   'space-bunny-free',
   'minimax-m3.1-flash-free',

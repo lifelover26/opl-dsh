@@ -25,30 +25,8 @@ const archiveBytes = Buffer.from('verified upstream archive')
 const fixturePlugin = {
   ...MODEL_PLUGINS[0],
   sha256: createHash('sha256').update(archiveBytes).digest('hex'),
+  sha512: createHash('sha512').update(archiveBytes).digest('hex'),
 }
-
-test('first installation delegates the verified complete archive to the official manager', async () => {
-  await profile({ dependencies: { 'user-plugin': '1.0.0' } }, async (dir) => {
-    const calls = []
-    const requests = []
-    await installModelPlugins({
-      dir,
-      plugins: [fixturePlugin],
-      fetchImpl: async (url) => {
-        requests.push(url)
-        return new Response(archiveBytes)
-      },
-      install: async (args) => calls.push(args),
-    })
-    const archive = join(dir, 'vendor', `${fixturePlugin.name}-${fixturePlugin.version}.tgz`)
-    assert.deepEqual(requests, [fixturePlugin.source])
-    assert.deepEqual(calls, [['add', archive]])
-    assert.deepEqual(await readFile(archive), archiveBytes)
-    assert.deepEqual(JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')), {
-      dependencies: { 'user-plugin': '1.0.0' },
-    })
-  })
-})
 
 test('a verified archive can be reused without a download', async () => {
   await profile({}, async (dir) => {
@@ -236,30 +214,36 @@ test('repair restores the existing profile instead of replacing the upstream dep
   })
 })
 
-for (const failed of [false, true])
-  test(`OPL package installation preserves self-updated plugin bytes after ${failed ? 'failure' : 'success'}`, async () => {
-    await profile({ dependencies: { 'dsh-our-free-model': 'original-source' } }, async (dir) => {
-      const installed = join(dir, 'node_modules/dsh-our-free-model')
-      await mkdir(installed, { recursive: true })
-      await writeFile(join(installed, 'package.json'), '{"version":"3.0.0"}')
-      await writeFile(join(installed, 'upstream-new-file.js'), 'original upstream bytes')
-      const result = preserveModelPlugins({
-        dir,
-        install: async () => {
-          await rm(installed, { recursive: true })
-          await mkdir(installed)
-          await writeFile(join(installed, 'package.json'), '{"version":"2.1.0"}')
-          await writeFile(join(installed, 'old-version-file.js'), 'old bytes')
-          if (failed) throw Error('pnpm failed')
-        },
-      })
-      if (failed) await assert.rejects(result, /pnpm failed/)
-      else await result
-      assert.equal(await readFile(join(installed, 'package.json'), 'utf8'), '{"version":"3.0.0"}')
-      assert.equal(
-        await readFile(join(installed, 'upstream-new-file.js'), 'utf8'),
-        'original upstream bytes',
-      )
-      await assert.rejects(readFile(join(installed, 'old-version-file.js')), { code: 'ENOENT' })
-    })
+test('OPL package installation delegates without rewriting package-manager-owned bytes', async () => {
+  await profile({ dependencies: { 'dsh-our-free-model': 'original-source' } }, async (dir) => {
+    const installed = join(dir, 'node_modules/dsh-our-free-model')
+    await mkdir(installed, { recursive: true })
+    await writeFile(join(installed, 'package.json'), '{"version":"3.0.0"}')
+    const calls = []
+    await preserveModelPlugins({ dir, install: async (args) => calls.push(args) })
+    assert.deepEqual(calls, [undefined])
+    assert.equal(await readFile(join(installed, 'package.json'), 'utf8'), '{"version":"3.0.0"}')
   })
+})
+
+async function ownedOfm(
+  dir,
+  { version = '2.8.0', sourceVersion = version, enabled = true, source, archive = true } = {},
+) {
+  const path = join(dir, 'vendor', `dsh-our-free-model-${sourceVersion}.tgz`)
+  await mkdir(join(dir, 'vendor'), { recursive: true })
+  if (archive) await writeFile(path, 'retained old release archive')
+  await mkdir(join(dir, 'node_modules/dsh-our-free-model'), { recursive: true })
+  await writeFile(
+    join(dir, 'node_modules/dsh-our-free-model/package.json'),
+    JSON.stringify({ name: 'dsh-our-free-model', version }),
+  )
+  const manifest = {
+    dependencies: {
+      'dsh-our-free-model': source ?? `file:${path.split(String.fromCharCode(92)).join('/')}`,
+    },
+    dsh: { profile: { bundles: enabled ? ['dsh-our-free-model'] : [] } },
+  }
+  await writeFile(join(dir, 'package.json'), JSON.stringify(manifest))
+  return manifest
+}

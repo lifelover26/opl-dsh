@@ -39,6 +39,9 @@ export function isRetiredModel(ref: ModelRef): boolean {
 export function displayModelName(ref: ModelRef, name?: string): string {
   const id = ref.model.includes('::') ? ref.model.slice(ref.model.lastIndexOf('::') + 2) : ref.model
   if (ref.provider === 'our-free-model') {
+    if (id === 'longcat-2.5-free') return 'LongCat 2.5 Free'
+    if (id === 'iceman-free') return 'Iceman Free'
+    if (id === 'inkling-2-small-free') return 'Inkling 2 Small Free'
     if (id === 'opencode/nemotron-3.5-lightning-free') return 'EAC Nemotron 3.5 Lightning Free'
     if (id === 'opencode/nemotron-3.5-super-vl-free') return 'EAC Nemotron 3.5 Super VL Free'
     if (id === 'opencode/flint-40b-free') return 'EAC Flint 40B Free'
@@ -50,9 +53,16 @@ export function displayModelName(ref: ModelRef, name?: string): string {
     if (id === 'inclusionai/ling-3.1-flash-1019-free') return 'Kilo Ling 3.1 Flash 1019'
     if (id === 'stealth/crouton-alpha') return 'Kilo Crouton Alpha'
     if (id === 'liquid/lfm-3-1.7b:free') return 'Kilo LFM3-1.7B'
+    if (id === 'thinkingmachines/inkling-2-small:free') return 'Kilo Inkling 2 Small'
     if (id === 'minimax-m3.1-flash-free') return 'MiniMax M3.1 Flash Free'
     if (id === 'minimax/minimax-m3.1-flash:free') return 'Kilo MiniMax M3.1 Flash'
     if (id === 'nvidia/nemotron-3-super-120b-a12b:free') return 'Kilo Nemotron 3 Super'
+    if (id === 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free')
+      return 'Kilo Nemotron 3 Nano Omni'
+    if (id === 'nvidia/nemotron-3.5-lightning:free') return 'Kilo Nemotron 3.5 Lightning'
+    if (id === 'cohere/north-mini-code:free') return 'Kilo North Mini Code'
+    if (id === 'nvidia/nemotron-3-ultra-550b-a55b:free') return 'Kilo Nemotron 3 Ultra'
+    if (id === 'openrouter/free') return 'Kilo OpenRouter Free'
     if (id === 'flint-40b-free') return 'Flint 40B Free'
     if (id === 'recursive/flint-v1.0:free') return 'Flint v1.0 Free'
   }

@@ -184,6 +184,12 @@ export async function verifyModelPlugins({ root, origin, cookie, wire, harness }
       ),
       'A generic model was presented as an automatic official pairing: ' + model,
     )
+  assert(
+    !catalog.models.some(
+      (model) => model.ref.provider === 'our-free-model' && model.ref.model === combo,
+    ),
+    'Virtual OFM route was presented as an executable model',
+  )
   const manual = structuredClone(catalog)
   for (const model of [MODEL_PLUGIN_FIXTURE, combo])
     manual.combinations.push({
@@ -199,7 +205,13 @@ export async function verifyModelPlugins({ root, origin, cookie, wire, harness }
     })
   await harness('save-catalog', { catalog: manual })
   const reloaded = await harness('catalog')
-  for (const model of [MODEL_PLUGIN_FIXTURE, combo]) {
+  assert(
+    !reloaded.combinations.some(
+      (item) => item.modelRef.provider === 'our-free-model' && item.modelRef.model === combo,
+    ),
+    'Manually saved virtual OFM route was admitted as an executable combination',
+  )
+  for (const model of [MODEL_PLUGIN_FIXTURE]) {
     const combination = reloaded.combinations.find(
       (item) => item.modelRef.provider === 'our-free-model' && item.modelRef.model === model,
     )
@@ -262,7 +274,7 @@ export async function verifyModelPlugins({ root, origin, cookie, wire, harness }
     accountChannelProviders: channelProviders,
     removedAccountChannelProviders: removedChannelProviders,
     nativeModel: true,
-    virtualModel: true,
+    virtualModelExcluded: true,
     manualPairings: true,
     officialToolFlow: true,
   }
