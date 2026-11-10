@@ -42,6 +42,13 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
     ],
   },
   {
+    id: 'antigravity',
+    officialModels: [
+      { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' },
+      { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
+    ],
+  },
+  {
     id: 'minimax-code',
     officialModels: [
       { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash' },

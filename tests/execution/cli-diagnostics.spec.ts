@@ -9,7 +9,7 @@ import {
   harnessVersion,
   inspectHarness,
 } from '../../src/execution/host/harness-registry.ts'
-import { maintainHarness } from '../../src/execution/host/harness-maintenance.ts'
+import { maintenancePlan } from '../../src/execution/host/harness-maintenance.ts'
 
 const temporaryRoot = tmpdir()
 const roots: string[] = []
@@ -30,6 +30,8 @@ async function isolatedWindows() {
   vi.stubEnv('USERPROFILE', root)
   vi.stubEnv('APPDATA', roaming)
   vi.stubEnv('LOCALAPPDATA', local)
+  vi.stubEnv('ProgramFiles', join(root, 'Program Files'))
+  vi.stubEnv('ProgramW6432', join(root, 'Program Files'))
   vi.stubEnv('npm_config_prefix', join(root, 'Unused npm prefix'))
   const nativeRoot = join(local, 'OpenAI', 'Codex', 'bin')
   return { root, roaming, local, nativeRoot }
@@ -187,20 +189,21 @@ describe.runIf(process.platform === 'win32')('Windows CLI discovery without npm'
     expect(await executablePath(selected.command, 'codex')).toBe(process.execPath)
   })
 
-  it('reports a missing installer dependency before starting an npm installation', async () => {
+  it('uses the standalone Codex installer when npm is unavailable', async () => {
     const fixture = await isolatedWindows()
     expect(await executablePath('npm')).toBeUndefined()
-    await expect(
-      maintainHarness({
-        id: 'codex',
-        name: 'Codex CLI',
-        installed: false,
-        runnable: false,
-        instructions: '',
-        website: '',
-        maintenanceAction: 'install',
-      }),
-    ).rejects.toThrow('安装依赖检查（尚未启动安装）')
+    const plan = maintenancePlan({
+      id: 'codex',
+      name: 'Codex CLI',
+      installed: false,
+      runnable: false,
+      instructions: '',
+      website: '',
+      maintenanceAction: 'install',
+    })
+    expect(plan.command).toBe('powershell.exe')
+    expect(plan.args.join(' ')).toContain('https://chatgpt.com/codex/install.ps1')
+    expect(plan.environment).toEqual({ CODEX_NON_INTERACTIVE: '1' })
     const cli = await npmStyleCodex(fixture.roaming)
     const item = await inspectHarness(definition, fixture.root)
     expect(item).toMatchObject({ path: cli.command, verification: 'verified' })

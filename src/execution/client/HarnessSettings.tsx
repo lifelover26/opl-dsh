@@ -60,6 +60,7 @@ export function HarnessSettings({ call, embedded = false }: { call: Call; embedd
               {item.error}
             </p>
           )}
+          {item.instructions && <p className={css.muted}>{item.instructions}</p>}
           {item.installed && (
             <p className={css.muted}>
               {item.runnable
@@ -120,7 +121,7 @@ export function HarnessSettings({ call, embedded = false }: { call: Call; embedd
               {item.maintenance?.state === 'running'
                 ? '正在安装或更新…'
                 : item.maintenanceAction === 'install'
-                  ? '安装最新版'
+                  ? '使用官方安装器'
                   : '检查并更新'}
             </Button>
           )}

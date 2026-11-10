@@ -274,8 +274,8 @@ export class ExecutionCatalogStore {
    * Clean obsolete combination rows against the latest catalog, retaining its launch settings.
    *
    * `stale` is supplied by the model resolver for automatic rows whose default Harness has
-   * changed. It is evaluated against the persisted rows only; a user-created combination is
-   * never auto-removed because its id never starts with the generated `auto:` prefix.
+   * changed or for an explicitly retired route. It is evaluated against persisted rows only;
+   * user-created combinations are otherwise retained.
    */
   async cleanLegacyCombinations(stale: (item: CombinationDefinition) => boolean = () => false) {
     await this.ready

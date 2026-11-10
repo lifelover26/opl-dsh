@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import { resolveGatewayExecution } from '../../src/gateway/host/execution-access.ts'
+import {
+  resolveGatewayExecution,
+  resolveGatewayGeminiExecution,
+} from '../../src/gateway/host/execution-access.ts'
 
 function fixture(models: unknown[] = [{ id: 'custom' }]) {
   const profile = {
@@ -28,6 +31,70 @@ function fixture(models: unknown[] = [{ id: 'custom' }]) {
 }
 
 describe('Gateway route metadata for external engines', () => {
+  it('uses the Gemini group credential and its declared native endpoint independently of Chat', async () => {
+    const resolve = vi.fn(async () => ({ value: 'native-fixture-key' }))
+    const ctx = { get: () => undefined, credentials: { resolve } } as unknown as Context
+    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' }
+    expect(await resolveGatewayGeminiExecution(ctx, ref)).toMatchObject({
+      baseURL: 'https://gateway.medopl.com',
+      api: 'gemini-native',
+      model: 'gemini-4-argon',
+      credential: 'OPL_GATEWAY_GEMINI_API_KEY',
+      apiKey: 'native-fixture-key',
+    })
+    expect(resolve).toHaveBeenCalledExactlyOnceWith('OPL_GATEWAY_GEMINI_API_KEY')
+    expect((await resolveGatewayExecution(ctx, ref)).api).toBe('openai-completions')
+  })
+
+  it('refuses unknown native routes and custom Chat addresses without rewriting them', async () => {
+    const f = fixture()
+    await expect(
+      resolveGatewayGeminiExecution(f.ctx, {
+        provider: 'opl-gateway',
+        model: 'gemini::gemini-3.1-pro',
+      }),
+    ).rejects.toThrow('尚未适配')
+    const ctx = {
+      get: (name: string) =>
+        name === 'settings'
+          ? {
+              describe: () => [
+                {
+                  ns: 'llm-pi-ai',
+                  value: {
+                    providers: {
+                      'opl-gateway-gemini': {
+                        api: 'openai-completions',
+                        baseURL: 'https://custom.invalid/v1',
+                      },
+                    },
+                  },
+                },
+              ],
+            }
+          : undefined,
+      credentials: { resolve: vi.fn(async () => ({ value: 'synthetic' })) },
+    } as unknown as Context
+    await expect(
+      resolveGatewayGeminiExecution(ctx, {
+        provider: 'opl-gateway',
+        model: 'gemini::gemini-4-argon',
+      }),
+    ).rejects.toThrow('自定义 Gemini 地址')
+  })
+
+  it('passes only the exact source model capacity to external accounting', async () => {
+    const f = fixture([{ id: 'custom', input: ['text'], contextWindow: 1_000_000 }])
+    expect(
+      await resolveGatewayExecution(f.ctx, { provider: 'opl-gateway', model: 'aws::custom' }),
+    ).toMatchObject({ contextWindow: 1_000_000 })
+    f.profile.models = [{ id: 'custom', input: ['text'], contextWindow: -1 }]
+    expect(
+      (await resolveGatewayExecution(f.ctx, { provider: 'opl-gateway', model: 'aws::custom' }))
+        .contextWindow,
+    ).toBeUndefined()
+  })
+
   it('uses the configured endpoint and credential and preserves an explicit text-only choice', async () => {
     const f = fixture([{ id: 'custom', input: ['text'] }])
     Object.assign(f.profile, { defaultInput: ['text', 'image'] })

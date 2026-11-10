@@ -38,6 +38,19 @@ const hostBuild = await bundle({
   outfile: join(output, 'package/lib/index.js'),
 })
 await buildNativeBridge(root, output)
+for (const [entry, name] of [
+  ['bridge-entry', 'antigravity-bridge'],
+  ['shell-hook', 'antigravity-shell-hook'],
+]) {
+  await bundle({
+    entryPoints: [join(root, `src/execution/host/adapters/antigravity/${entry}.ts`)],
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    target: 'node24',
+    outfile: join(output, `package/lib/${name}.mjs`),
+  })
+}
 for (const [directory, name] of [
   ['step', 'step-bridge'],
   ['pi', 'pi-bridge'],

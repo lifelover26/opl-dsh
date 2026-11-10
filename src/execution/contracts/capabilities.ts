@@ -2,7 +2,7 @@
 export interface HarnessCapabilities {
   transport: 'dsh' | 'acp' | 'app-server' | 'official-sdk'
   authentication: 'dsh-provider' | 'api-source' | 'official-account'
-  protocols: ('responses' | 'messages' | 'chat')[]
+  protocols: ('responses' | 'messages' | 'chat' | 'gemini-native')[]
   customEndpoint: boolean
   permissions: ('read-only' | 'workspace' | 'full-access')[]
   sessionLoad: boolean

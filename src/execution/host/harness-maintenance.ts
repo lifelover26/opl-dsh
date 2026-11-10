@@ -27,6 +27,8 @@ export function maintenanceEnvironment(): NodeJS.ProcessEnv {
       'SystemRoot',
       'ComSpec',
       'PATHEXT',
+      'PROCESSOR_ARCHITECTURE',
+      'PROCESSOR_ARCHITEW6432',
       'TEMP',
       'TMP',
       'TMPDIR',
@@ -62,9 +64,18 @@ export interface MaintenancePlan {
   command: string
   args: string[]
   npmGlobal?: boolean
+  /** Environment values required by the official installer, such as a pinned release. */
+  environment?: Record<string, string>
+  /** Version proven by this plan to remain compatible with the adapter. */
+  expectedVersion?: string
 }
 
-function downloadAndRun(url: string, scriptArgs: string[] = []): MaintenancePlan {
+function downloadAndRun(
+  url: string,
+  scriptArgs: string[] = [],
+  environment?: Record<string, string>,
+  expectedVersion?: string,
+): MaintenancePlan {
   if (process.platform === 'win32')
     return {
       command: 'powershell.exe',
@@ -74,25 +85,53 @@ function downloadAndRun(url: string, scriptArgs: string[] = []): MaintenancePlan
         '-ExecutionPolicy',
         'Bypass',
         '-Command',
-        `& ([scriptblock]::Create((Invoke-RestMethod -Uri '${url}')))`,
+        `$ErrorActionPreference = 'Stop'; [Console]::OutputEncoding = $OutputEncoding = [System.Text.UTF8Encoding]::new($false); & ([scriptblock]::Create((Invoke-RestMethod -Uri '${url}')))`,
       ],
+      ...(environment ? { environment } : {}),
+      ...(expectedVersion ? { expectedVersion } : {}),
     }
-  const suffix = scriptArgs.length > 0 ? ' ' + scriptArgs.join(' ') : ''
+  const suffix = scriptArgs.length > 0 ? ' ' + scriptArgs.map(quoteForShell).join(' ') : ''
   return {
-    command: '/bin/sh',
+    // Kimi Code and MiniMax Code publish Bash installers. Invoking them through
+    // `/bin/sh` works on macOS by accident and fails on dash-based Linux desktops.
+    command: 'bash',
     args: [
       '-c',
-      `set -eu; tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT; curl --fail --silent --show-error --location '${url}' -o "$tmp"; sh "$tmp"${suffix}`,
+      `set -eu; tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT; curl --fail --silent --show-error --location '${url}' -o "$tmp"; bash "$tmp"${suffix}`,
     ],
+    ...(environment ? { environment } : {}),
+    ...(expectedVersion ? { expectedVersion } : {}),
   }
 }
 
-function npmGlobalInstall(packageName: string, extra: string[] = []): MaintenancePlan {
+function npmGlobalInstall(
+  packageName: string,
+  extra: string[] = [],
+  expectedVersion?: string,
+): MaintenancePlan {
   return {
     command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
     args: ['install', '--global', packageName, ...extra],
     npmGlobal: true,
+    ...(expectedVersion ? { expectedVersion } : {}),
   }
+}
+
+/**
+ * The ACP adapters are measured against these exact official releases. A newer npm
+ * package is not silently treated as compatible merely because it still has a CLI
+ * with the same name.
+ */
+const PINNED_COMPATIBLE_RELEASES = {
+  'kimi-code': '2.1.1',
+  opencode: '1.19.0',
+  kilo: '7.8.8',
+  pi: '1.2.0',
+} as const
+
+/** Quote fixed installer arguments before they enter the Bash command string. */
+function quoteForShell(argument: string): string {
+  return `'${argument.replace(/'/g, `'\\''`)}'`
 }
 
 export function maintenancePlan(item: HarnessInstallation): MaintenancePlan {
@@ -104,23 +143,25 @@ export function maintenancePlan(item: HarnessInstallation): MaintenancePlan {
   )
     return { command: item.path, args: ['update'] }
   if (item.maintenanceAction === 'install' && item.id === 'codex')
-    return npmGlobalInstall('@openai/codex@latest')
+    return downloadAndRun(
+      process.platform === 'win32'
+        ? 'https://chatgpt.com/codex/install.ps1'
+        : 'https://chatgpt.com/codex/install.sh',
+      [],
+      { CODEX_NON_INTERACTIVE: '1' },
+    )
+  if (item.maintenanceAction === 'install' && item.id === 'antigravity')
+    return downloadAndRun(
+      process.platform === 'win32'
+        ? 'https://antigravity.google/cli/install.ps1'
+        : 'https://antigravity.google/cli/install.sh',
+    )
   if (item.maintenanceAction === 'install' && item.id === 'claude')
-    return process.platform === 'win32'
-      ? {
-          command: 'powershell.exe',
-          args: [
-            '-NoProfile',
-            '-NonInteractive',
-            '-ExecutionPolicy',
-            'Bypass',
-            '-Command',
-            "& ([scriptblock]::Create((Invoke-RestMethod -Uri 'https://claude.ai/install.ps1')))",
-          ],
-        }
-      : {
-          ...downloadAndRun('https://claude.ai/install.sh'),
-        }
+    return downloadAndRun(
+      process.platform === 'win32'
+        ? 'https://claude.ai/install.ps1'
+        : 'https://claude.ai/install.sh',
+    )
   if (['install', 'update'].includes(item.maintenanceAction) && item.id === 'minimax-code')
     return downloadAndRun(
       process.platform === 'win32'
@@ -141,13 +182,32 @@ export function maintenancePlan(item: HarnessInstallation): MaintenancePlan {
         : 'https://static-openapi.stepfun.com/stepcode/install.sh',
     )
   if (['install', 'update'].includes(item.maintenanceAction) && item.id === 'opencode')
-    return npmGlobalInstall('opencode-ai')
+    return npmGlobalInstall(
+      `opencode-ai@${PINNED_COMPATIBLE_RELEASES.opencode}`,
+      [],
+      PINNED_COMPATIBLE_RELEASES.opencode,
+    )
   if (['install', 'update'].includes(item.maintenanceAction) && item.id === 'kilo')
-    return npmGlobalInstall('@kilocode/cli')
+    return npmGlobalInstall(
+      `@kilocode/cli@${PINNED_COMPATIBLE_RELEASES.kilo}`,
+      [],
+      PINNED_COMPATIBLE_RELEASES.kilo,
+    )
   if (['install', 'update'].includes(item.maintenanceAction) && item.id === 'kimi-code')
-    return npmGlobalInstall('@moonshot-ai/kimi-code')
+    return downloadAndRun(
+      process.platform === 'win32'
+        ? 'https://code.kimi.com/kimi-code/install.ps1'
+        : 'https://code.kimi.com/kimi-code/install.sh',
+      [],
+      { KIMI_VERSION: PINNED_COMPATIBLE_RELEASES['kimi-code'] },
+      PINNED_COMPATIBLE_RELEASES['kimi-code'],
+    )
   if (['install', 'update'].includes(item.maintenanceAction) && item.id === 'pi')
-    return npmGlobalInstall('@earendil-works/pi-coding-agent', ['--ignore-scripts'])
+    return npmGlobalInstall(
+      `@earendil-works/pi-coding-agent@${PINNED_COMPATIBLE_RELEASES.pi}`,
+      ['--ignore-scripts'],
+      PINNED_COMPATIBLE_RELEASES.pi,
+    )
   throw Error('此 Harness 没有自动更新入口')
 }
 export interface MaintenanceResult {
@@ -162,8 +222,10 @@ export async function maintainHarness(
   item: HarnessInstallation,
   proxy?: HarnessProxy,
 ): Promise<MaintenanceResult> {
-  const plan = maintenancePlan(item),
-    env = harnessProxyEnvironment(maintenanceEnvironment(), proxy)
+  const plan = maintenancePlan(item)
+  const installerEnv = maintenanceEnvironment()
+  if (plan.environment) Object.assign(installerEnv, plan.environment)
+  const env = harnessProxyEnvironment(installerEnv, proxy)
   if (item.path) env.PATH = [dirname(item.path), env.PATH].join(delimiter)
   let command = plan.command
   let installRoots: string[] | undefined
@@ -203,9 +265,10 @@ export async function maintainHarness(
     pending.child.stdin?.end()
     const { stdout, stderr } = await pending
     const expectedVersion =
-      item.id === 'claude'
+      plan.expectedVersion ??
+      (item.id === 'claude'
         ? stdout.match(/Successfully updated from \S+ to version (\d+\.\d+\.\d+)/)?.[1]
-        : undefined
+        : undefined)
     if (installRoots) rememberHarnessInstallRoots(installRoots)
     return {
       command,

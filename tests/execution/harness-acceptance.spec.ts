@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { HarnessAcceptance } from '../../src/execution/host/harness-acceptance.ts'
 import { codexAdapter } from '../../src/execution/host/adapters/codex.ts'
+import type { HarnessAdapter } from '../../src/execution/host/adapters/types.ts'
 import type { HarnessSession } from '../../src/execution/contracts/sessions.ts'
 function setup() {
   const request = vi.fn(async (method: string) =>
@@ -18,6 +19,57 @@ function setup() {
   return { runner, request }
 }
 describe('shared Harness acceptance steps', () => {
+  it.each(['new', 'load'])(
+    'authenticates before %s and verifies the configured model',
+    async (operation) => {
+      const request = vi.fn(async (method: string) =>
+        method === 'initialize'
+          ? { agentCapabilities: { loadSession: true }, authMethods: [{ id: 'gemini-api-key' }] }
+          : method === 'authenticate'
+            ? {}
+            : { sessionId: 'native-one', models: { currentModelId: 'vendor-default' } },
+      )
+      const adapter: HarnessAdapter = {
+        ...codexAdapter,
+        authenticate: async (acp) => {
+          await acp.request('authenticate', { methodId: 'gemini-api-key' })
+        },
+        configureSession: async () => ({ modelId: 'gemini-4-argon', configOptions: [] }),
+        verifySession: vi.fn(),
+      }
+      const runner = new HarnessAcceptance(
+        { request },
+        adapter,
+        { cwd: '/owned' } as HarnessSession,
+        'gemini-4-argon',
+      )
+      await expect(runner.open(operation === 'load' ? 'native-one' : undefined)).resolves.toBe(
+        'native-one',
+      )
+      expect(request.mock.calls.map(([method]) => method)).toEqual([
+        'initialize',
+        'authenticate',
+        `session/${operation}`,
+      ])
+      expect(adapter.verifySession).toHaveBeenCalled()
+    },
+  )
+  it('refuses a configuration that did not confirm the selected model', async () => {
+    const { request } = setup()
+    const adapter: HarnessAdapter = {
+      ...codexAdapter,
+      configureSession: async () => ({ modelId: 'other' }),
+    }
+    const runner = new HarnessAcceptance(
+      { request },
+      adapter,
+      { cwd: '/owned' } as HarnessSession,
+      'gpt-6',
+    )
+    await expect(runner.open()).rejects.toThrow('回读')
+    await expect(runner.probe('probe', async () => true)).rejects.toThrow('未就绪')
+    expect(request.mock.calls.some(([method]) => method === 'session/prompt')).toBe(false)
+  })
   it('requires completed tools and independently checked artifacts, rather than assistant claims', async () => {
     const { runner, request } = setup()
     await runner.open()

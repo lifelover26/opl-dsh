@@ -19,17 +19,22 @@ const route: ExternalModelRoute = {
 }
 
 describe('OpenCode OPL Gateway Gemini pairing', () => {
-  it('matches only the three exact Gateway Gemini model references', () => {
+  it('matches only the two supported Gateway Gemini model references', () => {
     const supported: ModelRef[] = [
       { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
       { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' },
-      { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' },
     ]
     for (const ref of supported) {
       expect(isOpenCodeGatewayGeminiModel(ref)).toBe(true)
       expect(adapterFor(OPENCODE_HARNESS, ref)?.id).toBe(OPENCODE_HARNESS)
-      expect(defaultHarness(ref)).toBe('opencode')
+      expect(defaultHarness(ref)).toBe('antigravity')
     }
+    expect(
+      isOpenCodeGatewayGeminiModel({ provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' }),
+    ).toBe(false)
+    expect(
+      adapterFor(OPENCODE_HARNESS, { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' }),
+    ).toBeUndefined()
     expect(
       isOpenCodeGatewayGeminiModel({ provider: 'opl-gateway', model: 'gemini::gemini-3.7-flash' }),
     ).toBe(false)

@@ -45,7 +45,6 @@ export const OPENCODE_GATEWAY_PROVIDER = 'opl-gateway'
 export const OPENCODE_GATEWAY_GEMINI_MODELS: readonly string[] = [
   'gemini-4-argon',
   'gemini-3.8-flash',
-  'gemini-3.1-pro',
 ]
 /**
  * Wire method that selects the model in this CLI.
@@ -120,7 +119,7 @@ export const isOpenCodeModel = (ref: ModelRef): boolean =>
   ref.provider === OPENCODE_OFM_PROVIDER && OPENCODE_OFM_MODELS.includes(ref.model)
 
 /**
- * Match only the three Gemini ids in the OPL Gateway Gemini group.
+ * Match only the supported Gemini ids in the OPL Gateway Gemini group.
  *
  * Gateway references carry the group prefix (`gemini::<id>`); the prefix is
  * resolved by the Gateway execution owner and is never sent to OpenCode.

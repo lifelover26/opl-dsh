@@ -198,7 +198,7 @@ function parseRecord(raw: unknown): HarnessSession {
         (tool: any) =>
           !tool ||
           ['id', 'title', 'status', 'kind'].some((key) => typeof tool[key] !== 'string') ||
-          ['inputJson', 'outputJson', 'contentJson', 'locationsJson'].some(
+          ['inputJson', 'outputJson', 'contentJson', 'locationsJson', 'metadataJson'].some(
             (key) => tool[key] !== undefined && typeof tool[key] !== 'string',
           ),
       )

@@ -301,9 +301,9 @@ describe('official harness shell variables', () => {
 describe('full-access authorization', () => {
   it('covers only the harnesses with a verified official full-access path', async () => {
     const { harnessAllowsFullAccess } = await import('../../src/execution/host/permissions.ts')
-    for (const harness of ['dsh', 'codex', 'claude', 'minimax-code', 'grok-build'])
+    for (const harness of ['dsh', 'codex', 'claude', 'minimax-code', 'grok-build', 'antigravity'])
       expect(harnessAllowsFullAccess(harness)).toBe(true)
-    for (const harness of ['antigravity', 'minimax', 'anything-else'])
+    for (const harness of ['minimax', 'anything-else'])
       expect(harnessAllowsFullAccess(harness)).toBe(false)
   })
 })

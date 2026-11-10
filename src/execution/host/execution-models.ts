@@ -63,13 +63,22 @@ export class ExecutionModelResolver {
       item.modelRef.provider === OFM_PROVIDER &&
       item.modelRef.model === 'nvidia/nemotron-3-super-120b-a12b:free' &&
       item.harnessRef === 'opencode'
+    // Gemini 3.1 Pro was removed from the Gateway OpenCode adapter. Remove the
+    // old persisted pairing so an install cannot keep advertising a route that
+    // the current adapter deliberately refuses.
+    const retiredOpenCodeGeminiRoute = (item: CombinationDefinition) =>
+      item.modelRef.provider === 'opl-gateway' &&
+      item.modelRef.model === 'gemini::gemini-3.1-pro' &&
+      item.harnessRef === 'opencode'
     const staleAutomatic = (item: CombinationDefinition) =>
       item.id.startsWith('auto:') &&
       !userEdited(item) &&
       (officialHarnessFor(item.modelRef) !== item.harnessRef ||
         automaticHarness(item.modelRef) !== item.harnessRef)
-    if (retired.length || legacyDefault || catalog.combinations.some(staleAutomatic)) {
-      catalog = await this.store.cleanLegacyCombinations(staleAutomatic)
+    const stalePersisted = (item: CombinationDefinition) =>
+      staleAutomatic(item) || retiredOpenCodeGeminiRoute(item)
+    if (retired.length || legacyDefault || catalog.combinations.some(stalePersisted)) {
+      catalog = await this.store.cleanLegacyCombinations(stalePersisted)
     }
     if (catalog.combinations.some(legacyNemotronKiloRoute)) {
       catalog = await this.store.set({
@@ -85,7 +94,7 @@ export class ExecutionModelResolver {
         ),
       })
     }
-    catalog.combinations = catalog.combinations.filter((item) => !staleAutomatic(item))
+    catalog.combinations = catalog.combinations.filter((item) => !stalePersisted(item))
     const providers = this.ctx.llm?.listProviders() ?? []
     const configurable = this.ctx.llm?.listConfigurableProviders() ?? []
     const settings = this.ctx.get('settings')
@@ -330,8 +339,17 @@ export class ExecutionModelResolver {
               ref,
               name: displayModelName(ref, model.name),
               source: 'OPL Gateway',
-              available: false,
-              reason: '分组凭据未就绪',
+              available: group.ready,
+              ...(group.ready
+                ? {}
+                : {
+                    reason:
+                      group.state === 'unauthorized'
+                        ? '分组凭据未授权'
+                        : group.state === 'error'
+                          ? '分组状态异常'
+                          : '分组凭据未就绪',
+                  }),
             })
         }
     }
@@ -411,15 +429,20 @@ export class ExecutionModelResolver {
         })
       }
     for (const model of catalog.models) {
+      const official = officialHarnessFor(model.ref)
       const hasDefault = catalog.combinations.some(
         (item) =>
           !isRetiredModel(item.modelRef) &&
           modelRefKey(item.modelRef) === modelRefKey(model.ref) &&
           (item.id === 'auto:' + modelRefKey(model.ref) ||
-            item.autoEnabledDisabled === true ||
+            // An explicit alternative may carry the legacy auto-disabled marker.
+            // It must not suppress the official default for a model that has a
+            // different official Harness. For models without such an official
+            // route, retain the marker's original suppression behavior.
+            (item.autoEnabledDisabled === true &&
+              (official === undefined || item.harnessRef === official)) ||
             (item.enabled && item.isDefault)),
       )
-      const official = officialHarnessFor(model.ref)
       const harnessRef = automaticHarness(model.ref) === official ? official : undefined
       if (!isRetiredModel(model.ref) && model.available && !hasDefault && harnessRef) {
         const harnessName = catalog.harnesses.find((h) => h.id === harnessRef)?.name ?? 'DSH'
@@ -455,15 +478,38 @@ export class ExecutionModelResolver {
     }
     catalog.recommendations = catalog.models.flatMap((model) => {
       const harnessRef = automaticHarness(model.ref)
+      const official = officialHarnessFor(model.ref)
+      const recommendations: Array<{ modelRef: ModelRef; harnessRef: string; name: string }> = []
       if (
-        !model.available ||
-        !harnessRef ||
-        harnessRef === officialHarnessFor(model.ref) ||
-        !catalog.harnesses.some((h) => h.id === harnessRef)
-      )
-        return []
-      const harnessName = catalog.harnesses.find((h) => h.id === harnessRef)!.name
-      return [{ modelRef: model.ref, harnessRef, name: model.name + ' + ' + harnessName }]
+        model.available &&
+        harnessRef &&
+        harnessRef !== official &&
+        catalog.harnesses.some((h) => h.id === harnessRef)
+      ) {
+        const harnessName = catalog.harnesses.find((h) => h.id === harnessRef)!.name
+        recommendations.push({
+          modelRef: model.ref,
+          harnessRef,
+          name: model.name + ' + ' + harnessName,
+        })
+      }
+      // Gemini's native Antigravity route remains the default. OpenCode is a
+      // separately selectable fallback for the same Gateway models; it must
+      // appear as a recommendation without becoming an enabled combination.
+      if (
+        model.available &&
+        official === 'antigravity' &&
+        adapterFor('opencode', model.ref) !== undefined &&
+        catalog.harnesses.some((h) => h.id === 'opencode')
+      ) {
+        const harnessName = catalog.harnesses.find((h) => h.id === 'opencode')!.name
+        recommendations.push({
+          modelRef: model.ref,
+          harnessRef: 'opencode',
+          name: model.name + ' + ' + harnessName + '（备用）',
+        })
+      }
+      return recommendations
     })
     const advertisedOfmModels = new Set(
       providerModels.flat().map((model) => modelRefKey(model.ref)),

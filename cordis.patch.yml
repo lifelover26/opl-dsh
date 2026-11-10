@@ -104,6 +104,21 @@
             input: [text, image]
             contextWindow: 500000
             reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh }
+      opl-gateway-gemini:
+        displayName: OPL Gateway · Gemini
+        api: openai-completions
+        baseURL: https://gateway.medopl.com/v1
+        apiKeyEnv: OPL_GATEWAY_GEMINI_API_KEY
+        models:
+          - id: gemini-4-argon
+            name: Gemini 4 Argon
+            input: [text, image]
+          - id: gemini-3.8-flash
+            name: Gemini 3.8 Flash
+            input: [text, image]
+          - id: gemini-3.1-pro
+            name: Gemini 3.1 Pro
+            input: [text, image]
 - id: ui-settings-general
   config:
     welcomeNoticeVersion: '2026-08-13.1'

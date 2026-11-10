@@ -51,6 +51,7 @@ export class HarnessAcceptance {
     )
     if (resume && object(agent.agentCapabilities).loadSession !== true)
       throw Error('Harness 未广告会话恢复能力')
+    await this.adapter.authenticate?.(this.acp, this.record, agent)
     const session = object(
       await this.acp.request(resume ? 'session/load' : 'session/new', {
         cwd: this.record.cwd,
@@ -61,18 +62,20 @@ export class HarnessAcceptance {
     if (
       typeof session.sessionId !== 'string' ||
       !session.sessionId ||
-      (resume !== undefined && session.sessionId !== resume) ||
-      object(session.models).currentModelId !== this.expectedModel
+      (resume !== undefined && session.sessionId !== resume)
     )
       throw Error('Harness 会话或模型回读不一致')
     this.sessionId = session.sessionId
     this.resumed = resume !== undefined
     this.record.acpSessionId = this.sessionId
-    this.snapshot = { agent, session, configOptions: session.configOptions }
-    const configured = await this.adapter.configureSession?.(this.acp, this.record, this.snapshot)
+    let snapshot = { agent, session, configOptions: session.configOptions }
+    const configured = await this.adapter.configureSession?.(this.acp, this.record, snapshot)
     if (configured && 'configOptions' in configured)
-      this.snapshot = { ...this.snapshot, configOptions: configured.configOptions }
-    this.adapter.verifySession?.(this.record, this.snapshot)
+      snapshot = { ...snapshot, configOptions: configured.configOptions }
+    if ((configured?.modelId ?? object(session.models).currentModelId) !== this.expectedModel)
+      throw Error('Harness 会话或模型回读不一致')
+    this.adapter.verifySession?.(this.record, snapshot)
+    this.snapshot = snapshot
     return this.sessionId
   }
 

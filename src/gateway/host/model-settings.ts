@@ -159,6 +159,32 @@ function providerSettings(
   }
 }
 
+/** Add newly bundled Gemini models only to the canonical OPL Gateway catalog. */
+function addGeminiBundleModels(
+  profile: Record<string, any>,
+  models: readonly ModelDraft[],
+): ModelDraft[] {
+  if (
+    profile.api !== 'openai-completions' ||
+    profile.apiKeyEnv !== 'OPL_GATEWAY_GEMINI_API_KEY' ||
+    profile.defaultInput !== undefined ||
+    !isDefaultGatewayBaseURL(profile.baseURL)
+  )
+    return [...models]
+  const ids = new Set(models.map((model) => model.id))
+  // Existing Gemini routes shipped with these two models. Only that known
+  // canonical catalog receives the new model during upgrade; a user-defined
+  // or partially configured catalog remains untouched.
+  if (
+    models.length !== 2 ||
+    !ids.has('gemini-3.1-pro') ||
+    !ids.has('gemini-3.8-flash') ||
+    ids.has('gemini-4-argon')
+  )
+    return [...models]
+  return [...models, { id: 'gemini-4-argon', name: 'Gemini 4 Argon' }]
+}
+
 /** Add the OPL-owned reviewer without replacing any existing chat provider. */
 export async function ensureAutoReviewProvider(ctx: Context): Promise<void> {
   const settings = modelSettingsService(ctx)
@@ -231,10 +257,16 @@ async function migrateProtocolDefaults(ctx: Context): Promise<void> {
         return entry
       return { ...entry, compat: { ...record(entry.compat), forceAdaptiveThinking: true } }
     })
-    const models = withGatewayModelInputDefaults(group.id, profile, adaptiveModels, {
+    const bundledModels =
+      group.id === 'gemini' ? addGeminiBundleModels(profile, adaptiveModels) : adaptiveModels
+    const models = withGatewayModelInputDefaults(group.id, profile, bundledModels, {
       refreshAutomaticInputs: automaticCatalog,
     })
-    if (models.every((entry, index) => entry === profile.models[index])) continue
+    if (
+      models.length === profile.models.length &&
+      models.every((entry, index) => entry === profile.models[index])
+    )
+      continue
     ops.push({ op: 'set', path: ['providers', group.provider, 'models'], value: models })
     if (automaticCatalog) ownedHashes.push({ group: group.id, models, previous: hashes[group.id] })
   }

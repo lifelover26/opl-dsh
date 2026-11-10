@@ -1606,6 +1606,7 @@ export class HarnessService {
       if (record.acpSessionId && !object(init.agentCapabilities).loadSession)
         throw Error('此 Harness 不支持恢复原生会话')
       active.agentInfo = init
+      await adapter.authenticate?.(acp, record, init)
       const session = object(
         await acp.request(record.acpSessionId ? 'session/load' : 'session/new', {
           ...(record.acpSessionId ? { sessionId: record.acpSessionId } : {}),
@@ -1638,6 +1639,7 @@ export class HarnessService {
       // the pinned values must abort the connection rather than run on other settings.
       active.configOptions = object(session).configOptions
       active.sessionInfo = session
+      let model = object(session.models).currentModelId
       if (adapter.configureSession) {
         const configured = await adapter.configureSession(acp, record, {
           agent: init,
@@ -1646,8 +1648,8 @@ export class HarnessService {
         })
         if (configured && 'configOptions' in configured)
           active.configOptions = configured.configOptions
+        if (configured?.modelId !== undefined) model = configured.modelId
       }
-      const model = object(session.models).currentModelId
       if (model !== undefined && model !== wireModel)
         throw Error('Harness 返回了不同的模型，已停止')
       this.active.set(record.id, active)
@@ -1784,6 +1786,7 @@ export class HarnessService {
         ['rawOutput', 'outputJson'],
         ['content', 'contentJson'],
         ['locations', 'locationsJson'],
+        ['_meta', 'metadataJson'],
       ] as const)
         if (u[wire] !== undefined) tool[field] = JSON.stringify(u[wire])
       if (turn.tools.some((tool) => ['pending', 'in_progress', 'running'].includes(tool.status)))
@@ -2878,6 +2881,11 @@ export class HarnessService {
     }
   }
 
+  /** Antigravity can allocate a fresh first input, but exposes no history rewind API. */
+  private supportsExternalEditing(record: HarnessSession): boolean {
+    return record.harnessRef === 'antigravity' || this.externalDriver(record) !== undefined
+  }
+
   private externalContext(record: HarnessSession, signal: AbortSignal): ExternalEditContext {
     const active = this.active.get(record.id)
     if (!active?.acp || !active.editLaunch) throw Error('外部会话尚未连接')
@@ -3019,7 +3027,7 @@ export class HarnessService {
         pending: false,
         head: -1,
         choices: [],
-        ...(target?.record && this.externalDriver(target.record)
+        ...(target?.record && this.supportsExternalEditing(target.record)
           ? {
               pending:
                 this.externalMessageEdits.pending(input.sessionId) ||
@@ -3030,7 +3038,7 @@ export class HarnessService {
       }
     if (target?.record) await this.finalizing.get(target.record.id)
     const agent = this.ctx.agents.get(session.id)
-    if (target?.record && this.externalDriver(target.record)) {
+    if (target?.record && this.supportsExternalEditing(target.record)) {
       const record = target.record
       const busy =
         agent?.status === 'running' ||
@@ -3085,12 +3093,14 @@ export class HarnessService {
       if (!pending && !terminalEdit) {
         const events = session.snapshotEvents()
         const activeSeqs = new Set<number>(session.surface.nodes)
-        const choices = externalRecordedChoices(record, events, activeSeqs).map(
-          ({ seq, text }) => ({
-            seq,
-            text,
-          }),
-        )
+        const choices = (
+          record.harnessRef === 'antigravity'
+            ? []
+            : externalRecordedChoices(record, events, activeSeqs)
+        ).map(({ seq, text }) => ({
+          seq,
+          text,
+        }))
         const first = externalFreshFirstChoice(record, events, activeSeqs)
         if (first) choices.unshift(first)
         return {
@@ -3304,7 +3314,8 @@ export class HarnessService {
           )
         })
       const driver = this.externalDriver(record)
-      if (!driver || this.externalEditing.has(record.id)) throw Error('此会话暂时不能编辑')
+      if (!this.supportsExternalEditing(record) || this.externalEditing.has(record.id))
+        throw Error('此会话暂时不能编辑')
       if (!state.choices.some((choice) => choice.seq === input.targetSeq))
         throw Error('消息已变化，请重新选择')
       if (
@@ -3339,6 +3350,8 @@ export class HarnessService {
                   new Set<number>(agent.session.surface.nodes),
                 )?.seq === input.targetSeq
               : false
+          if (!driver && !fresh && !emptyChoice && !preparedChoice)
+            throw Error('此执行引擎仅支持编辑首条消息；中途编辑请使用 OpenCode 组合')
           const history =
             emptyChoice || preparedChoice || fresh
               ? undefined
@@ -3399,7 +3412,7 @@ export class HarnessService {
                 )
               : await this.externalMessageEdits.prepare(
                   this.externalContext(record, signal),
-                  driver,
+                  driver!,
                   {
                     requestId: input.prompt.requestId,
                     targetId: choice!.boundaryId,

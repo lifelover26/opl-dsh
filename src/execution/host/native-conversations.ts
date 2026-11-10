@@ -74,6 +74,7 @@ export class NativeHarnessConversations {
       ['rawOutput', 'outputJson'],
       ['content', 'contentJson'],
       ['locations', 'locationsJson'],
+      ['_meta', 'metadataJson'],
     ] as const)
       if (update[wire] !== undefined) tool[field] = JSON.stringify(update[wire])
     if (typeof update.status === 'string') tool.status = update.status

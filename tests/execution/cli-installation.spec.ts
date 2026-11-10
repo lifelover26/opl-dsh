@@ -37,13 +37,14 @@ fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify({ args, interactive: !p
 if (args.join(' ') === 'prefix --global') {
   console.log(${JSON.stringify(prefix)});
 } else if (args[0] === 'install' && args[1] === '--global') {
-  const names = { '@openai/codex@latest': 'codex', '@kilocode/cli': 'kilo', 'opencode-ai': 'opencode', '@moonshot-ai/kimi-code': 'kimi', '@earendil-works/pi-coding-agent': 'pi' };
+  const names = { '@kilocode/cli@7.8.8': 'kilo', 'opencode-ai@1.19.0': 'opencode', '@earendil-works/pi-coding-agent@1.2.0': 'pi' };
   const name = names[args[2]];
   if (!name) process.exit(31);
   if (!${JSON.stringify(options.noLauncher ?? false)}) {
     fs.mkdirSync(${JSON.stringify(globalBin)}, { recursive: true });
     const script = path.join(${JSON.stringify(globalBin)}, name + '.cjs');
-    fs.writeFileSync(script, 'console.log(' + JSON.stringify(${JSON.stringify(options.versionOutput)} ?? (name === 'codex' ? 'codex-cli' : name) + ' 9.9.9') + ')');
+    const version = ${JSON.stringify(options.versionOutput)} ?? (name === 'opencode' ? 'opencode 1.19.0' : name + ' 9.9.9');
+    fs.writeFileSync(script, 'console.log(' + JSON.stringify(version) + ')');
     const command = path.join(${JSON.stringify(globalBin)}, name + (process.platform === 'win32' ? '.cmd' : ''));
     fs.writeFileSync(command, process.platform === 'win32'
       ? '@echo off\\r\\n"' + process.execPath + '" "' + script + '" %*\\r\\n'
@@ -73,7 +74,7 @@ if (args.join(' ') === 'prefix --global') {
   return { root, prefix, globalBin, npm, log }
 }
 
-function missing(id = 'codex'): HarnessInstallation {
+function missing(id = 'opencode'): HarnessInstallation {
   return {
     id,
     name: id,
@@ -87,22 +88,25 @@ function missing(id = 'codex'): HarnessInstallation {
 
 it('verifies a fresh install in the actual npm global prefix with the same npm shim', async () => {
   const fixture = await fakeNpm()
-  const definition = { id: 'codex', name: 'Codex CLI', kind: 'acp' as const, command: 'codex' }
+  const definition = { id: 'opencode', name: 'OpenCode', kind: 'acp' as const, command: 'opencode' }
   const result = await maintainHarness(missing())
   expect(result.command).toBe(fixture.npm)
   expect(result.installRoots).toEqual([fixture.globalBin])
   expect(result.message).toContain('added official fixture package')
   expect(result.message).toContain(fixture.globalBin)
   const fresh = await inspectInstalledHarness(definition, fixture.root, result)
-  const command = join(fixture.globalBin, process.platform === 'win32' ? 'codex.cmd' : 'codex')
+  const command = join(
+    fixture.globalBin,
+    process.platform === 'win32' ? 'opencode.cmd' : 'opencode',
+  )
   expect(fresh).toMatchObject({
     path: command,
     installed: true,
     runnable: true,
     verification: 'verified',
-    version: 'codex-cli 9.9.9',
+    version: 'opencode 1.19.0',
   })
-  expect(await executablePath('codex')).toBe(command)
+  expect(await executablePath('opencode')).toBe(command)
   await inspectHarness(definition, fixture.root)
   await inspectHarness(definition, fixture.root)
   const calls = (await readFile(fixture.log, 'utf8'))
@@ -111,34 +115,93 @@ it('verifies a fresh install in the actual npm global prefix with the same npm s
     .map((line) => JSON.parse(line))
   expect(calls).toEqual([
     { args: ['prefix', '--global'], interactive: false, sensitive: false },
-    { args: ['install', '--global', '@openai/codex@latest'], interactive: false, sensitive: false },
+    { args: ['install', '--global', 'opencode-ai@1.19.0'], interactive: false, sensitive: false },
   ])
+})
+
+it('finds Antigravity in the Windows user-local fallback when LOCALAPPDATA is absent', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'opl-antigravity-path-'))
+  roots.push(root)
+  const bin = join(root, 'AppData', 'Local', 'agy', 'bin')
+  await mkdir(bin, { recursive: true })
+  await writeFile(join(bin, 'agy.cmd'), '@echo off\r\necho 1.5.3\r\n')
+  vi.stubEnv('PATH', '')
+  vi.stubEnv('HOME', root)
+  vi.stubEnv('USERPROFILE', root)
+  vi.stubEnv('APPDATA', join(root, 'AppData', 'Roaming'))
+  vi.stubEnv('LOCALAPPDATA', '')
+
+  const result = await inspectHarness(
+    { id: 'antigravity', name: 'Antigravity CLI', kind: 'acp', command: 'agy' },
+    root,
+    undefined,
+    { fresh: true },
+  )
+  expect(result).toMatchObject({
+    path: join(bin, 'agy.cmd'),
+    detectedBy: 'known-path',
+    installed: true,
+    runnable: true,
+    verification: 'verified',
+    version: '1.5.3',
+  })
+})
+
+it('keeps the user-local Antigravity fallback when LOCALAPPDATA points elsewhere', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'opl-antigravity-wrong-localappdata-'))
+  roots.push(root)
+  const bin = join(root, 'AppData', 'Local', 'agy', 'bin')
+  await mkdir(bin, { recursive: true })
+  await writeFile(join(bin, 'agy.cmd'), '@echo off\r\necho 1.5.3\r\n')
+  vi.stubEnv('PATH', '')
+  vi.stubEnv('HOME', root)
+  vi.stubEnv('USERPROFILE', root)
+  vi.stubEnv('APPDATA', join(root, 'AppData', 'Roaming'))
+  vi.stubEnv('LOCALAPPDATA', join(root, 'wrong-localappdata'))
+
+  const result = await inspectHarness(
+    { id: 'antigravity', name: 'Antigravity CLI', kind: 'acp', command: 'agy' },
+    root,
+    undefined,
+    { fresh: true },
+  )
+  expect(result).toMatchObject({
+    path: join(bin, 'agy.cmd'),
+    detectedBy: 'known-path',
+    installed: true,
+    runnable: true,
+    verification: 'verified',
+    version: '1.5.3',
+  })
 })
 
 it('reports a newly installed official candidate without replacing a stale explicit path', async () => {
   const fixture = await fakeNpm()
-  const stale = join(fixture.root, 'Old removed installation', 'codex.exe')
-  const definition = { id: 'codex', name: 'Codex CLI', kind: 'acp' as const, command: stale }
+  const stale = join(fixture.root, 'Old removed installation', 'opencode.exe')
+  const definition = { id: 'opencode', name: 'OpenCode', kind: 'acp' as const, command: stale }
   const before = await inspectHarness(definition, fixture.root)
   expect(before.installed).toBe(false)
   const result = await maintainHarness(before)
   const fresh = await inspectInstalledHarness(definition, fixture.root, result)
-  const candidate = join(fixture.globalBin, process.platform === 'win32' ? 'codex.cmd' : 'codex')
+  const candidate = join(
+    fixture.globalBin,
+    process.platform === 'win32' ? 'opencode.cmd' : 'opencode',
+  )
   expect(fresh).toMatchObject({
     installed: false,
     runnable: false,
     verification: 'failed',
-    installedCandidate: { path: candidate, verification: 'verified', version: 'codex-cli 9.9.9' },
+    installedCandidate: { path: candidate, verification: 'verified', version: 'opencode 1.19.0' },
   })
   expect(fresh.path).toBeUndefined()
   expect(fresh.error).toContain(stale)
   expect(fresh.error).toContain(candidate)
   expect(definition.command).toBe(stale)
-  expect(await executablePath(stale, 'codex')).toBeUndefined()
+  expect(await executablePath(stale, 'opencode')).toBeUndefined()
 })
 
 it('rejects an update that writes a different global installation from the configured launcher', async () => {
-  const fixture = await fakeNpm()
+  const fixture = await fakeNpm({ versionOutput: 'kilo 9.9.9' })
   const old = join(fixture.root, process.platform === 'win32' ? 'kilo.cmd' : 'kilo')
   await writeFile(
     old,
@@ -165,7 +228,7 @@ it('rejects an update that writes a different global installation from the confi
 
 it('does not start installation when npm cannot report an absolute global prefix', async () => {
   const fixture = await fakeNpm({ prefix: 'not-an-absolute-prefix' })
-  await expect(maintainHarness(missing())).rejects.toThrow('尚未启动安装')
+  await expect(maintainHarness(missing('opencode'))).rejects.toThrow('尚未启动安装')
   const calls = (await readFile(fixture.log, 'utf8'))
     .trim()
     .split('\n')
@@ -175,23 +238,23 @@ it('does not start installation when npm cannot report an absolute global prefix
 
 it('rejects successful installer output when its actual global target has no launcher', async () => {
   const fixture = await fakeNpm({ noLauncher: true })
-  const result = await maintainHarness(missing())
+  const result = await maintainHarness(missing('opencode'))
   const fresh = await inspectInstalledHarness(
-    { id: 'codex', name: 'Codex CLI', kind: 'acp' },
+    { id: 'opencode', name: 'OpenCode', kind: 'acp' },
     fixture.root,
     result,
   )
   expect(fresh.verification).toBe('failed')
   expect(fresh.runnable).toBe(false)
   expect(fresh.error).toContain(fixture.globalBin)
-  expect(fresh.error).toContain('未找到 codex 启动入口')
+  expect(fresh.error).toContain('未找到 opencode 启动入口')
 })
 
 it('rejects an installed launcher that returns a login message instead of a version', async () => {
   const fixture = await fakeNpm({ versionOutput: 'Sign in to continue' })
-  const result = await maintainHarness(missing())
+  const result = await maintainHarness(missing('opencode'))
   const fresh = await inspectInstalledHarness(
-    { id: 'codex', name: 'Codex CLI', kind: 'acp' },
+    { id: 'opencode', name: 'OpenCode', kind: 'acp' },
     fixture.root,
     result,
   )

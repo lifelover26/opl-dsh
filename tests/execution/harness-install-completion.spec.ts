@@ -58,7 +58,7 @@ async function setup(
   const fresh: HarnessInstallation = {
     ...initial,
     installed: true,
-    runnable: id !== 'antigravity',
+    runnable: true,
     verification: 'verified',
     path: installedPath,
     version: '9.9.9',
@@ -179,9 +179,9 @@ it.each(['explicit-path', 'custom-alias'] as const)(
   },
 )
 
-it('completes a verified Antigravity update even though that CLI has no conversation adapter', async () => {
+it('completes a verified Antigravity update and retains the official launcher', async () => {
   const f = await setup({ id: 'antigravity', installed: true })
-  expect(f.fresh).toMatchObject({ verification: 'verified', version: '9.9.9', runnable: false })
+  expect(f.fresh).toMatchObject({ verification: 'verified', version: '9.9.9', runnable: true })
   await f.service.updateHarness(f.id)
   expect((await f.completed()).maintenance?.state).toBe('completed')
   expect(f.maintain).toHaveBeenCalledWith(
@@ -189,6 +189,19 @@ it('completes a verified Antigravity update even though that CLI has no conversa
     undefined,
   )
   expect((await f.saved()).command).toBe('agy')
+})
+
+it('rejects an installer result whose launcher reports an incompatible version', async () => {
+  const f = await setup({ id: 'opencode' })
+  f.result.expectedVersion = '1.19.0'
+  f.fresh.version = 'opencode 1.19.1'
+  f.readback.mockResolvedValue({ ...f.fresh })
+  await f.service.updateHarness(f.id)
+  const item = await f.completed()
+  expect(item.maintenance?.state).toBe('failed')
+  expect(item.maintenance?.message).toContain('已下载 1.19.0')
+  expect(item.maintenance?.message).toContain('opencode 1.19.1')
+  expect((await f.saved()).command).toBe('opencode')
 })
 
 it.each(['failed-probe', 'missing-version'] as const)(

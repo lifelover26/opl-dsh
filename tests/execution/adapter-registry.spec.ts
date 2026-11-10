@@ -27,7 +27,15 @@ describe('official Harness adapter registry', () => {
     expect(defaultHarness(claude)).toBe('claude')
     const gatewayGemini = { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' }
     expect(adapterFor('opencode', gatewayGemini)?.id).toBe('opencode')
-    expect(defaultHarness(gatewayGemini)).toBe('opencode')
+    expect(defaultHarness(gatewayGemini)).toBe('antigravity')
+    expect(adapterFor('antigravity', gatewayGemini)?.id).toBe('antigravity')
+    expect(defaultHarness({ provider: 'opl-gateway', model: 'gemini::gemini-4-argon' })).toBe(
+      'antigravity',
+    )
+    expect(
+      adapterFor('opencode', { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' }),
+    ).toBeUndefined()
+    expect(defaultHarness({ provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' })).toBe('dsh')
     expect(
       adapterFor('opencode', { provider: 'opl-gateway', model: 'gemini::gemini-3.7-flash' }),
     ).toBeUndefined()

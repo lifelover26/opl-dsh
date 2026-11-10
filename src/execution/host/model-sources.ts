@@ -1,9 +1,12 @@
 /** External CLI routes resolved by the model-source owner, without copying provider settings. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { ModelRef } from '../contracts/catalog.ts'
-import { resolveGatewayExecution } from '../../gateway/host/execution-access.ts'
+import {
+  resolveGatewayExecution,
+  resolveGatewayGeminiExecution,
+} from '../../gateway/host/execution-access.ts'
 
-export type ExternalWireProtocol = 'responses' | 'messages' | 'chat'
+export type ExternalWireProtocol = 'responses' | 'messages' | 'chat' | 'gemini-native'
 /** Host-only resolved data; credentials never enter catalog/capability responses. */
 export interface ExternalModelRoute {
   baseURL: string
@@ -92,7 +95,10 @@ export class ExternalModelSources {
     protocol: ExternalWireProtocol,
   ): Promise<ExternalModelRoute> {
     let route: ExternalModelRoute
-    if (ref.provider === 'opl-gateway') {
+    if (ref.provider === 'opl-gateway' && protocol === 'gemini-native') {
+      if (harness !== 'antigravity') throw Error('所选来源的协议与 Harness 不兼容')
+      route = { ...(await resolveGatewayGeminiExecution(this.ctx, ref)), protocol }
+    } else if (ref.provider === 'opl-gateway') {
       const resolved = await resolveGatewayExecution(this.ctx, ref)
       const wire: Record<string, ExternalWireProtocol> = {
         'openai-responses': 'responses',

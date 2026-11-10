@@ -86,6 +86,7 @@ export async function verifyDesktopClient(
   credentialReadback = async () => {},
   officialVersion = undefined,
   conversationCountFixture = undefined,
+  readExecutionCatalog = undefined,
 ) {
   const result = {
     clientMounted: false,
@@ -570,16 +571,27 @@ export async function verifyDesktopClient(
       )
       const compactRows = await pipe.evaluate(
         session,
-        `Array.from(document.querySelectorAll('[data-opl-combination] > summary')).map(x=>({height:x.getBoundingClientRect().height,text:x.textContent,clipped:x.scrollWidth>x.clientWidth}))`,
+        `Array.from(document.querySelectorAll('[data-opl-combination] > summary')).map(x=>({id:x.parentElement.dataset.oplCombination,height:x.getBoundingClientRect().height,text:x.textContent,clipped:x.scrollWidth>x.clientWidth}))`,
       )
       if (
         !compactRows.length ||
         compactRows.some((x) => x.height > 42 || x.text.includes('可执行') || x.clipped)
       )
         throw new Error('组合摘要未保持紧凑单行或仍重复显示可执行：' + JSON.stringify(compactRows))
-      if (compactRows.some((x) => x.text.includes('默认')))
-        throw new Error('单一执行组合仍显示默认状态')
       result.compactCombinationRows = compactRows
+      const catalog = await readExecutionCatalog()
+      for (const row of compactRows) {
+        const item = catalog.combinations.find((candidate) => candidate.id === row.id)
+        if (!item) throw new Error('组合摘要没有对应的目录记录：' + row.id)
+        const alternatives = catalog.combinations.filter(
+          (candidate) =>
+            candidate.enabled &&
+            candidate.modelRef.provider === item.modelRef.provider &&
+            candidate.modelRef.model === item.modelRef.model,
+        )
+        if (row.text.includes('默认') !== alternatives.length > 1)
+          throw new Error('组合默认标记与已启用的备选数量不一致：' + row.id)
+      }
       const selectionScreenshot = await captureScreenshot('combination-selection')
       if (selectionScreenshot) screenshots.push(selectionScreenshot)
       else result.screenshotFailures.push('combination-selection')

@@ -3,12 +3,35 @@ import type { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { GATEWAY_GROUPS } from '../contracts/groups.ts'
 import { gatewayGroupEnabled } from './group-settings.ts'
-import { gatewayInferenceBaseURL } from './protocol.ts'
+import { gatewayInferenceBaseURL, OPL_GATEWAY_GEMINI_NATIVE_BASE_URL } from './protocol.ts'
 import { DEFAULT_MODELS, toAdapterConfig } from './config.ts'
 import type { ModelDraft } from '../contracts/models.ts'
 
 export { gatewayModelSettings } from './model-settings.ts'
 export { internalGatewayProvider } from '../contracts/groups.ts'
+
+/**
+ * Resolve the Gateway's native Gemini endpoint using its existing group credential.
+ * Only the bundle-owned Chat endpoint has a known native counterpart; custom
+ * endpoints must not be rewritten by deleting a path segment.
+ */
+export async function resolveGatewayGeminiExecution(
+  ctx: Context,
+  ref: { provider: string; model: string },
+): Promise<Awaited<ReturnType<typeof resolveGatewayExecution>>> {
+  if (
+    ref.provider !== 'opl-gateway' ||
+    !['gemini::gemini-3.8-flash', 'gemini::gemini-4-argon'].includes(ref.model)
+  )
+    throw Error('此模型尚未适配 Gemini 原生接口')
+  const route = await resolveGatewayExecution(ctx, ref)
+  if (
+    route.api !== 'openai-completions' ||
+    route.baseURL.replace(/\/+$/u, '') !== gatewayInferenceBaseURL('openai-completions')
+  )
+    throw Error('自定义 Gemini 地址未声明原生接口；请保留 OpenCode 组合或恢复 OPL 默认地址')
+  return { ...route, baseURL: OPL_GATEWAY_GEMINI_NATIVE_BASE_URL, api: 'gemini-native' }
+}
 
 export async function resolveGatewayExecution(
   ctx: Context,
@@ -21,6 +44,8 @@ export async function resolveGatewayExecution(
   credential: string
   api: string
   imageInput: boolean
+  /** Capacity declared by this exact source model, never inferred from its name. */
+  contextWindow?: number
 }> {
   if (ref.provider !== 'opl-gateway') throw Error('模型不属于 OPL Gateway')
   const separator = ref.model.indexOf('::')
@@ -60,6 +85,7 @@ export async function resolveGatewayExecution(
         ? configured.input
         : undefined)
   let imageInput = Array.isArray(input) && input.includes('image')
+  let contextWindow = configured?.contextWindow
   const llm = ctx.get('llm')
   if (
     (!Array.isArray(input) || input.length === 0) &&
@@ -67,6 +93,7 @@ export async function resolveGatewayExecution(
   ) {
     const info = await llm.resolveModelInfo(group.provider, model)
     imageInput = info.inputModalities?.includes('image') ?? false
+    contextWindow ??= info.context?.contextWindow
   }
   return {
     baseURL,
@@ -75,5 +102,10 @@ export async function resolveGatewayExecution(
     credential,
     api,
     imageInput,
+    ...(typeof contextWindow === 'number' &&
+    Number.isSafeInteger(contextWindow) &&
+    contextWindow > 0
+      ? { contextWindow }
+      : {}),
   }
 }

@@ -80,13 +80,19 @@ export async function probeHarnessReasoning(
       }),
     )
     if (agent.protocolVersion !== 1) throw Error('Harness 未协商 ACP v1')
+    await adapter.authenticate?.(acp, record, agent)
     const session = object(await acp.request('session/new', { cwd: record.cwd, mcpServers: [] }))
     if (typeof session.sessionId !== 'string' || !session.sessionId) throw Error('缺少 ACP 会话 ID')
     record.acpSessionId = session.sessionId
     options = session.configOptions
     const snapshot = { agent, session, configOptions: options }
+    let model = object(session.models).currentModelId
     const configured = await adapter.configureSession?.(acp, record, snapshot)
     if (configured && 'configOptions' in configured) options = configured.configOptions
+    if (configured?.modelId !== undefined) model = configured.modelId
+    const expected =
+      adapter.acpModelId?.(record.modelRef) ?? record.modelRef.model.split('::').at(-1)!
+    if (model !== undefined && model !== expected) throw Error('Harness 配置后的模型回读不一致')
     adapter.verifySession?.(record, { ...snapshot, configOptions: options })
     const efforts = readHarnessReasoning(record, options)
     return efforts === undefined

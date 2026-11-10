@@ -35,7 +35,8 @@ const info: Record<
   codex: {
     command: 'codex',
     website: 'https://developers.openai.com/codex/cli/',
-    instructions: '已安装时使用官方 codex update；未安装时可一键使用官方 npm 安装器。',
+    instructions:
+      '已安装时使用官方 codex update；未安装时可一键使用 OpenAI 独立安装器，无需 Node.js。',
     installable: true,
   },
   claude: {
@@ -46,8 +47,10 @@ const info: Record<
   },
   antigravity: {
     command: 'agy',
-    website: 'https://antigravity.google/docs',
-    instructions: '使用 agy update 检查并更新 Antigravity CLI。',
+    website: 'https://antigravity.google/docs/getting-started?tab=cli',
+    instructions:
+      '使用官方 Antigravity CLI 安装器；Gemini 组合使用 OPL 分组凭据，无需 Google 登录。',
+    installable: true,
   },
   'minimax-code': {
     command: process.platform === 'win32' ? 'mcode.cmd' : 'mcode',
@@ -63,8 +66,9 @@ const info: Record<
   },
   'kimi-code': {
     command: 'kimi',
-    website: 'https://www.npmjs.com/package/@moonshot-ai/kimi-code',
-    instructions: '可使用 Kimi Code 官方 npm 包安装 kimi；模型连接由模型供应商管理。',
+    website: 'https://github.com/MoonshotAI/kimi-code#install',
+    instructions:
+      '可使用 Kimi Code 官方独立安装器；Windows 首次运行前需要 Git for Windows，适配使用已验证的 CLI 版本。',
     installable: true,
   },
   'mimo-code': {
@@ -91,8 +95,9 @@ const info: Record<
   },
   opencode: {
     command: 'opencode',
-    website: 'https://opencode.ai',
-    instructions: '可使用 OpenCode 官方 npm 包安装 opencode；模型连接由模型供应商管理。',
+    website: 'https://opencode.ai/docs/',
+    instructions:
+      '一键安装使用与当前 ACP 适配相同的官方 OpenCode npm 版本；需要已有 Node.js/npm，不能用当前 V2 安装器替代。',
     installable: true,
   },
   vibe: {
@@ -103,13 +108,15 @@ const info: Record<
   pi: {
     command: 'pi',
     website: 'https://github.com/badlogic/pi-mono',
-    instructions: '可使用 Pi Coding Agent 官方安装器安装 pi；模型连接由模型供应商管理。',
+    instructions:
+      '可使用官方 Pi Coding Agent npm 包安装已验证版本；需要已有 Node.js/npm，Windows 没有可确认的独立发行包。',
     installable: true,
   },
   kilo: {
     command: 'kilo',
     website: 'https://github.com/Kilo-Org/kilocode',
-    instructions: '可使用 Kilo Code 官方 npm 包安装 kilo；模型连接由模型供应商管理。',
+    instructions:
+      '可使用官方 Kilo Code npm 包安装已验证版本；需要已有 Node.js/npm，更新不会盲跟不兼容的 latest。',
     installable: true,
   },
 }
@@ -120,12 +127,31 @@ const info: Record<
  */
 export function minimaxCodeRoots(env: NodeJS.ProcessEnv = process.env): string[] {
   const home = env.USERPROFILE || env.HOME || homedir()
-  return [env.MINIMAX_CODE_HOME, join(home, '.minimax-code')].filter(
+  return [
+    env.MINIMAX_CODE_HOME,
+    env.MCODE_INSTALL_DIR,
+    join(home, '.minimax-code'),
+    join(home, '.minimax-code/bin'),
+  ].filter((value): value is string => !!value)
+}
+function userProfileRoots(env: NodeJS.ProcessEnv = process.env): string[] {
+  const homePath = env.HOMEDRIVE && env.HOMEPATH ? join(env.HOMEDRIVE, env.HOMEPATH) : undefined
+  return [env.USERPROFILE, env.HOME, homePath, homedir()].filter(
     (value): value is string => !!value,
   )
 }
-const knownRoots = (id: string): string[] => {
-  const home = homedir()
+function localAppDataRoots(env: NodeJS.ProcessEnv = process.env): string[] {
+  return [
+    env.LOCALAPPDATA,
+    ...userProfileRoots(env).map((home) => join(home, 'AppData/Local')),
+  ].filter((value): value is string => !!value)
+}
+const knownRoots = (id: string, env: NodeJS.ProcessEnv = process.env): string[] => {
+  const [home = homedir()] = userProfileRoots(env)
+  const localAppData = localAppDataRoots(env)
+  const programFiles = [env.ProgramFiles, env.ProgramW6432].filter(
+    (value): value is string => !!value,
+  )
   const roots = [
     join(home, '.local/bin'),
     npmGlobalBin(join(home, '.npm-global')),
@@ -135,14 +161,18 @@ const knownRoots = (id: string): string[] => {
     join(home, '.cargo/bin'),
     join(home, '.claude/local'),
     join(home, '.claude/local/bin'),
-    ...(process.env.npm_config_prefix || process.env.NPM_CONFIG_PREFIX
-      ? [npmGlobalBin((process.env.npm_config_prefix || process.env.NPM_CONFIG_PREFIX)!)]
+    ...(env.npm_config_prefix || env.NPM_CONFIG_PREFIX
+      ? [npmGlobalBin((env.npm_config_prefix || env.NPM_CONFIG_PREFIX)!)]
       : []),
     ...installedRoots,
-    process.env.APPDATA ? join(process.env.APPDATA, 'npm') : '',
+    env.APPDATA ? join(env.APPDATA, 'npm') : '',
+    ...localAppData.map((root) => join(root, 'Programs/nodejs')),
+    ...programFiles.map((root) => join(root, 'nodejs')),
     '/opt/homebrew/bin',
     '/usr/local/bin',
+    ...(process.platform !== 'win32' ? ['/usr/bin', '/bin'] : []),
   ]
+  if (id === 'antigravity') roots.push(...localAppData.map((root) => join(root, 'agy/bin')))
   if (id === 'codex')
     roots.push(
       '/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS',
@@ -150,11 +180,12 @@ const knownRoots = (id: string): string[] => {
         home,
         'Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS',
       ),
-      ...(process.env.LOCALAPPDATA ? [join(process.env.LOCALAPPDATA, 'Programs/codex')] : []),
+      ...(env.LOCALAPPDATA ? [join(env.LOCALAPPDATA, 'Programs/codex')] : []),
+      ...(env.LOCALAPPDATA ? [join(env.LOCALAPPDATA, 'Programs/OpenAI/Codex/bin')] : []),
     )
-  if (id === 'claude' && process.env.LOCALAPPDATA)
-    roots.push(join(process.env.LOCALAPPDATA, 'Programs/Claude Code'))
-  if (id === 'minimax-code') roots.push(...minimaxCodeRoots())
+  if (id === 'claude' && env.LOCALAPPDATA)
+    roots.push(join(env.LOCALAPPDATA, 'Programs/Claude Code'))
+  if (id === 'minimax-code') roots.push(...minimaxCodeRoots(env))
   if (id === 'mimo-code') roots.push(join(home, '.mimocode/bin'))
   if (id === 'kimi-code') roots.push(join(home, '.local/bin'), join(home, '.kimi-code/bin'))
   if (id === 'step-code') roots.push(join(home, '.stepcode/bin'))
@@ -183,7 +214,10 @@ function candidatePaths(
 ): DetectedCommand[] {
   if (configuredPath(command)) return [{ path: resolve(command), detectedBy: 'configured-path' }]
   const roots = (process.env.PATH ?? '').split(delimiter).filter(Boolean)
-  const known = [...installRoots, ...(id ? knownRoots(id) : [])]
+  const known = [
+    ...installRoots,
+    ...(id ? knownRoots(id) : /^npm(?:\.cmd)?$/i.test(command) ? knownRoots('codex') : []),
+  ]
   return [
     ...roots.flatMap((root) =>
       commandNames(command).map((name) => ({
@@ -544,9 +578,7 @@ export async function inspectHarness(
       : path && ['grok-build', 'antigravity'].includes(harness.id)
         ? 'update'
         : undefined
-  const supported =
-    harness.kind === 'grok-build' ||
-    (Object.hasOwn(info, harness.id) && harness.id !== 'antigravity')
+  const supported = harness.kind === 'grok-build' || Object.hasOwn(info, harness.id)
   const base = {
     id: harness.id,
     name: harness.name,

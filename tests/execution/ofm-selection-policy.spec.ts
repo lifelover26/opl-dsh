@@ -369,6 +369,42 @@ it('migrates a saved Nemotron OpenCode pairing to Kilo', async () => {
     }),
   )
 })
+
+it('removes a saved Gateway Gemini 3.1 OpenCode pairing after route retirement', async () => {
+  const catalog = defaultExecutionCatalog()
+  const retired = {
+    id: 'legacy-gemini-31-opencode',
+    name: 'Gemini 3.1 Pro + OpenCode',
+    modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' },
+    harnessRef: 'opencode',
+    permissionPolicy: 'workspace' as const,
+    isDefault: false,
+    enabled: true,
+  }
+  catalog.combinations.push(retired)
+  const store = {
+    get: async () => catalog,
+    cleanLegacyCombinations: async (
+      predicate: (item: (typeof catalog.combinations)[number]) => boolean,
+    ) => {
+      catalog.combinations = catalog.combinations.filter((item) => !predicate(item))
+      return catalog
+    },
+    set: async (next: typeof catalog) => next,
+  }
+  const ctx = {
+    get: () => undefined,
+    llm: {
+      listProviders: () => [],
+      listConfigurableProviders: () => [],
+      listModels: async () => [],
+    },
+  }
+  const resolved = await new ExecutionModelResolver(ctx as never, store as never).resolve()
+  expect(resolved.combinations).not.toContainEqual(expect.objectContaining({ id: retired.id }))
+  expect(catalog.combinations).not.toContainEqual(expect.objectContaining({ id: retired.id }))
+})
+
 const QUALIFICATION_AUTO = 'auto:["our-free-model","opl-qualification-free"]'
 
 it('hides rejected OFM lanes and saved combinations after legacy cleanup, without hiding other sources', async () => {

@@ -601,6 +601,20 @@ try {
     },
     evidence.officialVersion,
     JSON.parse(await readFile(join(root, 'qualification-conversation-counts.json'), 'utf8')),
+    async () => {
+      const binding = safeBinding(
+        JSON.parse(await readFile(join(root, 'profiles/desktop/control.json'), 'utf8')),
+      )
+      const response = await fetch(binding.endpoint, {
+        method: 'POST',
+        headers: { authorization: 'Bearer ' + binding.token, 'content-type': 'application/json' },
+        body: JSON.stringify({ namespace: 'harness', method: 'catalog', args: {} }),
+        signal: AbortSignal.timeout(30000),
+      })
+      const result = await response.json()
+      if (!result.ok) throw new Error('隔离执行组合目录回读失败')
+      return result.value
+    },
   )
   if (!modelPluginFixture.requests.some((request) => request.usedTool))
     throw new Error('原版模型插件未完成官方工具调用后的模型回复')

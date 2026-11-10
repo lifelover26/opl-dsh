@@ -544,8 +544,12 @@ describe('MiniMax Code execution catalog wiring', () => {
     expect(() =>
       normalizeCatalog({
         ...catalog,
+        harnesses: [
+          ...catalog.harnesses,
+          { id: 'unverified-cli', name: 'Unverified', kind: 'acp', command: 'fixture' },
+        ],
         combinations: catalog.combinations.map((item) =>
-          item.id === FLASH_COMBINATION ? { ...item, harnessRef: 'antigravity' } : item,
+          item.id === FLASH_COMBINATION ? { ...item, harnessRef: 'unverified-cli' } : item,
         ),
       }),
     ).toThrow(/full-access/)

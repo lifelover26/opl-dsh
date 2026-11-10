@@ -4,6 +4,9 @@ import { OPL_GATEWAY_INFERENCE_BASE_URL } from './opl-credentials.ts'
 /** Anthropic's SDK appends `/v1/messages` to its configured prefix. */
 export const OPL_GATEWAY_ANTHROPIC_BASE_URL = OPL_GATEWAY_INFERENCE_BASE_URL.slice(0, -3)
 
+/** Native Gemini API published by the same Gateway, independently of its Chat prefix. */
+export const OPL_GATEWAY_GEMINI_NATIVE_BASE_URL = 'https://gateway.medopl.com'
+
 /** Return the default prefix for one protocol; custom endpoints are resolved separately. */
 export function gatewayInferenceBaseURL(api: string): string {
   switch (api) {

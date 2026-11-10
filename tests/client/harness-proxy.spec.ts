@@ -772,6 +772,46 @@ describe('每个外部 Harness 独立的代理设置', () => {
     ])
   })
 
+  it('Gemini 的官方与自定义组合不再重复显示默认后缀', async () => {
+    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' }
+    const data = {
+      ...catalog(),
+      models: [{ ...catalog().models[0], ref, name: 'Gemini 4 Argon', source: 'OPL Gateway' }],
+      harnesses: [
+        ...catalog().harnesses,
+        { id: 'antigravity', name: 'Antigravity CLI', kind: 'acp', command: 'agy' },
+        { id: 'opencode', name: 'OpenCode', kind: 'acp', command: 'opencode' },
+      ],
+      combinations: [
+        {
+          id: 'gemini/official',
+          name: 'Gemini 4 Argon + Antigravity CLI',
+          modelRef: ref,
+          harnessRef: 'antigravity',
+          permissionPolicy: 'full-access' as const,
+          isDefault: true,
+          enabled: true,
+        },
+        {
+          id: 'gemini/custom',
+          name: 'Gemini 4 Argon + OpenCode',
+          modelRef: ref,
+          harnessRef: 'opencode',
+          permissionPolicy: 'full-access' as const,
+          isDefault: false,
+          enabled: true,
+        },
+      ],
+    }
+    const { call } = fixture(data)
+    const view = await open(call, ExecutionCatalogSection)
+    const rows = walk(view).filter((node) => node.getAttribute?.('data-opl-combination'))
+    expect(rows).toHaveLength(2)
+    for (const row of rows) {
+      expect(text(walk(row).find((node) => node.nodeName === 'SUMMARY')!)).not.toContain('默认')
+    }
+  })
+
   it('编辑官方配对的默认项或名称后仍留在官方分组', async () => {
     const initial = catalog()
     const ref = initial.models[0].ref

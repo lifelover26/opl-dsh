@@ -518,6 +518,68 @@ describe('protocol prefixes and bundle-owned migration', () => {
     },
   )
 
+  it('adds Gemini 4 Argon when upgrading the canonical Gemini catalog', async () => {
+    const f = fixture()
+    const profile = {
+      displayName: 'OPL Gateway · Gemini',
+      api: 'openai-completions',
+      baseURL: 'https://gateway.medopl.com/v1',
+      apiKeyEnv: 'OPL_GATEWAY_GEMINI_API_KEY',
+      models: [
+        { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
+        { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+      ],
+    }
+    f.state['llm-pi-ai'].providers['opl-gateway-gemini'] = profile
+    f.users['llm-pi-ai'].providers = {
+      'opl-gateway-gemini': structuredClone(profile),
+    }
+    await migrateGatewayProtocolDefaults(f.ctx)
+    expect(f.state['llm-pi-ai'].providers['opl-gateway-gemini'].models).toEqual([
+      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', input: ['text', 'image'] },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', input: ['text', 'image'] },
+      { id: 'gemini-4-argon', name: 'Gemini 4 Argon', input: ['text', 'image'] },
+    ])
+  })
+
+  it('does not add Gemini 4 Argon to a custom Gemini catalog', async () => {
+    const f = fixture()
+    const profile = {
+      displayName: 'Custom Gemini',
+      api: 'openai-completions',
+      baseURL: 'https://tenant.invalid/v1',
+      apiKeyEnv: 'CUSTOM_GEMINI_KEY',
+      models: [{ id: 'gemini-3.8-flash', name: 'Custom Flash' }],
+    }
+    f.state['llm-pi-ai'].providers['opl-gateway-gemini'] = profile
+    f.users['llm-pi-ai'].providers = {
+      'opl-gateway-gemini': structuredClone(profile),
+    }
+    await migrateGatewayProtocolDefaults(f.ctx)
+    expect(f.state['llm-pi-ai'].providers['opl-gateway-gemini'].models).toEqual(profile.models)
+  })
+
+  it('does not add Gemini 4 Argon when a canonical catalog also contains a custom model', async () => {
+    const f = fixture()
+    const profile = {
+      displayName: 'OPL Gateway · Gemini',
+      api: 'openai-completions',
+      baseURL: 'https://gateway.medopl.com/v1',
+      apiKeyEnv: 'OPL_GATEWAY_GEMINI_API_KEY',
+      models: [
+        { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
+        { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+        { id: 'my-custom-gemini', name: 'Custom Gemini' },
+      ],
+    }
+    f.state['llm-pi-ai'].providers['opl-gateway-gemini'] = profile
+    f.users['llm-pi-ai'].providers = {
+      'opl-gateway-gemini': structuredClone(profile),
+    }
+    await migrateGatewayProtocolDefaults(f.ctx)
+    expect(f.state['llm-pi-ai'].providers['opl-gateway-gemini'].models).toEqual(profile.models)
+  })
+
   it('keeps custom endpoint prefixes and credentials during a protocol edit', async () => {
     const f = fixture(),
       profile = f.state['llm-pi-ai'].providers['opl-gateway-openai']

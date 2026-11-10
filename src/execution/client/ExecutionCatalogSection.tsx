@@ -223,6 +223,10 @@ function CombinationRow({
     ).length > 1
   const source = displayModelSource(item.modelRef, model?.source)
   const description = `${source} · ${model?.name ?? item.modelRef.model} · ${harness?.name ?? item.harnessRef}`
+  // Gemini's official/custom split already conveys the route choice. Keep the
+  // default marker for other OPL Gateway models, whose alternatives still need
+  // an explicit default indication.
+  const showDefaultMarker = hasAlternatives && !isGatewayGemini(item.modelRef)
   return (
     <details
       className={listCss.item}
@@ -242,7 +246,7 @@ function CombinationRow({
           <span className={listCss.source} title={source}>
             {source}
           </span>
-          {hasAlternatives && <span>{item.isDefault ? '默认' : '非默认'}</span>}
+          {showDefaultMarker && <span>{item.isDefault ? '默认' : '非默认'}</span>}
           {failure && (
             <button
               type="button"
@@ -287,4 +291,8 @@ function CombinationRow({
       </div>
     </details>
   )
+}
+
+function isGatewayGemini(ref: CombinationDefinition['modelRef']): boolean {
+  return ref.provider === 'opl-gateway' && ref.model.startsWith('gemini::')
 }

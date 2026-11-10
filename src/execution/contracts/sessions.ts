@@ -75,6 +75,8 @@ export interface HarnessTool {
   outputJson?: string
   contentJson?: string
   locationsJson?: string
+  /** ACP metadata, including a bridge-observed interpreter; never used to execute tools. */
+  metadataJson?: string
 }
 export interface HarnessSession {
   id: string

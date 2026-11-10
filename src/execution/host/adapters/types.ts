@@ -55,6 +55,8 @@ export interface AcpSessionSnapshot {
 export interface AcpSessionConfigureResult {
   /** Config options advertised after pinning; the caller keeps them for later checks. */
   configOptions?: unknown
+  /** Exact model identity confirmed by the configuration response after new/load. */
+  modelId?: string
 }
 /**
  * What one settled turn actually produced, as observed on this turn alone.
@@ -95,6 +97,12 @@ export interface HarnessAdapter {
   acpModelId?(ref: ModelRef): string
   available(ctx: Context, options: AdapterOptions): Promise<{ available: boolean; reason?: string }>
   prepare?(ctx: Context, record: HarnessSession, options: AdapterOptions): Promise<AdapterLaunch>
+  /** Choose an advertised credential method before opening or restoring a session. */
+  authenticate?(
+    acp: AcpRequestSurface,
+    record: HarnessSession,
+    agent: Record<string, any>,
+  ): Promise<void>
   /**
    * Pin the combination's fixed model and reasoning parameters over ACP. Runs after
    * `session/new` or `session/load` and before any prompt is sent. An adapter must

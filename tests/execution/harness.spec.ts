@@ -479,6 +479,27 @@ describe('external completion observations', () => {
 })
 
 describe('ACP model namespaces', () => {
+  it.each(['grok-4.7', 'wrong-model'])(
+    'checks the model confirmed after configuration: %s',
+    async (confirmed) => {
+      const { service, root } = await setup()
+      const adapter = adapterFor('grok-build', {
+        provider: 'opl-gateway',
+        model: 'grok::grok-4.7',
+      })!
+      const prepare = vi.mocked(adapter.prepare!).getMockImplementation()!
+      vi.mocked(adapter.prepare!).mockImplementation(async (...args) => {
+        const launch = await prepare(...args)
+        return { ...launch, env: { ...launch.env, OPL_FIXTURE_MODEL: 'vendor-default-model' } }
+      })
+      vi.spyOn(adapter, 'configureSession').mockResolvedValue({ modelId: confirmed })
+      if (confirmed === 'grok-4.7')
+        await expect(start(service, root)).resolves.toHaveProperty('acpSessionId')
+      else await expect(start(service, root)).rejects.toThrow('不同的模型')
+      await expect(access(join(root, 'calls.txt'))).rejects.toThrow()
+    },
+  )
+
   it('keeps the actual new and loaded session observations through pre-prompt verification', async () => {
     const { service, root, ctx, options } = await setup()
     const adapter = adapterFor('grok-build', { provider: 'opl-gateway', model: 'grok::grok-4.7' })!
@@ -1952,7 +1973,7 @@ describe('native conversation combinations', () => {
       'OPL Gateway',
     ])
   })
-  it('generates only supported Gateway Gemini recommendations', async () => {
+  it('defaults the two native Gateway Gemini models to Antigravity and keeps OpenCode compatible', async () => {
     vi.stubEnv('USERPROFILE', join(tmpdir(), 'opl-gemini-opencode-absent-cli'))
     vi.stubEnv('HOME', join(tmpdir(), 'opl-gemini-opencode-absent-cli'))
     vi.stubEnv('PATH', '')
@@ -1965,18 +1986,148 @@ describe('native conversation combinations', () => {
     const catalog = await service.executionCatalog()
     expect(
       catalog.combinations.filter((item) => item.modelRef.model.startsWith('gemini::')),
-    ).toEqual([])
+    ).toMatchObject([
+      { modelRef: { model: 'gemini::gemini-4-argon' }, harnessRef: 'antigravity', isDefault: true },
+      {
+        modelRef: { model: 'gemini::gemini-3.8-flash' },
+        harnessRef: 'antigravity',
+        isDefault: true,
+      },
+    ])
     expect(
       catalog.recommendations
         ?.filter((item) => item.modelRef.model.startsWith('gemini::'))
         .map((item) => item.harnessRef),
-    ).toEqual(['opencode', 'opencode', 'opencode'])
+    ).toEqual(['opencode', 'opencode'])
+    for (const model of ['gemini-4-argon', 'gemini-3.8-flash'])
+      expect(catalog.supportedPairings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            modelRef: { provider: 'opl-gateway', model: `gemini::${model}` },
+            harnessRefs: expect.arrayContaining(['antigravity', 'opencode']),
+          }),
+        ]),
+      )
     expect(catalog.models.map((item) => item.ref.model)).toEqual(
       expect.arrayContaining([
         'gemini::gemini-4-argon',
         'gemini::gemini-3.8-flash',
         'gemini::gemini-3.1-pro',
         'gemini::gemini-3.7-flash',
+      ]),
+    )
+  })
+  it('marks a ready OPL Gateway Gemini group available for its official Antigravity defaults', async () => {
+    const { service, ctx } = await nativeSetup([])
+    const settings = {
+      describe: () => [
+        { ns: 'opl-suite', value: { gatewayGroups: { gemini: true } }, revision: 1 },
+        {
+          ns: 'llm-pi-ai',
+          value: {
+            providers: {
+              'opl-gateway-gemini': {
+                models: [
+                  { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+                  { id: 'gemini-4-argon', name: 'Gemini 4 Argon' },
+                ],
+              },
+            },
+          },
+          revision: 1,
+        },
+      ],
+    }
+    ctx.get = ((name: string) => {
+      if (name === 'settings') return settings
+      if (name === 'oplGatewayAccount')
+        return { status: async () => ({ groups: [{ id: 'gemini', state: 'ready' }] }) }
+      return undefined
+    }) as typeof ctx.get
+    const catalog = await service.executionCatalog()
+    for (const model of ['gemini::gemini-3.8-flash', 'gemini::gemini-4-argon']) {
+      expect(catalog.models).toContainEqual(
+        expect.objectContaining({
+          ref: { provider: 'opl-gateway', model },
+          available: true,
+        }),
+      )
+      expect(catalog.combinations).toContainEqual(
+        expect.objectContaining({
+          modelRef: { provider: 'opl-gateway', model },
+          harnessRef: 'antigravity',
+          isDefault: true,
+          enabled: true,
+        }),
+      )
+    }
+  })
+  it('retains a user-selected OpenCode default for a newly supported Antigravity model', async () => {
+    const { service } = await nativeSetup([
+      { id: 'gemini::gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+    ])
+    const catalog = await service.executionCatalog()
+    const modelRef = { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' }
+    await service.saveExecutionCatalog({
+      ...catalog,
+      combinations: [
+        ...catalog.combinations.filter((item) => item.modelRef.model !== modelRef.model),
+        {
+          id: 'user-open-code',
+          name: 'Gemini backup',
+          modelRef,
+          harnessRef: 'opencode',
+          permissionPolicy: 'full-access',
+          enabled: true,
+          isDefault: true,
+        },
+      ],
+    })
+    const updated = await service.executionCatalog()
+    expect(
+      updated.combinations.filter(
+        (item) => item.enabled && item.isDefault && item.modelRef.model === modelRef.model,
+      ),
+    ).toMatchObject([{ id: 'user-open-code', harnessRef: 'opencode' }])
+  })
+  it('adds the official Antigravity default beside an OpenCode alternative', async () => {
+    const { service } = await nativeSetup([
+      { id: 'gemini::gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+    ])
+    const catalog = await service.executionCatalog()
+    const modelRef = { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' }
+    await service.saveExecutionCatalog({
+      ...catalog,
+      combinations: [
+        ...catalog.combinations.filter((item) => item.modelRef.model !== modelRef.model),
+        {
+          id: 'user-open-code-alternative',
+          name: 'Gemini backup',
+          modelRef,
+          harnessRef: 'opencode',
+          permissionPolicy: 'read-only',
+          enabled: true,
+          isDefault: false,
+          autoEnabled: false,
+          autoEnabledDisabled: true,
+        },
+      ],
+    })
+    const updated = await service.executionCatalog()
+    expect(updated.combinations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'auto:["opl-gateway","gemini::gemini-3.8-flash"]',
+          harnessRef: 'antigravity',
+          isDefault: true,
+          enabled: true,
+        }),
+        expect.objectContaining({
+          id: 'user-open-code-alternative',
+          harnessRef: 'opencode',
+          isDefault: false,
+          enabled: true,
+        }),
       ]),
     )
   })

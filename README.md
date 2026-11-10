@@ -58,15 +58,15 @@ brew install --cask gaofeng21cn/opl-dsh/opl-dsh
 
 ### 常用执行组合
 
-| 来源与模型                             | Harness                  | 使用前提                                                      |
-| -------------------------------------- | ------------------------ | ------------------------------------------------------------- |
-| OPL DeepSeek V4.1 Flash                | DSH                      | 对应 Gateway 分组可用                                         |
-| OPL GPT                                | Codex CLI                | 分组与 CLI 已就绪                                             |
-| OPL Claude Opus 5.5                    | Claude Code              | AWS、Kiro 渠道独立选择                                        |
-| OPL Grok 4.7                           | Grok Build               | 分组与 CLI 已就绪                                             |
-| OPL Gemini 4 Argon、3.8 Flash、3.1 Pro | OpenCode                 | 在执行设置中添加组合，使用 Gateway Gemini 渠道                |
-| MiniMax M3.1-Flash、M3                 | mcode                    | 官方账号；仅支持明确授权的完全访问                            |
-| OFM 免费模型与虚拟路由                 | 按来源选择已适配 Harness | 见 [OFM 组合](docs/harness-adaptation.md#our-free-model-组合) |
+| 来源与模型                    | Harness                                | 使用前提                                                            |
+| ----------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
+| OPL DeepSeek V4.1 Flash       | DSH                                    | 对应 Gateway 分组可用                                               |
+| OPL GPT                       | Codex CLI                              | 分组与 CLI 已就绪                                                   |
+| OPL Claude Opus 5.5           | Claude Code                            | AWS、Kiro 渠道独立选择                                              |
+| OPL Grok 4.7                  | Grok Build                             | 分组与 CLI 已就绪                                                   |
+| OPL Gemini 4 Argon、3.8 Flash | Antigravity CLI（默认）；OpenCode 备选 | 使用 Gateway Gemini 分组凭据，无需 Google 登录；支持图片与 Git Bash |
+| MiniMax M3.1-Flash、M3        | mcode                                  | 官方账号；仅支持明确授权的完全访问                                  |
+| OFM 免费模型与虚拟路由        | 按来源选择已适配 Harness               | 见 [OFM 组合](docs/harness-adaptation.md#our-free-model-组合)       |
 
 “已适配”表示实现了接入，不保证免费渠道随时可用。不同渠道保留独立身份，失败不会自动换模型或换源；外部 Harness 不支持当前权限时拒绝启动，不会自动提升权限。推理档位按模型与 CLI 实际能力提供。
 
