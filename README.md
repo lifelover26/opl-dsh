@@ -2,7 +2,7 @@
 
 **官方 DeepSeek Harness 桌面 + OPL 增强，一次安装即可使用。**
 
-在官方 DSH 中使用 OPL Gateway、免费模型和不同的模型 + Harness 组合，并与 Codex 协作。桌面、Agent 循环、工具和权限由官方 DSH 或所选 Harness 提供，OPL 负责接入、会话关联与安装更新。
+在官方 DSH 中使用 OPL Gateway、免费模型和不同的模型 + Harness 组合，并与 Codex 协作。桌面、Agent 循环、官方 Team/Subagent、工具和权限由官方 DSH 或所选 Harness 提供，OPL 负责外部 Harness 接入、会话关联、跨 Harness 交付验收与安装更新。
 
 ## 下载安装
 
@@ -15,7 +15,7 @@
 | macOS · Apple Silicon | [Mac 安装器（DMG）](https://github.com/gaofeng21cn/opl-dsh/releases/latest/download/OPL-DSH-Installer-mac-arm64.dmg)       |
 | Windows · x64         | [Windows 安装器（EXE）](https://github.com/gaofeng21cn/opl-dsh/releases/latest/download/OPL-DSH-Installer-windows-x64.exe) |
 
-打开安装器后，按提示选择 OPL Gateway、DeepSeek 官方或稍后登录。安装器会联网下载并校验官方桌面，再安装增强插件和 Codex Skill。OPL 安装器未签名，首次可能需要按系统提示允许打开。
+打开安装器后，按提示选择 OPL Gateway、DeepSeek 官方或稍后登录。安装器会联网下载并校验官方桌面，通过官方插件管理器安装增强插件，并安装 Codex Skill。首次迁移会启用官方 Agent Team 与 Auto Review 插件；已有明确禁用及后续在官方插件管理器中的选择会保留。OPL 安装器未签名，首次可能需要按系统提示允许打开。
 
 安装或升级前请退出 DeepSeek Harness。已有登录、会话、设置和用户修改过的 Skill 会保留。安装完成后，日常直接打开官方 **DeepSeek Harness**；macOS 默认位于 `~/Applications/DeepSeek Harness.app`。
 
@@ -47,9 +47,10 @@ brew install --cask gaofeng21cn/opl-dsh/opl-dsh
 - **OPL Gateway**：应用内登录，管理账户、余额和分组权限；可用模型进入统一选择器，左下角显示登录邮箱。
 - **Our Free Model**：保留[上游插件](https://github.com/Ebony-Vinyl/dsh-our-free-model)的渠道、登录、模型发现和更新功能。执行设置提示新模型及适配状态，不自动启用未知路线。见[模型插件](docs/model-plugins.md)。
 - **模型 + Harness 组合**：同一个输入框和消息流中使用 DSH、Codex CLI、Claude Code、OpenCode 等执行引擎；在“执行与组合”中按 Harness 批量选择，或手动添加已适配搭配。见[适配与支持范围](docs/harness-adaptation.md)。
-- **Codex ↔ DSH 协作**：自动安装 `opl-dsh-official` Skill，支持派发、续作、读取结果与交付验收；主动回传需配置通知桥。见[协作说明](docs/collaboration-implementation.md)。
+- **DSH 官方智能体团队**：官方 Team/Subagent 负责 DSH 内部的普通子任务、具名队友、消息与继续执行。DSH 中的 `delegate_to_harness` 只创建外部 Harness 的持久任务并跟踪交付验收；已有 OPL DSH 子任务仍可继续。见[模型与 Harness 架构](docs/model-harness-architecture.md)。
+- **Codex ↔ DSH 协作**：自动安装 `opl-dsh-official` Skill，支持跨 Harness 派发、续作、读取结果与交付验收；主动回传需配置通知桥。见[协作说明](docs/collaboration-implementation.md)。
 - **SuperAgent 仓库协作**：继承 DeepSeek SuperAgent 原型的 GitHub／可选飞书接单、授权策略、工单、执行和管理面板。macOS 在“协作与自动化”打开独立窗口后配置。见[SuperAgent](docs/superagent.md)。
-- **Auto Review 工具审批**：支持专用 codex-auto-review、独立 reviewer，以及 [BambooNode StartLux](docs/bamboo-startlux-auto-review.md) 和 [Jev](docs/jev-auto-review.md) 决策模型；默认关闭。见[工具审批](docs/auto-review.md)。
+- **Auto Review 工具审批**：使用官方自动审批，每个会话需选择官方 `auto` 权限预设。OPL reviewer 默认关闭，启用后可配置独立 reviewer、预算和 ZCode 外部审批；关闭后官方 Auto 继续使用当前会话模型。支持专用 codex-auto-review、[BambooNode StartLux](docs/bamboo-startlux-auto-review.md) 和 [Jev](docs/jev-auto-review.md) 决策模型。见[工具审批](docs/auto-review.md)。
 - **MiniMax 官方账号**：通过 mcode 登录中国站或国际站，支持登录状态、退出、取消授权与超时处理。见[MiniMax 账号与 mcode](docs/minimax-code.md)。
 - **对话体验**：不选工作区也可开始新对话；支持[编辑消息并原地重发](docs/stop-edit.md)，轮次与步数可选当前对话或历史累计；[Todo](docs/todo-status.md)展示真实记录状态；可启用[后台任务系统通知](docs/desktop-notifications.md)。
 - **Agent 应用交接**：`inspect_mcp_app_host` 按当前对话检查工具和资源能力；无嵌入式 UI 时保留原 owner 的结构化结果与专业应用入口。见 [MCP Apps 支持范围](docs/mcp-apps.md)。

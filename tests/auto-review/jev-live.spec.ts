@@ -2,12 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { appendFileSync } from 'node:fs'
 import { JevDecisionAdapter, JEV_DECISION_MODEL } from '../../src/execution/host/adapters/jev.ts'
-import {
-  readDecision,
-  REVIEW_POLICY,
-  reviewUserText,
-  type ReviewFacts,
-} from '../../src/auto-review/host/policy.ts'
+import { readDecision, REVIEW_POLICY } from '../../src/auto-review/host/policy.ts'
 
 const cases = [
   {
@@ -54,7 +49,7 @@ describe.skipIf(process.env.OPL_JEV_LIVE !== '1')('Jev live synthetic decision c
     it(
       item.name,
       async () => {
-        const facts: ReviewFacts = {
+        const facts = {
           sessionRoute: { provider: 'synthetic', model: 'synthetic', reasoningEffort: null },
           cwd: '/synthetic/project',
           projectInstructions: [],
@@ -80,7 +75,7 @@ describe.skipIf(process.env.OPL_JEV_LIVE !== '1')('Jev live synthetic decision c
               ...JEV_DECISION_MODEL,
               system: REVIEW_POLICY,
               messages: [
-                { role: 'user', content: [{ type: 'text', text: reviewUserText(facts) }] },
+                { role: 'user', content: [{ type: 'text', text: JSON.stringify(facts) }] },
               ],
               signal: AbortSignal.timeout(25000),
             })

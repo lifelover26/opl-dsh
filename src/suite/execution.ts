@@ -4,14 +4,12 @@ import type { ProgressWatchdogLimits } from '../execution/host/progress-watchdog
 import { installExternalCodex } from '../collaboration/host/external-codex.ts'
 import { installLegacyHarnessChannel } from '../compat/host/legacy-channel.ts'
 import { ExecutionService } from '../execution/host/service.ts'
-/** Add waiting to the official Session RPC surface without replacing its controller. */
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { Context } from '@deepseek-ai/cordis'
-import { installSessionWaitProjection } from '../execution/host/session-wait.ts'
 import { createHarnessService } from '../execution/host/harness.ts'
 import { installConversationRequest } from '../execution/host/conversation-request.ts'
 import { MiniMaxCodeModelAdapter } from '../execution/host/adapters/minimax-models.ts'
@@ -59,10 +57,9 @@ export const inject = [
 ]
 /** Keep admission, model selection, tools and permissions in the official Host.
  * @param ctx - Official Host context.
- * @returns once wait facts and execution consumers are ready.
+ * @returns once execution consumers are ready.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
-  await installSessionWaitProjection(ctx)
   ctx.effect(() => installPermissionMemory(ctx))
   const ofmOwner = createOfmOwnerApiReader(ctx, config.ofmConnectionTimeoutMs)
   const harness = createHarnessService(ctx, {

@@ -1,6 +1,6 @@
 name: 能力接入提案
 description: 说明用户价值、合理复用、能力 owner、UI 位置和验收边界。
-title: "[能力] "
+title: '[能力] '
 body:
   - type: markdown
     attributes:
@@ -23,6 +23,7 @@ body:
       description: 列出检查过的官方 DSH 插件或扩展点、已安装第三方插件、现有 OPL 模块和 UI 入口；说明可直接复用、需要适配或更适合新增的原因。
       placeholder: |
         官方 DSH：
+        核对的官方版本、尚未覆盖的任务与后续迁回条件：
         第三方插件：
         现有 OPL 模块：
         现有页面、导航或 Slot：

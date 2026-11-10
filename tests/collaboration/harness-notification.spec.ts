@@ -27,7 +27,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import TaskFeedbackService from '../../src/collaboration/host/feedback/index.ts'
 import { harnessTaskIdOf } from '../../src/collaboration/host/feedback/state.ts'
 import type { WakeDelivery } from '../../src/collaboration/host/feedback/types.ts'
-import { installSessionWaitProjection } from '../../src/execution/host/session-wait.ts'
+import { sessionHistoryFixture } from '../fixtures/session-controller.ts'
 import {
   GROK_COMBINATION,
   HarnessService,
@@ -204,10 +204,7 @@ function deployment(root: string, initial: DeploymentOptions = {}) {
     next.set('sessions', { get: () => undefined } as unknown as Context['sessions'])
     await next.plugin(SessionProjectionRegistry)
     await next.plugin(AgentRegistry)
-    await next.plugin({
-      inject: ['sessionProjections'],
-      apply: installSessionWaitProjection,
-    })
+    next.provide('sessionController', sessionHistoryFixture(next))
     await next.plugin(TaskFeedbackService, {
       autoDeliver: options.autoDeliver ?? true,
       claimLeaseMs: 10_000,

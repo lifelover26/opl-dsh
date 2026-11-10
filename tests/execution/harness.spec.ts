@@ -900,6 +900,39 @@ it('reads saved edit choices while the original model is absent without launchin
   expect(connect).not.toHaveBeenCalled()
 })
 describe('native conversation combinations', () => {
+  it('leaves new internal DSH delegation to official tools before creating an OPL task', async () => {
+    const { service, root } = await nativeSetup()
+    const combination = (await service.executionCatalog()).combinations.find(
+      (item) => item.harnessRef === 'dsh',
+    )!
+    expect(combination).toBeDefined()
+    const start = vi.spyOn(service, 'start')
+    const origin = { kind: 'dsh', sessionId: 'native-session' } as const
+    await expect(
+      service.delegateFrom(origin, {
+        combination: combination.id,
+        task: '检查项目',
+        taskId: 'official-native-task',
+        operationId: 'initial',
+        acceptance: '核对实际结果',
+      }),
+    ).rejects.toThrow('官方智能体团队')
+    expect(start).not.toHaveBeenCalled()
+    expect(await service.tasksFor(origin)).toEqual([])
+    start.mockRejectedValueOnce(Error('external-parent-reached-start'))
+    await expect(
+      service.delegateFrom(
+        { kind: 'codex', sessionId: 'parent' },
+        {
+          combination: combination.id,
+          cwd: root,
+          task: '从外部 Harness 委派给 DSH',
+          taskId: 'cross-harness-task',
+          operationId: 'initial',
+        },
+      ),
+    ).rejects.toThrow('external-parent-reached-start')
+  })
   it('reads a cold Session from official projections instead of the profile default without activating an Agent', async () => {
     const { service, ctx, session } = await nativeSetup()
     vi.spyOn(ctx.sessions, 'get').mockReturnValue(undefined)

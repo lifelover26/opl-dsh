@@ -4130,6 +4130,15 @@ export class HarnessService {
       task = required(p.task, '任务'),
       taskId = required(p.taskId, 'taskId'),
       operationId = required(p.operationId, 'operationId')
+    if (!existing && origin.kind === 'dsh') {
+      const catalog = await this.executionCatalog()
+      const definition = catalog.combinations.find((item) => item.id === combination)
+      const target = catalog.harnesses.find((item) => item.id === definition?.harnessRef)
+      if (target?.kind === 'dsh')
+        throw Error(
+          'DSH 内部子任务请使用官方智能体团队的 spawn_teammate 或官方 subagent 工具；delegate_to_harness 只创建跨 Harness 任务。已有 OPL 子任务可传 sessionId 继续。',
+        )
+    }
     const s = await this.start({
       combination,
       cwd,

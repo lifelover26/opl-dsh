@@ -6,6 +6,8 @@ Linux CI 继续运行 Host / Client 类型检查、构建与全部自动测试�
 
 开发依赖统一固定为 DSH `0.2.2-rc.1`、Cordis `4.1.0` API cohort，具体版本以 `package.json` 与锁文件为准。官方桌面以两个安装 feed 的实时版本为准，联合稳定 Release 同时记录实际官方版本与 OPL 增强版本。官方版本带 `-rc` 时仍属于上游候选阶段。macOS arm64 与 Windows 分别验收同一份交付增强包，任一平台未通过均不公开本次 Release；最终资格以该 Release 的双平台证据 JSON 为准。
 
+安装器使用官方插件管理器把 Agent Team profile 与 Auto Review bundle 纳入首次迁移。它会校验 bundle 与桌面版本属于同一官方 cohort，并只在没有迁移回执时写入一次；已有明确禁用项不重新启用，后续套件修复也保留官方插件管理器的启用状态。官方插件管理器拥有这些 bundle 的启用、禁用、卸载和生命周期，OPL 不修改应用资源或代管插件状态。
+
 ## 本机验证
 
 先运行 `npm run build`，再指定已安装的官方应用：
@@ -30,6 +32,8 @@ runner 实际执行以下链路，任一步失败均返回非零退出码：
 - 增强包与安装文件逐项 SHA-256 校验，记录构建的源码修订、工作区是否有未提交修改、增强版本及套件摘要。
 - 发布验收另外记录资格运行器的精确提交及清洁状态；运行器显式消费已冻结的交付包，产品身份始终以包内清单为准。
 - 官方 Host 启动、控制绑定、认证后的 RPC、模型设置写入及官方模型目录回读。
+- 官方能力清单读取 Team profile、Auto Review 及官方一次性 Subagent provider 的版本、安装来源、启用状态和错误；启用的 Team 工具应由官方 Agent scope 提供，已被 Team 替代的顶层 `subagent`、`subagent_fork` 工具保持关闭。
+- 在隔离项目中执行官方 Team lead → teammate 的真实父子任务，并通过官方 Session Controller 等待 lead 与 child；这只证明官方团队生命周期可用，不证明跨 Harness 交付验收已完成。
 - 通过仅连接自有 Electron 的调试管道验证 OPL Client 挂载、首启与官方设置导航，打开执行与组合、协作和模型页面；在同一执行页验证程序代理与工具审批折叠区；检查可见错误及运行异常，并保存截图。
 - 本地模型 fixture 分别输出 DeepSeek messages 和 OpenAI completions 流；实际官方 Agent 执行工具并完成两次会话。
 - 原生模型工具链调用 `inspect_mcp_app_host` 并回读真实诊断，记录 `checks.mcpAppHost`；这只证明无 UI 交接工具可用，不证明标准 MCP Apps 渲染。
@@ -44,7 +48,7 @@ runner 实际执行以下链路，任一步失败均返回非零退出码：
 
 CI 使用 `--download` 重用套件现有官方安装器的 HTTPS、SHA-512、签名与版本校验。macOS 使用明确的 arm64 runner。Windows 官方安装器会写入用户注册表和系统快捷方式，因此下载模式仅允许在临时 GitHub Actions runner 执行；开发机器请使用已有官方应用的 `--app` 模式。
 
-每次证据都记录实际运行的 `officialVersion`，而不是把开发依赖固定版本当成桌面版本。官方更新清单会变化，应以对应构建摘要的成功证据为兼容结论。跨平台工作流尚未运行时，仅能报告本机实际执行的平台结果。
+每次证据都记录实际运行的 `officialVersion`，而不是把开发依赖固定版本当成桌面版本；同时记录官方能力清单及 bundle cohort。官方更新清单会变化，应以对应构建摘要的成功证据为兼容结论。跨平台工作流尚未运行时，仅能报告本机实际执行的平台结果。若官方新增与 OPL 保留功能等价的能力，先在该隔离资格路径验证，再切换调用者和唯一状态 owner，最后删除重复实现。
 
 ## Kimi Code 的渠道错误
 

@@ -54,6 +54,29 @@ export function assertQualification(evidence, artifact, manifest, platform, arch
     )
   )
     throw Error(`${platform} qualification is missing required checks`)
+  const capabilities = checks.runtime.officialCapabilities
+  if (
+    capabilities?.officialVersion !== evidence.officialVersion ||
+    capabilities.agentTeams?.owner !== 'official' ||
+    capabilities.agentTeams?.nativeChild !== true ||
+    capabilities.agentTeams?.modelFacingTools !== true ||
+    capabilities.autoReview?.owner !== 'official' ||
+    capabilities.autoReview?.mounted !== true ||
+    capabilities.autoReview?.selectablePreset !== 'auto' ||
+    capabilities.autoReview?.defaultSelectable !== false ||
+    capabilities.agentPresets?.owner !== 'official' ||
+    !['@deepseek-ai/dsh-subagent-codex', '@deepseek-ai/dsh-subagent-claude-code'].every((name) =>
+      capabilities.oneShotProviders?.some(
+        (provider) =>
+          provider.package === name &&
+          provider.owner === 'official' &&
+          provider.version === evidence.officialVersion,
+      ),
+    )
+  )
+    throw Error(
+      `${platform} qualification is missing official capability ownership or real Team execution`,
+    )
   return evidence
 }
 

@@ -2,15 +2,20 @@
 
 OPL DSH 在官方桌面上提供账号自动配置、Harness 管理和组合选择。模型配置继续由 DSH 保存，官方 DSH 和外部 Harness 分别执行各自的 Agent 循环。
 
+能力边界按官方 `0.2.2-rc.1` 公开接口核对，检查日期为 2026-11-10。官方已有能力交给官方插件和持久状态；OPL 只维护当前用户任务仍需要的差额。具体复用情况、迁移范围与后续撤除条件见[官方能力复用检查](dsh-reuse-audit.md)。
+
 ## 数据职责
 
-| 对象               | 唯一配置位置                   | 内容                                                         |
-| ------------------ | ------------------------------ | ------------------------------------------------------------ |
-| Gateway 账号与分组 | Gateway 账号服务、DSH 凭据服务 | 登录、用量、分组权限、本机激活、各分组 Key、同步错误         |
-| 模型               | DSH profile 设置与 LLM 注册表  | 来源、模型 ID、名称、能力、分组路由和协议                    |
-| Harness            | OPL Harness 目录               | 程序身份、可执行文件、适配器；安装路径和版本来自本机检测     |
-| 组合               | `execution-catalog.json`       | `modelRef`、`harnessRef`、`permissionPolicy`、默认与启用状态 |
-| 对话               | 官方 Session 或外部 ACP 会话   | 项目、实际模型与 Harness、权限、历史及协作关联               |
+| 对象                | 唯一配置位置                                 | 内容                                                              |
+| ------------------- | -------------------------------------------- | ----------------------------------------------------------------- |
+| Gateway 账号与分组  | Gateway 账号服务、DSH 凭据服务               | 登录、用量、分组权限、本机激活、各分组 Key、同步错误              |
+| 模型                | DSH profile 设置与 LLM 注册表                | 来源、模型 ID、名称、能力、分组路由和协议                         |
+| Harness             | OPL Harness 目录                             | 程序身份、可执行文件、适配器；安装路径和版本来自本机检测          |
+| 组合                | `execution-catalog.json`                     | `modelRef`、`harnessRef`、`permissionPolicy`、默认与启用状态      |
+| 对话                | 官方 Session 或外部 ACP 会话                 | 项目、实际模型与 Harness、权限、历史及协作关联                    |
+| 原生子任务与团队    | 官方 Subagent / Team                         | 原生父子身份、local spawn/fork、消息、roster、task DAG 与生命周期 |
+| 固定角色与 Bot 声明 | 官方 agent preset / persona / named provider | 角色说明、预设与具名 provider/tool 绑定，不另建 OPL Bot 数据库    |
+| 跨 Harness 交付验收 | OPL `harness-sessions/`                      | 跨执行器任务身份、operation、交付、验收与所需写队列               |
 
 组合不再保存连接或协议。模型列表是 DSH 注册表的只读投影，不写入组合文件。DSH 原生模型页中的 OPL Gateway 子树通过官方 `settings.mutate` 保存模型：DeepSeek 分组位于 `opl-suite.gateway.models`，其他分组位于官方 `llm-pi-ai` 的对应 Provider profile。编辑和运行读取同一份配置。
 
@@ -50,7 +55,7 @@ DeepSeek 4.1 Flash 的 DeepSeek 与 OpenAI 协议渠道默认推理档位为 `hi
 - **Harness**：检测已接入 CLI 的安装、版本与路径；可登记其他程序。检测区分文件存在与版本验证成功，Windows npm 入口选择 `.cmd` 等可执行启动器；ZCode 的桌面入口不在检测时启动。安装与更新使用固定官方入口，npm 使用实际全局安装目录；维护完成后重新验证入口与版本。首次安装的默认入口保存为验证过的绝对路径，显式路径和自定义命令保持原值，发现的其他安装单独展示。内置 DSH 随官方桌面更新，不可删除。
 - **组合**：从 DSH 模型目录选择模型，绑定 Harness 与权限。每个模型可指定一个默认组合；没有自定义默认时，GPT 默认 Codex CLI、Claude 默认 Claude Code，其他模型使用已配置的官方默认组合。
 
-对话输入栏复用官方模型目录、模型选择投影、菜单组件与 Slot；OPL 的组合选择菜单显示“模型 · Harness”，来源仅作为展开菜单的分组标题。没有凭据的官方 DeepSeek 模型不作为可选项。DSH 原生组合调用官方 Session 的模型选择接口；外部 Harness 组合绑定到当前官方 Session，由 Host 在 `llm/stream` 阶段转发同一轮请求并把文本流回官方 Session。自动生成组合的权限只作为新委派任务的缺省值，切换模型保留当前会话选择的权限；显式只读组合通过官方只读预设同时设置 sandbox 与审批策略，不产生两者混用的 custom 状态，也不会静默扩大当前权限。原生会话列表不会出现第二套 OPL 管理页面；父子委派工具仍用于需要显式子任务、交付验收或跨 Harness 协作的场景。
+对话输入栏复用官方模型目录、模型选择投影、菜单组件与 Slot；OPL 的组合选择菜单显示“模型 · Harness”，来源仅作为展开菜单的分组标题。没有凭据的官方 DeepSeek 模型不作为可选项。DSH 原生组合调用官方 Session 的模型选择接口；外部 Harness 组合绑定到当前官方 Session，由 Host 在 `llm/stream` 阶段转发同一轮请求并把文本流回官方 Session。自动生成组合的权限只作为新委派任务的缺省值，切换模型保留当前会话选择的权限；显式只读组合通过官方只读预设同时设置 sandbox 与审批策略，不产生两者混用的 custom 状态，也不会静默扩大当前权限。原生会话列表不增加第二套 OPL 管理页面。普通原生子任务的目标入口是官方 Subagent/Team；OPL 委派工具负责跨 Harness 与显式交付验收所需的额外语义。
 
 自动组合只来自预先维护的“Harness + 官配模型”表，并在对应模型已经就绪后启用。DSH 的官配是 DeepSeek 自家模型；Codex、Claude、Grok Build、MiniMax、ZCode、Kimi、MiMo、Poolside、StepCode、Muse 只在厂商自家模型与对应 CLI 配对时自动生成。OpenCode、Kilo、Pi 等通用执行器没有自己的模型，官配列表为空，不会因为适配器支持某模型就生成内置组合；需要时可在“添加执行组合”中手动选择模型与执行器，跨厂商或通用执行器配对会标记为“自定义”。经 OFM 本地转发执行的手动外部组合还要求 OFM 本地转发已启用并运行。组合设置页会把“可启用但当前停用”的项目折叠；用户手动停用后，自动投影不会重新打开该组合。
 
@@ -63,6 +68,8 @@ Claude Code 的官方 SDK 思考增量映射到对话中的思考流，正文增
 图片经官方附件服务接收与读取；外部轮次只持久化附件引用，发送时才编码，不读取模型提供的 URI。模型来源必须声明支持图片，CLI 必须广告图片能力，或满足已验证的版本兼容条件。Grok Build 1.0.46 的 ACP 图片广告为 false，但实际支持图片；兼容判定仅接受 Grok Build 适配器及该版本的初始化元数据，其他未声明支持的版本与实现仍拒绝发送。文字和多张图片保持输入顺序，不支持的输入在发送前拒绝，不降成文字。图片消息编辑保留原图片，且要求持久引用与 CLI 历史的图片数量一致；Grok 历史缺少可靠图片计数时仍不提供图片消息编辑。此路径不扩展为音频或通用文件上传。
 
 各已接入 Harness 的协作工具可以先查询可用组合，再使用组合 ID 派发同项目子任务。Codex Skill 同样通过组合目录派发。各 Harness 保留自己的上下文，交接依靠明确的任务说明。
+
+官方具名 Subagent provider 适合简单的一次性委派，例如给 Codex provider 配置固定模型与权限，并通过专用工具调用。其结果不包含 OPL 连续会话、流式工具展示或交付验收合同。官方 preset/persona 可以承载固定角色说明；这不等于可以删除处理任意模型与 Harness 连续对话的组合目录。两类任务复用各自已有入口，不按“Bot”名称复制配置。
 
 ## 迁移与验证
 
@@ -86,15 +93,31 @@ Claude Code 的官方 SDK 思考增量映射到对话中的思考流，正文增
 
 新增或吸收第三方能力时，按[功能接入与 UI 成本判断](development.md#功能接入与-ui-成本判断)决定能力 owner 和界面位置。当前设置信息架构中，供应商与凭据在模型来源入口，执行程序、组合绑定、网络代理和工具审批在“执行与组合”；OFM 的完整原版管理能力通过入口适配保留，决策模型配置复用原生供应商交互。这是当前合理落点，不排除未来依据新的用户任务调整或增加必要入口。
 
-## 通用项目协作
+## 原生协作与跨 Harness 交付
 
-`HarnessService` 是新协作任务的唯一 owner，`harness-sessions/` 同时保存父子关系、冻结的模型引用、任务要求、轮次、交付和验收。`control.ts` 注册官方 DSH 工具；每个外部 Harness 的私有 MCP capability 绑定真实父会话，两者调用相同的 delegate/result/report/review/cancel 方法。外部 Codex 入口单独放在 `coordination/external-codex.ts`，开关不会影响内部工具。旧 dispatch 反馈服务仅保留兼容旧记录。
+官方 `dsh-subagent` 拥有原生 local spawn/fork 的父子关系、消息与继续执行。官方实验 Team 在此之上拥有 lead、具名 teammate、持久 roster 和 task DAG。Team 当前只支持可继续的本地 provider，外部 Codex、Claude、ACP 与 DSH SDK provider 每次执行一次任务，不能作为这类 teammate；Team 的工具也未提供每次任意选择模型与 Harness 的参数。
+
+DSH Agent 发起的新 DSH 内部子任务只走官方工具与生命周期。`list_harness_combinations` 只提供外部 Harness 目标，`delegate_to_harness` 在工具与 service 两层拒绝新建内部 DSH 目标；已有 OPL DSH 子任务可携原 sessionId 继续，保留其原交付与验收关系。
+
+跨 Harness 连续会话和交付验收仍进入 OPL 路径：`HarnessService` 是该路径的唯一 owner，`harness-sessions/` 保存冻结的模型引用、任务要求、轮次、交付和验收，并关联官方会话或外部会话。Agent-scoped 工具在 `src/collaboration/host/tools.ts` 注册；外部 Harness 的私有 MCP capability 绑定真实父会话后调用相同的 delegate/result/report/review/cancel 方法。外部 Codex 入口位于 `src/collaboration/host/external-codex.ts`。这些映射不接管官方原生 Subagent/Team 状态。
 
 执行状态与验收状态分开；完成轮次进入 pending 验收，父对话基于实际产物选择 accepted 或 changes_requested。后续修改沿用子会话和 taskId，使用新 operationId。原 operation 重试幂等，变更内容被拒绝。回传以持久 ID 和官方 prompt requestId 去重，只有用户显式重试创建新的交付尝试。重启不会自动重新执行未完成的轮次。
 
-项目写队列覆盖 OPL 托管会话；同步委派时父对话处于 waiting_child，子任务可执行，异步任务在写占用解除后执行。只读任务可以并发。原生 DSH 父对话繁忙时异步写子任务等待，独立原生会话和外部编辑器不在此队列控制范围。
+项目写队列覆盖 OPL 托管会话；同步委派时父对话处于 waiting_child，子任务可执行，异步任务在写占用解除后执行。只读任务可以并发。原生 DSH 父对话繁忙时异步写子任务等待，独立原生会话和外部编辑器不在此队列控制范围。官方 Team 共享 cwd，write scope 仅作警告；官方 Forge/worktree 不负责 OPL 交付验收、自动合并或释放写占用，因此尚不能替代这条队列。
 
-主界面只使用官方会话列表、消息流和输入框；组合、父子关系、子任务轮次、交付与验收仍由 `HarnessService` 后台持久化。没有注入独立会话管理面板，也没有修改官方会话格式或桌面资源。
+主界面使用官方会话列表、消息流和输入框。OPL 路径中的组合关联、外部会话映射、任务轮次、交付与验收由 `HarnessService` 持久化；官方 Subagent/Team 的对象继续由官方拥有，不合并成新的 OPL Bot 存储。官方 Team 完成表示其任务状态，不代表父对话已经核验产物并接受 OPL 交付。
+
+原生会话的读取、队列、fork 和等待使用官方 Session Controller。OPL 已删除私有等待状态投影，对外结果通过官方 wait、observeEvent 和 events 进行兼容映射；反馈服务只保留自身交付所需事实。官方 Goal 管同会话目标和预算，Workflow 管前台脚本执行，不能替代跨 Harness 持久任务与验收。跨进程反馈的 outbox、receipt、幂等唤醒仍有独立职责，官方 Team 消息不提供同样的可靠交付合同。
+
+## 审批、计量与 MCP 边界
+
+原生 Auto Review 的 `auto` 权限预设、pre-execute gate、决策策略与插件生命周期由官方 `dsh-experimental-auto-review` 拥有。OPL 已撤除重复的原生审批 gate，只保留公开 `llm/stream` 的 `purpose: 'auto-review'` 路由、预算、原始请求/响应记录，以及 ZCode 外部审批桥。原始记录表示 reviewer 的请求与响应，不另行宣称官方已执行某个审批结果。
+
+安装器通过官方 profile manifest/bundle 接口一次迁移启用 Team profile 与 Auto Review，先确认与桌面同版。已有明确禁用和迁移后的用户选择不重置；启用、禁用、卸载与生命周期归官方插件管理器。安装不会为会话切换权限，使用 Auto Review 仍需该会话选择官方 `auto` 预设。OPL reviewer 适配默认关闭，其面板只控制路由、预算与外部桥；关闭后官方仍可使用当前会话模型审批，不卸载或关闭官方 Auto 插件。
+
+原生 token 与上下文压力、构成使用官方 token meter。外部 Harness 的真实 usage 来源于各 CLI/SDK 的事件，OPL 只映射实际值；排除编辑替换历史的 turns/steps 计数也保留独立语义。原生待处理队列的编辑不等于已完成历史的停止后编辑与重发，后者仍需现有适配。
+
+MCP 工具、Resources 与连接由官方 MCP Client 管理。标准 MCP Apps 能力协商、UI metadata 与同连接 AppBridge 缺少完整公开接口时，OPL 保留必要展示适配；官方补齐后沿同一连接切换，不新增独立 MCP 连接或状态。
 
 ## 实现边界
 

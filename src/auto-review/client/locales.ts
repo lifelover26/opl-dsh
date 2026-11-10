@@ -3,12 +3,9 @@
  * panel can render lives here, so no call site assembles prose; `zh` is the key
  * source of truth and `en` is typed to the same key set.
  *
- * The wording is deliberately explicit about the boundaries a user must not
- * misread: this is pre-execution review of native DSH tool calls (not the
- * collaboration feature's delivery wake-back); Auto runs approved actions with
- * full host access and is not a sandbox; a model review replaces human approval
- * but is neither the only pre-execution gate nor a bypass of other gates; and it
- * does not cover the tools running inside an external Harness CLI process.
+ * This section controls only OPL's optional reviewer route adapter and its
+ * external-Harness approval bridge. The official Auto plugin owns native
+ * permission, policy, history and lifecycle behavior.
  *
  * The state and failure copy also keeps what is effective apart from what is
  * only a draft, and never claims a transport-level save failure definitely did
@@ -17,22 +14,22 @@
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 
 export const zh = {
-  sectionLabel: '工具审批',
-  title: 'Auto Review（工具执行前审查）',
+  sectionLabel: '审查模型路线',
+  title: 'Auto Review 路线适配',
   intro:
-    '在 DSH 原生工具执行之前，用一次独立的模型请求裁决该次调用是否放行。审查请求不携带任何工具，只输出放行或拒绝。',
+    '官方 Auto 插件负责 DSH 原生工具审查。启用 OPL 适配后，可为官方请求指定独立审查模型和预算，并为已绑定的外部 Harness 审批提供同一路线。关闭 OPL 适配后，官方 Auto 继续使用当前会话模型。',
   distinction:
-    '与“协作与自动化”中的交付后自动唤回验收无关：那是子任务结束后唤回发起对话验收，本功能在工具执行前裁决是否放行。',
+    'DSH 原生权限、风险规则和审查生命周期由官方插件拥有；OPL 不重复执行决策。ZCode 外部审批只有在身份、调用和授权均可精确绑定时才会接入。',
   boundaryNative:
-    'DSH 与 ZCode 默认使用 Codex Auto Review；Codex、Claude 使用各自官方审核。其他 Harness 未验证的 Auto 模式不能启动。',
+    '官方 Auto 可在 profile 插件管理中独立启停，每个会话仍须显式选择 Auto。OPL 路线只改变官方审查请求的模型与预算，不改变其策略或结论。',
   boundarySandbox:
-    'Auto 以完整主机访问执行获准动作。它不是 sandbox，不提供文件隔离；模型审查替代人工审批，但并不绕过其他门禁或审批规则，也不是执行前的唯一闸门。',
+    '官方 Auto 的权限效果由官方插件说明和会话权限选择器展示。本页只控制 OPL 路线适配和外部 Harness 审批桥。',
   presetNotice:
-    '开启不会自动切换任何会话的权限 preset。你仍须在该会话的权限选择器中显式选择 Auto，原生 DSH 工具才会在执行前送审。',
+    '本开关不启用或卸载官方 Auto，也不修改会话权限。官方 Auto 由 profile 插件管理，且必须在目标会话中显式选择。',
   enableTitle: '启用',
-  enableLabel: '启用 Auto Review',
-  enableAria: '启用工具执行前审查',
-  effectiveLabel: '生效状态（Host）',
+  enableLabel: '启用 OPL 路线适配',
+  enableAria: '启用 OPL 审查路线适配',
+  effectiveLabel: 'OPL 适配状态（Host）',
   effectiveOn: '已启用',
   effectiveOff: '已关闭',
   draftPending: '草稿尚未保存，生效状态仍以 Host 返回值为准。',
@@ -48,12 +45,12 @@ export const zh = {
   routeTitle: '审查模型路线',
   routeSourceNote:
     '普通 reviewer 与决策模型分开列出；只有 Host 已注册并确认可用的路线才会出现在对应选项中。这里不从外部 Harness 的执行组合菜单拼装路线。',
-  routeCurrent: 'Codex Auto Review（默认）',
+  routeCurrent: 'Codex Auto Review（适配默认）',
   routeFixed: '使用独立 reviewer 路线',
   routeDecision: '使用决策模型',
   routesEmpty: '没有可用的审查路线，请检查账号与模型配置。',
   routeUnavailable:
-    'Host 报告审查服务当前不可用。你仍可更换已广告的路线或请求关闭；Host 会再次校验，并可能拒绝不安全或仍有活跃会话的停用。',
+    'Host 报告 OPL 路线适配当前不可用，该次审查会失败。你可以更换已广告路线，或关闭 OPL 适配以使用官方当前会话模型。',
   routeMissing: '当前记录的独立路线不在 Host 返回的列表中，无法在此编辑；请先重新读取。',
   provider: '提供方',
   model: '模型',
@@ -70,7 +67,7 @@ export const zh = {
   draftTitle: '草稿',
   draftDirty: '有未保存的修改。',
   draftClean: '当前显示与 Host 返回一致，没有未保存的修改。',
-  save: '保存 Auto Review 设置',
+  save: '保存 OPL 路线设置',
   saveHint:
     '设置不会自动保存：开关、路线与预算都要按此按钮一次提交。保存成功后以 Host 返回的状态为准。',
   saving: '正在保存…',
@@ -93,7 +90,7 @@ export const zh = {
   'failure.invalid-settings': 'Host 拒绝这组设置（超出可保存范围或字段非法），未保存。',
   'failure.stale-settings': '状态已过期，未保存。请先重新读取。',
   'failure.sessions-active': '仍有全部项目中的活动在运行，未保存。请等待其结束。',
-  'failure.auto-sessions-remain': '仍有会话处于 Auto 权限，停用未生效。请先在这些会话中切换权限。',
+  'failure.auto-sessions-remain': '旧 Host 拒绝停用：仍有 Auto 会话。请更新 Host 后重新读取。',
   'failure.save-failed':
     '保存请求的结果未确认：可能已生效，也可能未生效。不会自动重发；请先重新读取核对，再决定是否重试。',
   disabledReasonLoading: '正在读取 Host 状态，所有入口暂不可用。',
@@ -112,21 +109,21 @@ export type AutoReviewLocaleKey = keyof typeof zh
 
 export const en: Record<AutoReviewLocaleKey, string> = {
   sectionLabel: 'Tool approval',
-  title: 'Auto Review (pre-execution tool review)',
+  title: 'Auto Review route adapter',
   intro:
-    'Before a native DSH tool runs, one independent model request decides whether that call is allowed. The review request carries no tools and returns only allow or deny.',
+    'The official Auto plugin reviews native DSH tools. Enabling the OPL adapter selects an independent reviewer and budget for official requests, and exposes the same route to exactly bound external Harness approvals. With the OPL adapter off, official Auto continues using the current Session model.',
   distinction:
-    'Unrelated to "Collaboration & automation" delivery wake-back review: that feature wakes the originating conversation after a subtask ends; this feature decides, before a tool runs, whether it is allowed.',
+    'The official plugin owns native permissions, risk rules, history and lifecycle. OPL does not make a second native decision. ZCode external approval is bridged only when its identity, call and authorization bind exactly.',
   boundaryNative:
-    'DSH and ZCode default to Codex Auto Review. Codex and Claude use their official reviewers. Other Harnesses cannot start in an unverified Auto mode.',
+    'Official Auto can be enabled or disabled independently in profile plugin management; each Session must still select Auto explicitly. OPL routing changes the model and budget of the official review request, not its policy or decision.',
   boundarySandbox:
-    'Auto runs approved actions with full host access. It is not a sandbox and provides no file isolation; a model review replaces human approval, but it neither bypasses other gates or approval rules nor stands as the only pre-execution gate.',
+    'The official plugin description and Session permission selector define the effects of Auto. This section controls only OPL routing and the external Harness approval bridge.',
   presetNotice:
-    'Enabling does not switch any Session’s permission preset. You must still choose Auto explicitly in that Session’s permission selector before native DSH tools are sent for review.',
+    'This switch does not enable or uninstall official Auto and does not change Session permissions. Manage official Auto through the profile plugin manager, then select it explicitly in the target Session.',
   enableTitle: 'Enable',
-  enableLabel: 'Enable Auto Review',
-  enableAria: 'Enable pre-execution tool review',
-  effectiveLabel: 'Effective state (Host)',
+  enableLabel: 'Enable OPL route adapter',
+  enableAria: 'Enable OPL review route adapter',
+  effectiveLabel: 'OPL adapter state (Host)',
   effectiveOn: 'Enabled',
   effectiveOff: 'Closed',
   draftPending: 'The draft is not saved; the effective state is still what the Host returned.',
@@ -142,12 +139,12 @@ export const en: Record<AutoReviewLocaleKey, string> = {
   routeTitle: 'Reviewer route',
   routeSourceNote:
     'Reviewer and decision-model routes are listed separately; only routes registered and confirmed available by the Host appear in the matching option. Routes are never assembled from the external Harness execution combination menu.',
-  routeCurrent: 'Codex Auto Review (default)',
+  routeCurrent: 'Codex Auto Review (adapter default)',
   routeFixed: 'Use an independent reviewer route',
   routeDecision: 'Use a decision model',
   routesEmpty: 'No reviewer route is available. Check the account and model configuration.',
   routeUnavailable:
-    'The Host reports the review service unavailable. You may still switch to an advertised route or request disabling; the Host revalidates and may refuse a disable that is unsafe or still has active Sessions.',
+    'The Host reports the OPL route adapter unavailable, so the review fails. Choose an advertised route, or disable the OPL adapter to use the official current Session model.',
   routeMissing:
     'The recorded independent route is not in the Host’s list and cannot be edited here; re-read first.',
   provider: 'Provider',
@@ -167,7 +164,7 @@ export const en: Record<AutoReviewLocaleKey, string> = {
   draftTitle: 'Draft',
   draftDirty: 'There are unsaved changes.',
   draftClean: 'What is shown matches the Host’s answer; there are no unsaved changes.',
-  save: 'Save Auto Review settings',
+  save: 'Save OPL route settings',
   saveHint:
     'Nothing is saved automatically: switch, route, and budget are submitted together only by this button. After a successful save the Host’s returned status is authoritative.',
   saving: 'Saving…',
@@ -196,7 +193,7 @@ export const en: Record<AutoReviewLocaleKey, string> = {
   'failure.sessions-active':
     'Activity across all projects is still running; nothing was saved. Wait for it to finish.',
   'failure.auto-sessions-remain':
-    'Sessions are still on the Auto permission, so disabling did not take effect. Switch those Sessions’ permissions first.',
+    'An older Host refused disabling while Auto Sessions remain. Update the Host and re-read.',
   'failure.save-failed':
     'The save request result is unconfirmed: it may or may not have taken effect. It is not resent automatically; re-read to verify, then decide whether to retry.',
   disabledReasonLoading: 'Host status is being read; every entry is disabled.',

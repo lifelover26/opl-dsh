@@ -50,7 +50,7 @@ import type { DomainGlobal, KvTable } from '@deepseek-ai/dsh-storage-domain'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 // Type-only bindings publish the Session event and Host service declarations this watcher consumes.
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller'
-import type {} from '../../../execution/host/session-wait.ts'
+import { readSessionTurnEnd } from '../../../execution/host/session-wait.ts'
 import type { ApprovalOutcome } from '@deepseek-ai/dsh-user-approval'
 import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions'
 import type {
@@ -225,7 +225,7 @@ export interface Config {
  * success.
  */
 export default class TaskFeedbackService extends TypertRemoteService {
-  static inject = ['storageDomain', 'sessions', 'sessionProjections', 'agents', 'oplSessionWait']
+  static inject = ['storageDomain', 'sessions', 'sessionProjections', 'agents', 'sessionController']
 
   static Config: z<Partial<Config>, Config> = z.object({
     summaryMaxChars: z.number().step(1).min(1).default(500),
@@ -344,7 +344,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
       const offCreated = this.ctx.on(
         'session/created',
         (session: Session) => {
-          this.reconcileAttached(session)
+          this.track(this.reconcileAttached(session))
         },
         { global: true },
       )
@@ -507,6 +507,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
     const existing = this.requireTasks().get(request.taskId)
     if (existing !== undefined) return { task: this.project(existing) }
     const session = this.ctx.sessions.get(request.sessionId)
+    const registrationSeq = session === undefined ? 0 : Number(session.seq)
     const now = this.now()
     const turn = request.turn ?? null
     const lineage = this.resolveLineage(request)
@@ -520,7 +521,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
       turn,
       target: request.target,
       acceptance: request.acceptance,
-      fromSeq: request.fromSeq ?? (session === undefined ? 0 : Number(session.seq)),
+      fromSeq: request.fromSeq ?? registrationSeq,
       state: session === undefined ? 'queued' : running ? 'running' : 'accepted',
       summary:
         session === undefined
@@ -539,7 +540,8 @@ export default class TaskFeedbackService extends TypertRemoteService {
       // A `turn: null` task settles on the first turn that ends after it was
       // registered; recording the end already on the log is what keeps a turn
       // that finished before registration from settling it later.
-      lastEndTurnAtRegistration: turn === null ? this.lastEndTurnOf(session) : null,
+      lastEndTurnAtRegistration:
+        turn === null ? await this.lastEndTurnOf(session, registrationSeq - 1) : null,
       parentTaskId: lineage.parentTaskId,
       rootTaskId: lineage.rootTaskId,
       attempt: lineage.attempt,
@@ -556,7 +558,11 @@ export default class TaskFeedbackService extends TypertRemoteService {
     }
     await this.requireTasks().put(record.taskId, record)
     this.live.set(record.taskId, record)
-    return { task: this.project(record) }
+    // History reads and persistence yield. Recover a turn that advanced before
+    // this registration became visible to the live watcher.
+    if (session !== undefined && Number(session.seq) !== registrationSeq)
+      await this.settleRecordedCatchUp(record, session)
+    return { task: this.project(this.live.get(record.taskId) ?? record) }
   }
 
   /**
@@ -1106,7 +1112,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
           attempt,
         )
       }
-      const replayRefusal = this.refuseResume(task, delivery)
+      const replayRefusal = await this.refuseResume(task, delivery)
       if (replayRefusal !== null)
         return this.resumeDecision(replayRefusal.decision, replayRefusal.reason, claimed, null)
       const attempt = await this.finishResumeAttempt(root, task, receipt)
@@ -1117,7 +1123,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
         attempt,
       )
     }
-    const refusal = this.refuseResume(task, delivery)
+    const refusal = await this.refuseResume(task, delivery)
     if (refusal !== null)
       return this.resumeDecision(refusal.decision, refusal.reason, claimed, null)
     const rootTaskId = rootTaskIdOf(root)
@@ -1135,14 +1141,32 @@ export default class TaskFeedbackService extends TypertRemoteService {
     // persisted with the admission, so a delayed registration observes the
     // resumed turn from here instead of from whatever cursor recovery runs at.
     const session = this.boundSession(task)
+    const admissionSeq = session === undefined ? null : Number(session.seq)
+    const admissionEnd = await this.lastEndTurnOf(
+      session,
+      admissionSeq === null ? undefined : admissionSeq - 1,
+    )
+    if (
+      session !== undefined &&
+      (this.boundSession(task) !== session ||
+        Number(session.seq) !== admissionSeq ||
+        this.openTurnOf(session) !== null ||
+        this.hasPendingInput(session.id))
+    )
+      return this.resumeDecision(
+        'superseded',
+        'the Session changed while the resume baseline was being read',
+        claimed,
+        null,
+      )
     const admittedReceipt: ReceiptRecordState = {
       ...receipt,
       resumeAttempt: resumeIndex,
       resumeRootTaskId: rootTaskId,
       resumeRequestId: resumeRequestIdOf(rootTaskId, resumeIndex),
       resumeTaskId: `${rootTaskId}#r${String(resumeIndex)}`,
-      resumeFromSeq: session === undefined ? null : Number(session.seq),
-      resumeLastEndTurnAtRegistration: this.lastEndTurnOf(session),
+      resumeFromSeq: admissionSeq,
+      resumeLastEndTurnAtRegistration: admissionEnd,
       resumeSubmitted: false,
       updatedAt: this.now(),
     }
@@ -1326,7 +1350,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
     const observation = {
       fromSeq: receipt.resumeFromSeq ?? (session === undefined ? 0 : Number(session.seq)),
       lastEndTurnAtRegistration:
-        receipt.resumeLastEndTurnAtRegistration ?? this.lastEndTurnOf(session),
+        receipt.resumeLastEndTurnAtRegistration ?? (await this.lastEndTurnOf(session)),
     }
     const submitted = this.instructionSubmitted(receipt)
     if (!submitted) {
@@ -1411,7 +1435,8 @@ export default class TaskFeedbackService extends TypertRemoteService {
       // was consumed. Rebind from the instruction's own history and report
       // whatever that turn already did.
       const settled =
-        session === undefined ? undefined : this.decideAttemptCatchUp(existing, session)
+        session === undefined ? undefined : await this.decideAttemptCatchUp(existing, session)
+      if (this.live.get(existing.taskId) !== existing) return
       if (settled === undefined) return
       this.live.set(settled.taskId, settled)
       await this.requireTasks().put(settled.taskId, settled)
@@ -1445,10 +1470,24 @@ export default class TaskFeedbackService extends TypertRemoteService {
       createdAt: now,
       updatedAt: now,
     }
-    const record =
-      (session === undefined ? undefined : this.decideAttemptCatchUp(accepted, session)) ?? accepted
-    await this.requireTasks().put(record.taskId, record)
-    this.live.set(record.taskId, record)
+    const observedSeq = session === undefined ? null : Number(session.seq)
+    await this.requireTasks().put(accepted.taskId, accepted)
+    this.live.set(accepted.taskId, accepted)
+    const settled =
+      session === undefined ? undefined : await this.decideAttemptCatchUp(accepted, session)
+    if (this.live.get(accepted.taskId) !== accepted) return
+    const record = settled ?? accepted
+    if (session !== undefined && Number(session.seq) !== observedSeq) {
+      this.live.set(record.taskId, record)
+      await this.requireTasks().put(record.taskId, record)
+      await this.settleRecordedCatchUp(record, session)
+      await this.enqueue(this.live.get(record.taskId) ?? record)
+      return
+    }
+    if (record !== accepted) {
+      this.live.set(record.taskId, record)
+      await this.requireTasks().put(record.taskId, record)
+    }
     await this.enqueue(record)
   }
 
@@ -1460,32 +1499,35 @@ export default class TaskFeedbackService extends TypertRemoteService {
    * so an attempt whose binding never landed is first rebound from the
    * Session's recorded history by request id; whichever turn happened to end
    * last, or a manual turn, is never substituted. The recorded turn's outcome
-   * is then read from the projections the live watcher maintains, so a turn
+   * is then read from the official Session Controller history, so a turn
    * that ended, failed, paused for an approval, or is still open is reported
    * exactly as the live feed would have reported it. A structured-question
    * pause has no Session event and is therefore only observable live; a turn
-   * the projections can no longer place leaves the record unchanged.
+   * the recorded facts can no longer place leaves the record unchanged.
    * @param record - the attempt task as just written or read.
    * @param session - the Session the attempt runs on.
    * @returns the record to publish, or undefined when nothing is decided yet.
    */
-  private decideAttemptCatchUp(
+  private async decideAttemptCatchUp(
     record: TaskRecordState,
     session: Session,
-  ): TaskRecordState | undefined {
+  ): Promise<TaskRecordState | undefined> {
     const bound = this.bindAttemptTurn(record, session)
     if (bound === undefined) return undefined
     // A record rebound from history has to land even when its state was
     // already right, or the binding is lost again on the next restart.
     const rebound = bound === record ? undefined : bound
     if (bound.turn === null) return rebound
-    const wait = this.ctx.oplSessionWait.stateOf(session)
-    const closed = wait.closedTurns[String(bound.turn)]
+    const closed = await readSessionTurnEnd(this.ctx, session.id, this.stopping.signal, bound.turn)
+    // The live watcher may already have applied a newer event while history
+    // was being read. Its record wins over this older catch-up observation.
+    if (this.closed || (this.live.has(record.taskId) && this.live.get(record.taskId) !== record))
+      return undefined
     if (closed !== undefined) {
-      return this.settleRecord(bound, session, bound.turn, closed, rebound)
+      return this.settleRecord(bound, session, bound.turn, closed.data.reason, rebound)
     }
     if (this.openTurnOf(session) !== bound.turn) return rebound
-    const pending = Object.entries(wait.pendingApprovals)
+    const pending = Object.entries(this.sessionFacts.stateOf(session).pendingApprovals)
     const ask = pending[pending.length - 1]
     if (ask !== undefined) {
       return (
@@ -1493,7 +1535,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
           bound,
           this.now(),
           'waiting_approval',
-          `waiting for an approval on ${ask[1]}`,
+          `waiting for an approval on ${ask[1].toolName}`,
           undefined,
           ask[0],
         ) ?? rebound
@@ -1544,10 +1586,10 @@ export default class TaskFeedbackService extends TypertRemoteService {
    * turn end must still be that failure, no newer turn may be open or queued,
    * and the task must still carry the same target.
    */
-  private refuseResume(
+  private async refuseResume(
     task: TaskRecordState,
     delivery: DeliveryRecordState,
-  ): { decision: TaskResumeDecision; reason: string } | null {
+  ): Promise<{ decision: TaskResumeDecision; reason: string } | null> {
     if (task.execution.kind === 'harness-session') {
       // The bounded automatic resume submits one persisted user instruction into
       // a DSH Session. A combination execution has none, and its own CLI owns
@@ -1586,15 +1628,32 @@ export default class TaskFeedbackService extends TypertRemoteService {
         reason: 'a newer user message is already queued for the Session',
       }
     }
-    const wait = this.ctx.oplSessionWait.stateOf(session)
-    const lastEnd = wait.lastEndReason
+    const observedSeq = Number(session.seq)
+    const lastEndEvent = await readSessionTurnEnd(
+      this.ctx,
+      session.id,
+      this.stopping.signal,
+      undefined,
+      observedSeq - 1,
+    )
+    if (
+      this.boundSession(task) !== session ||
+      Number(session.seq) !== observedSeq ||
+      this.openTurnOf(session) !== null ||
+      this.hasPendingInput(session.id)
+    )
+      return {
+        decision: 'superseded',
+        reason: 'the Session changed while its failure was being checked',
+      }
+    const lastEnd = lastEndEvent?.data.reason
     if (!isReasoningTextProtocolFailure(lastEnd)) {
       return {
         decision: 'superseded',
         reason: 'the Session no longer records this failure as its last turn end',
       }
     }
-    if (delivery.payload.turn !== null && wait.lastEndTurn !== delivery.payload.turn) {
+    if (delivery.payload.turn !== null && lastEndEvent?.data.turn !== delivery.payload.turn) {
       return { decision: 'superseded', reason: 'a newer turn already ended on the Session' }
     }
     return null
@@ -2281,7 +2340,7 @@ export default class TaskFeedbackService extends TypertRemoteService {
       // An automatic-resume attempt settles only on the turn its own
       // instruction was recorded in, so it is never settled by the last turn
       // that ended while this Host was down.
-      if (this.settleRecordedCatchUp(record, session)) continue
+      if (await this.settleRecordedCatchUp(record, session)) continue
       if (record.state === 'queued' || record.state === 'disconnected') {
         this.transition(record, 'accepted', 'recovered; waiting for the task turn', undefined)
       }
@@ -2303,13 +2362,13 @@ export default class TaskFeedbackService extends TypertRemoteService {
    * each keeps its own turn and cursor match.
    * @param session - the Session just announced.
    */
-  private reconcileAttached(session: Session): void {
+  private async reconcileAttached(session: Session): Promise<void> {
     if (this.closed) return
     for (const record of [...this.live.values()]) {
       if (record.sessionId !== session.id || !OPEN_STATES.includes(record.state)) continue
       // An attempt waits for the turn that consumed its own instruction, so the
       // history loaded with this Session is folded in through that binding.
-      if (this.settleRecordedCatchUp(record, session)) continue
+      if (await this.settleRecordedCatchUp(record, session)) continue
       if (record.state === 'queued' || record.state === 'disconnected') {
         const running = record.turn !== null && this.openTurnOf(session) === record.turn
         this.transition(
@@ -2335,12 +2394,13 @@ export default class TaskFeedbackService extends TypertRemoteService {
    * @param session - the attached Session whose recorded end is folded in.
    * @returns whether a recorded outcome or pause supersedes the caller's fallback.
    */
-  private settleRecordedCatchUp(record: TaskRecordState, session: Session): boolean {
+  private async settleRecordedCatchUp(record: TaskRecordState, session: Session): Promise<boolean> {
     if (record.resumeRequestId !== null) {
-      this.publish(this.decideAttemptCatchUp(record, session))
+      this.publish(await this.decideAttemptCatchUp(record, session))
       return true
     }
-    const catchUp = this.recordedEnd(session, record)
+    const catchUp = await this.recordedEnd(session, record)
+    if (this.closed || this.live.get(record.taskId) !== record) return true
     if (catchUp !== undefined) {
       this.settleTurn(record, session, catchUp.turn, catchUp.reason, undefined)
       return true
@@ -2368,9 +2428,19 @@ export default class TaskFeedbackService extends TypertRemoteService {
   }
 
   /** The last turn end already on one Session, or null when none ended yet. */
-  private lastEndTurnOf(session: Session | undefined): number | null {
+  private async lastEndTurnOf(
+    session: Session | undefined,
+    throughSeq?: number,
+  ): Promise<number | null> {
     if (session === undefined) return null
-    return this.ctx.oplSessionWait.stateOf(session).lastEndTurn
+    const end = await readSessionTurnEnd(
+      this.ctx,
+      session.id,
+      this.stopping.signal,
+      undefined,
+      throughSeq,
+    )
+    return end?.data.turn ?? null
   }
 
   /**
@@ -2385,19 +2455,23 @@ export default class TaskFeedbackService extends TypertRemoteService {
    * @param record - the task whose turn and registration baseline decide the match.
    * @returns the turn and its recorded end, or undefined when no end matches.
    */
-  private recordedEnd(
+  private async recordedEnd(
     session: Session,
     record: TaskRecordState,
-  ): { turn: number; reason: TurnEndReason } | undefined {
-    const state = this.ctx.oplSessionWait.stateOf(session)
-    if (record.turn !== null) {
-      const reason = state.closedTurns[String(record.turn)]
-      return reason === undefined ? undefined : { turn: record.turn, reason }
-    }
-    if (state.lastEndTurn === null || state.lastEndTurn === record.lastEndTurnAtRegistration)
+  ): Promise<{ turn: number; reason: TurnEndReason } | undefined> {
+    const end = await readSessionTurnEnd(
+      this.ctx,
+      session.id,
+      this.stopping.signal,
+      record.turn ?? undefined,
+    )
+    if (
+      end === undefined ||
+      (record.turn === null &&
+        (end.seq < record.fromSeq || end.data.turn === record.lastEndTurnAtRegistration))
+    )
       return undefined
-    const reason = state.lastEndReason
-    return reason === null ? undefined : { turn: state.lastEndTurn, reason }
+    return { turn: end.data.turn, reason: end.data.reason }
   }
 
   /** The stored task a caller named, or a named failure. */

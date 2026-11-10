@@ -1,23 +1,11 @@
-/**
- * The reviewer protocol: one fixed policy section, four frozen fact sections,
- * and a closed response parser.
- *
- * The classification and the native/PTC binding rules are ported from the
- * official experimental auto-review implementation read at
- * `delivery-and-assessments/auto-review/tmp/asar/dsh__node_modules__@deepseek-ai__dsh-experimental-auto-review__lib__index.js`,
- * because those are the rules the official preset already documents to its
- * reviewer. Two things are deliberately different:
- *
- *  - session events are read through a structural view and validated at
- *    runtime. The event map is merge-extensible, so an unfamiliar log shape
- *    must fail the review instead of silently authorizing a call; and
- *  - every failure message here is fixed text. No provider message, reviewer
- *    reasoning, or model output ever reaches a denial or a log.
+/** External-Harness reviewer policy, request facts and response protocol.
+ * Native DSH tool facts and decisions are owned by the official Auto plugin.
+ * Its public API has no external-ask classifier; this code serves only the
+ * exactly bound external permission requests handled by the OPL bridge.
  */
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { BlockAssembler, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import type { Session } from '@deepseek-ai/dsh-session'
-import type { ToolExecution } from '@deepseek-ai/dsh-tools'
 
 /** Version of the fixed policy text; recorded with every review. */
 export const POLICY_VERSION = 'opl-auto-review-policy-1'
@@ -51,15 +39,6 @@ export type ReviewDecision =
   | { readonly risk: 'low' | 'medium'; readonly decision: 'allow' }
   | { readonly risk: 'medium' | 'high'; readonly decision: 'deny'; readonly reason?: string }
 
-/** The exact pending action, as bound to its durable session-log identity. */
-export interface ReviewAction {
-  readonly mode: 'native' | 'ptc-inner'
-  readonly name: string
-  readonly description: string
-  readonly parameters: Record<string, unknown>
-  readonly arguments: unknown
-}
-
 /** The durable permission facts of one Session. */
 export interface PermissionKnobs {
   readonly preset: string | undefined
@@ -71,10 +50,8 @@ export interface PermissionKnobs {
  * Fold one Session's last durable permission knob events.
  *
  * These are the same log-only events the official permission projection folds.
- * Reading them directly is what lets a refusal survive the removal of the
- * service that published the `auto` preset: once that publication is gone the
- * live preset resolution degrades to whichever configured preset happens to
- * match the knobs, and only the durable identity still says `auto`.
+ * The external bridge reads the durable facts again before accepting a result;
+ * a changed authorization cannot reuse an earlier review.
  * @param session - the Session whose durable knobs are read.
  * @returns the last recorded facts, or null when the log cannot be read at all
  * (which is never the same as "no facts").
@@ -111,26 +88,11 @@ export function sameKnobs(left: PermissionKnobs | null, right: PermissionKnobs |
   )
 }
 
-/** One turn/step identity owning a call lifecycle. */
-interface StepIdentity {
-  readonly turn: number
-  readonly step: number
-}
-
-/** The frozen facts one review request is built from. */
-export interface ReviewFacts {
-  /** Route of the session's own request header, the context the review was cut in. */
-  readonly sessionRoute: {
-    readonly provider: string
-    readonly model: string
-    readonly reasoningEffort: string | null
-  }
-  readonly cwd: string
-  readonly projectInstructions: readonly unknown[]
-  readonly history: readonly unknown[]
-  readonly action: ReviewAction
-  readonly turn: number
-  readonly step: number
+/** Route of the owning Session retained for external-ask records. */
+export interface ReviewSessionRoute {
+  readonly provider: string
+  readonly model: string
+  readonly reasoningEffort: string | null
 }
 
 /** A structurally read session event. */
@@ -140,18 +102,8 @@ interface EventView {
   readonly data: Record<string, unknown>
 }
 
-/** One PTC dispatch start with the step that owns it. */
-interface StartView {
-  readonly event: EventView
-  readonly step: StepIdentity
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined
 }
 
 /** Render one required JSON value; an unrenderable fact fails the review. */
@@ -161,22 +113,6 @@ function json(value: unknown): string {
   return rendered
 }
 
-/** Recreate the agent loop's parse of one native call's logged raw arguments. */
-function parseLoggedArguments(raw: string): unknown {
-  if (raw === '') return {}
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return raw
-  }
-}
-
-/** Compare two lossless-JSON values without retaining aliases. */
-function sameJson(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right)
-}
-
-/** Read the session log through a validating structural view. */
 function readLog(session: Session): EventView[] {
   const events: EventView[] = []
   for (const value of session.snapshotEvents()) {
@@ -198,54 +134,6 @@ function readSurface(session: Session): number[] {
   return nodes
 }
 
-/** The turn/step identity carried by one execution event. */
-function stepIdentityOf(data: Record<string, unknown>): StepIdentity {
-  const turn = data['turn']
-  const step = data['step']
-  if (typeof turn !== 'number' || typeof step !== 'number')
-    throw new Error('auto-review: an execution event has no turn/step identity')
-  return { turn, step }
-}
-
-/** Compare two turn-and-step identities. */
-function sameStep(left: StepIdentity, right: StepIdentity): boolean {
-  return left.turn === right.turn && left.step === right.step
-}
-
-/** Key one call id inside the step that owns its lifecycle. */
-function scopedCallKey(step: StepIdentity, callId: string): string {
-  return `${String(step.turn)}\u0000${String(step.step)}\u0000${callId}`
-}
-
-/** Assign each PTC start to the step open when it was logged. */
-function scopePtcStarts(log: readonly EventView[]): {
-  starts: StartView[]
-  openStep: StepIdentity | undefined
-} {
-  const starts: StartView[] = []
-  let openStep: StepIdentity | undefined
-  for (const event of log) {
-    if (event.type === 'turn/start' || event.type === 'turn/end') {
-      openStep = undefined
-      continue
-    }
-    if (event.type === 'step/start') {
-      openStep = stepIdentityOf(event.data)
-      continue
-    }
-    if (event.type === 'step/end') {
-      openStep = undefined
-      continue
-    }
-    if (event.type !== 'tool/ptc-dispatch-start') continue
-    if (openStep === undefined)
-      throw new Error('auto-review: a PTC call has no owning step in the session log')
-    starts.push({ event, step: openStep })
-  }
-  return { starts, openStep }
-}
-
-/** Whether this visible message is a durable shipped-Web human instruction. */
 function isHumanInstruction(source: Record<string, unknown>): boolean {
   return source['kind'] === 'user' && typeof source['rpcId'] === 'string'
 }
@@ -324,262 +212,6 @@ function filteredUserEntries(
       content: [block],
     }
   })
-}
-
-/** Validate the schema fields that must be present in a logged tool schema. */
-function loggedSchema(
-  value: unknown,
-  expectedName: string,
-): { name: string; description: string; parameters: Record<string, unknown> } {
-  const record = isRecord(value) ? value : undefined
-  if (
-    record === undefined ||
-    typeof record['description'] !== 'string' ||
-    !isRecord(record['parameters'])
-  )
-    throw new Error('auto-review: a pending tool schema is incomplete')
-  return {
-    name: expectedName,
-    description: record['description'],
-    parameters: record['parameters'],
-  }
-}
-
-/** Resolve one native action from its visible call and latest request header. */
-function nativeAction(exec: ToolExecution, headerTools: unknown, logged: EventView): ReviewAction {
-  const rawArguments = asString(logged.data['arguments'])
-  if (
-    rawArguments === undefined ||
-    logged.data['name'] !== exec.name ||
-    !sameJson(parseLoggedArguments(rawArguments), exec.arguments)
-  )
-    throw new Error('auto-review: the pending native call disagrees with its logged action')
-  const schemas = (Array.isArray(headerTools) ? headerTools : []).filter(
-    (schema) => isRecord(schema) && schema['name'] === exec.name,
-  )
-  const candidate = schemas[0]
-  if (candidate === undefined || schemas.length !== 1)
-    throw new Error('auto-review: the pending native tool schema is missing or ambiguous')
-  const schema = loggedSchema(candidate, exec.name)
-  return {
-    mode: 'native',
-    name: schema.name,
-    description: schema.description,
-    parameters: schema.parameters,
-    arguments: exec.arguments,
-  }
-}
-
-/** Resolve a PTC inner action from its binding schema and logged identity. */
-function ptcAction(
-  exec: ToolExecution,
-  start: StartView,
-  visibleParentKeys: ReadonlySet<string>,
-): ReviewAction {
-  const { event } = start
-  const parentCallId = asString(event.data['parentCallId'])
-  if (
-    parentCallId === undefined ||
-    !visibleParentKeys.has(scopedCallKey(start.step, parentCallId)) ||
-    event.data['rootCallId'] !== exec.rootCallId ||
-    event.data['name'] !== exec.name ||
-    !sameJson(event.data['arguments'], exec.arguments)
-  )
-    throw new Error('auto-review: the pending PTC call disagrees with its logged action')
-  if (exec.schema === undefined || exec.schema.name !== exec.name)
-    throw new Error('auto-review: the pending PTC binding schema is missing or inconsistent')
-  const schema = loggedSchema(exec.schema, exec.name)
-  return {
-    mode: 'ptc-inner',
-    name: schema.name,
-    description: schema.description,
-    parameters: schema.parameters,
-    arguments: exec.arguments,
-  }
-}
-
-/**
- * Freeze the environment, instruction, history and action facts of one pending
- * call. Every fact is bound to its exact durable identity; a call whose log
- * identity is missing or ambiguous throws instead of being reviewed loosely.
- * @param agent - the agent whose durable surface and request header authorize the call.
- * @param exec - the immutable pending execution.
- * @returns the frozen facts, not including this service's own policy revision.
- */
-export function snapshotReviewFacts(agent: Agent, exec: ToolExecution): ReviewFacts {
-  const session = agent.session
-  const log = readLog(session)
-  const bySeq = new Map(log.map((event) => [event.seq, event]))
-  const order = readSurface(session)
-  const header = session.requestHeader()
-  const config = header?.config
-  if (config === undefined || config.provider.length === 0 || config.model.length === 0)
-    throw new Error('auto-review: no complete request-header route is available')
-  const cwd = session.header.cwd
-  if (cwd === undefined || cwd.length === 0)
-    throw new Error('auto-review: the session has no working directory')
-
-  const nativeByScopedId = new Map<string, EventView[]>()
-  for (const event of log) {
-    if (event.type !== 'tool/call') continue
-    const callId = asString(event.data['callId'])
-    if (callId === undefined) throw new Error('auto-review: a logged tool call has no call id')
-    const key = scopedCallKey(stepIdentityOf(event.data), callId)
-    const bucket = nativeByScopedId.get(key)
-    if (bucket === undefined) nativeByScopedId.set(key, [event])
-    else bucket.push(event)
-  }
-
-  const { starts, openStep: currentStep } = scopePtcStarts(log)
-  const initialPromptSeq = directParentInitialPromptSeq(agent, log)
-  const startsByParent = new Map<string, StartView[]>()
-  const startsBySubCall = new Map<string, StartView>()
-  for (const start of starts) {
-    const subCallId = asString(start.event.data['subCallId'])
-    const parentCallId = asString(start.event.data['parentCallId'])
-    if (subCallId === undefined || parentCallId === undefined)
-      throw new Error('auto-review: a PTC dispatch start has no call identity')
-    const subCallKey = scopedCallKey(start.step, subCallId)
-    if (startsBySubCall.has(subCallKey))
-      throw new Error('auto-review: a PTC call identity is ambiguous in the session log')
-    startsBySubCall.set(subCallKey, start)
-    const parentKey = scopedCallKey(start.step, parentCallId)
-    const bucket = startsByParent.get(parentKey)
-    if (bucket === undefined) startsByParent.set(parentKey, [start])
-    else bucket.push(start)
-  }
-
-  if (currentStep === undefined)
-    throw new Error('auto-review: the pending call has no open step in the session log')
-  const currentRootCalls = nativeByScopedId.get(scopedCallKey(currentStep, exec.rootCallId)) ?? []
-  const currentRootCall = currentRootCalls[0]
-  if (currentRootCall === undefined || currentRootCalls.length !== 1)
-    throw new Error('auto-review: the pending root call is missing or ambiguous in the session log')
-  const currentPtcStart =
-    exec.parent === undefined
-      ? undefined
-      : startsBySubCall.get(scopedCallKey(currentStep, exec.callId))
-  if (exec.parent !== undefined && currentPtcStart === undefined)
-    throw new Error('auto-review: the pending PTC call is missing or ambiguous in the session log')
-
-  const parentSession = (session.header as { parentSession?: unknown }).parentSession
-  const projectInstructions: unknown[] = []
-  const history: unknown[] = []
-  const visibleParentKeys = new Set<string>()
-  let passedCurrentRoot = false
-  for (const seq of order) {
-    const event = bySeq.get(seq)
-    if (event === undefined)
-      throw new Error('auto-review: the session surface names a missing event')
-    if (event.type === 'user/message') {
-      const source = event.data['source']
-      if (!isRecord(source)) throw new Error('auto-review: a visible user message has no source')
-      if (source['kind'] === 'tool') continue
-      const content = event.data['content']
-      if (!Array.isArray(content))
-        throw new Error('auto-review: a visible user message has unreadable content')
-      if (isProjectInstruction(source)) {
-        if (content.length > 0)
-          projectInstructions.push({ kind: 'user-message', role: 'constraint', source, content })
-      } else {
-        history.push(
-          ...filteredUserEntries(event.seq, source, content, initialPromptSeq, parentSession),
-        )
-      }
-      continue
-    }
-    if (event.type !== 'assistant/message') continue
-    const messageStep = stepIdentityOf(event.data)
-    const isCurrentMessage = sameStep(messageStep, currentStep)
-    const message = event.data['message']
-    const content = isRecord(message) ? message['content'] : undefined
-    if (!Array.isArray(content))
-      throw new Error('auto-review: a visible assistant message has unreadable content')
-    let sawUnstartedSibling = false
-    for (const block of content) {
-      if (!isRecord(block) || block['type'] !== 'tool-call') continue
-      const id = asString(block['id'])
-      if (id === undefined) throw new Error('auto-review: a visible tool call has no id')
-      const key = scopedCallKey(messageStep, id)
-      const isCurrentRoot = isCurrentMessage && id === exec.rootCallId
-      if (isCurrentRoot && passedCurrentRoot)
-        throw new Error('auto-review: the pending root call is ambiguous in the current surface')
-      const calls = nativeByScopedId.get(key) ?? []
-      if (calls.length > 1)
-        throw new Error('auto-review: a native call identity is ambiguous in the session log')
-      const call = calls[0]
-      const startsForCall = startsByParent.get(key) ?? []
-      if (call === undefined) {
-        if (isCurrentMessage && !passedCurrentRoot)
-          throw new Error(
-            'auto-review: a visible call before the pending root is missing from the session log',
-          )
-        if (startsForCall.length > 0)
-          throw new Error('auto-review: an unstarted visible call has logged PTC dispatches')
-        sawUnstartedSibling = true
-        continue
-      }
-      if (sawUnstartedSibling)
-        throw new Error('auto-review: visible native call logs do not form a started prefix')
-      if (call.data['name'] !== block['name'] || call.data['arguments'] !== block['arguments'])
-        throw new Error('auto-review: a visible tool call disagrees with its logged action')
-      visibleParentKeys.add(key)
-      if (call !== currentRootCall || exec.parent !== undefined)
-        history.push({
-          kind: 'tool-call',
-          role: 'fact',
-          mode: 'native',
-          name: call.data['name'],
-          arguments: call.data['arguments'],
-        })
-      for (const start of startsForCall) {
-        if (start === currentPtcStart) continue
-        history.push({
-          kind: 'tool-call',
-          role: 'fact',
-          mode: 'ptc-inner',
-          name: start.event.data['name'],
-          arguments: json(start.event.data['arguments']),
-        })
-      }
-      if (isCurrentRoot) passedCurrentRoot = true
-    }
-  }
-  if (!passedCurrentRoot)
-    throw new Error('auto-review: the pending root call is missing from the current surface')
-
-  const action =
-    exec.parent === undefined
-      ? nativeAction(exec, header?.tools, currentRootCall)
-      : ptcAction(exec, currentPtcStart as StartView, visibleParentKeys)
-
-  return Object.freeze({
-    sessionRoute: {
-      provider: config.provider,
-      model: config.model,
-      reasoningEffort: config.reasoningEffort === undefined ? null : String(config.reasoningEffort),
-    },
-    cwd,
-    projectInstructions: Object.freeze(projectInstructions),
-    history: Object.freeze(history),
-    action: Object.freeze(action),
-    turn: currentStep.turn,
-    step: currentStep.step,
-  })
-}
-
-/** Render the four data sections paired with the fixed policy section. */
-export function reviewUserText(facts: ReviewFacts): string {
-  return [
-    'ENVIRONMENT',
-    json({ cwd: facts.cwd }),
-    'PROJECT_INSTRUCTIONS',
-    json(facts.projectInstructions),
-    'FILTERED_HISTORY',
-    json(facts.history),
-    'PENDING_ACTION',
-    json(facts.action),
-  ].join('\n\n')
 }
 
 /** Count members in the raw top-level JSON object. */

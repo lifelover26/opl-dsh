@@ -16,7 +16,7 @@ import { ApprovalRequestId } from '@deepseek-ai/dsh-user-approval'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import TaskFeedbackService from '../../src/collaboration/host/feedback/index.ts'
 import { feedbackSessionFacts } from '../../src/collaboration/host/feedback/session-facts.ts'
-import { installSessionWaitProjection } from '../../src/execution/host/session-wait.ts'
+import { sessionHistoryFixture } from '../fixtures/session-controller.ts'
 import type { WakeDelivery } from '../../src/collaboration/host/feedback/types.ts'
 
 const cleanups: (() => Promise<unknown>)[] = []
@@ -102,9 +102,10 @@ async function fixture() {
     await ctx.plugin(SessionProjectionRegistry)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(SessionStore)
-    const waitOwner = await ctx.plugin({
-      inject: ['sessionProjections'],
-      apply: installSessionWaitProjection,
+    const controllerOwner = await ctx.plugin({
+      apply: (scope: Context) => {
+        scope.provide('sessionController', sessionHistoryFixture(ctx))
+      },
     })
     const session = ctx.sessions.create(SessionId('source-session'), {
       ...(options.seed === undefined ? {} : { seed: options.seed }),
@@ -158,7 +159,7 @@ async function fixture() {
       })
       await emit({ type: 'turn/start', seq: 1, data: { turn: 1 } } as SessionEvent)
     }
-    return { ctx, session, waitOwner, service, complete, emit, start }
+    return { ctx, session, controllerOwner, service, complete, emit, start }
   }
   return {
     mount,
@@ -175,6 +176,68 @@ const accepting = () => ({
 })
 
 describe('feedback service durable lifecycle', () => {
+  it('recovers a task turn that ends while an unnamed registration reads its baseline', async () => {
+    const f = await (await fixture()).mount()
+    const read = f.ctx.sessionController.events.bind(f.ctx.sessionController)
+    vi.spyOn(f.ctx.sessionController, 'events').mockImplementationOnce(async (request, signal) => {
+      const page = await read(request, signal)
+      f.session.append('turn/start', { turn: 1 })
+      f.session.append('turn/end', {
+        turn: 1,
+        reason: {
+          kind: 'error',
+          error: { code: 'PROVIDER', message: 'failed during registration' },
+        },
+      })
+      return page
+    })
+    await expect(
+      f.service.register({
+        taskId: 'registration-race',
+        sessionId: f.session.id,
+        target: { kind: 'codex-thread', threadId: 'target-thread' },
+        acceptance: 'verified outcome',
+      }),
+    ).resolves.toMatchObject({ task: { state: 'failed', turn: null } })
+    await f.service.settled()
+    expect(f.service.deliveries()).toMatchObject([{ deliveryId: 'registration-race@failed' }])
+  })
+
+  it('keeps a live terminal state when an older recovery read resumes afterward', async () => {
+    const disk = await fixture()
+    const first = await disk.mount()
+    const unavailable = vi.spyOn(first.ctx.sessions, 'get').mockReturnValue(undefined)
+    await first.service.register({
+      taskId: 'recover-race',
+      sessionId: first.session.id,
+      turn: 1,
+      target: { kind: 'codex-thread', threadId: 'target-thread' },
+      acceptance: 'verified outcome',
+    })
+    unavailable.mockRestore()
+    const seed = first.session.snapshotEvents()
+    await first.ctx.fiber.dispose()
+    const restarted = await disk.mount(false, {
+      seed,
+      beforeMount: async (ctx, session) => {
+        const read = ctx.sessionController.events.bind(ctx.sessionController)
+        vi.spyOn(ctx.sessionController, 'events').mockImplementationOnce(
+          async (request, signal) => {
+            const page = await read(request, signal)
+            session.append('turn/start', { turn: 1 })
+            session.append('turn/end', {
+              turn: 1,
+              reason: { kind: 'error', error: { code: 'PROVIDER', message: 'live failure wins' } },
+            })
+            return page
+          },
+        )
+      },
+    })
+    expect(restarted.service.task({ taskId: 'recover-race' })).toMatchObject({ state: 'failed' })
+    expect(restarted.service.deliveries()).toMatchObject([{ deliveryId: 'recover-race@failed' }])
+  })
+
   it('propagates a facts registration failure before opening its storage domain', async () => {
     const disk = await fixture()
     let opened: ReturnType<typeof vi.spyOn> | undefined
@@ -373,11 +436,11 @@ describe('feedback service durable lifecycle', () => {
     },
   )
 
-  it('unloads the watcher before its required wait reader is released', async () => {
+  it('unloads the watcher before its required official Session Controller is released', async () => {
     const first = await (await fixture()).mount()
     await first.start()
     const before = first.ctx.events._hooks['session/event']!.length
-    await first.waitOwner.dispose()
+    await first.controllerOwner.dispose()
     expect(first.ctx.get('taskFeedback')).toBeUndefined()
     expect(first.ctx.events._hooks['session/event']!.length).toBe(before - 1)
     first.session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
@@ -424,7 +487,7 @@ describe('feedback service durable lifecycle', () => {
           first.session.append('turn/end', { turn: 3, reason: { kind: 'completed' } })
         }
       })
-      first.ctx.provide('sessionController', { prompt })
+      Object.assign(first.ctx.sessionController, { prompt })
       const request = { taskId: 'task', deliveryId: 'task@failed', consumerId: 'reviewer' }
       const resumed = await first.service.resumeFailed(request)
       expect(resumed).toMatchObject({ decision: 'resumed', attempt: { taskId: 'task#r1' } })

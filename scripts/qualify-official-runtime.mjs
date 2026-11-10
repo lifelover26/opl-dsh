@@ -518,6 +518,7 @@ try {
     evidence.checks.downloadIntegrity = { sha512: true, owner: 'official installer' }
   }
   await verifyOfficial()
+  environment.OPL_QUALIFICATION_OFFICIAL_VERSION = evidence.officialVersion
   const profile = join(root, 'profiles/desktop')
   await mkdir(profile, { recursive: true })
   await writeFile(

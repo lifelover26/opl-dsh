@@ -18,17 +18,32 @@ export function installCollaborationTools(ctx: Context, harness: HarnessService)
       scope.tools.register(
         defineTool({
           name: 'list_harness_combinations',
-          description: '读取可用运行配置及精确 ID，再选择模型与 Harness。',
+          description:
+            '读取跨 Harness 持久任务的运行配置及精确 ID。DSH 内部协作使用官方智能体团队或 subagent 工具。',
           parameters: {},
           output,
-          execute: async () => await harness.combinations(),
+          execute: async () => {
+            const [catalog, combinations] = await Promise.all([
+              harness.executionCatalog(),
+              harness.combinations(),
+            ])
+            const native = new Set(
+              catalog.harnesses.filter((item) => item.kind === 'dsh').map((item) => item.id),
+            )
+            const external = new Set(
+              catalog.combinations
+                .filter((item) => item.harnessRef !== 'dsh' && !native.has(item.harnessRef))
+                .map((item) => item.id),
+            )
+            return combinations.filter((item) => external.has(item.id))
+          },
         }),
       )
       scope.tools.register(
         defineTool({
           name: 'delegate_to_harness',
           description:
-            '在同项目创建或继续另一运行配置的子任务。Claude Opus 5.5 未指定渠道时默认使用 Kiro；需要 AWS 时传入精确组合 ID。默认等待结果；返回后核验实际产物并调用 review_harness_task。继续修改沿用 sessionId 和 taskId，新指令用新 operationId。权限等待时请用户处理，不要重派。',
+            '在同项目创建或继续跨 Harness 的持久任务，并跟踪交付验收；DSH 内部协作使用官方智能体团队或 subagent 工具。Claude Opus 5.5 未指定渠道时默认使用 Kiro；需要 AWS 时传入精确组合 ID。默认等待结果；返回后核验实际产物并调用 review_harness_task。继续修改沿用 sessionId 和 taskId，新指令用新 operationId。已有 OPL 的 DSH 子任务可传 sessionId 继续。权限等待时请用户处理，不要重派。',
           parameters: {
             combination: {
               type: 'string',
@@ -53,7 +68,27 @@ export function installCollaborationTools(ctx: Context, harness: HarnessService)
             },
           },
           output,
-          execute: (args, exec) => json(harness.delegateFrom(origin, args, exec.signal)),
+          execute: async (args, exec) => {
+            if (!args.sessionId && args.combination) {
+              const catalog = await harness.executionCatalog()
+              const target = catalog.combinations.find(
+                (item) => item.id === args.combination?.trim(),
+              )
+              const definition = catalog.harnesses.find((item) => item.id === target?.harnessRef)
+              if (target?.harnessRef === 'dsh' || definition?.kind === 'dsh') {
+                const official = ['spawn_teammate', 'subagent'].filter((name) =>
+                  scope.tools.executable(name, agent, exec.toolSet),
+                )
+                const next = official.length
+                  ? `请直接使用当前可用的官方工具：${official.join('、')}。`
+                  : '当前对话没有可执行的官方内部委派工具，请启用官方智能体团队或 subagent 插件。'
+                throw Error(
+                  `DSH 内部子任务由官方功能负责；delegate_to_harness 只创建跨 Harness 的持久任务。${next}已有 OPL 子任务可传 sessionId 继续。`,
+                )
+              }
+            }
+            return json(harness.delegateFrom(origin, args, exec.signal))
+          },
         }),
       )
       scope.tools.register(

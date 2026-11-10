@@ -3,6 +3,10 @@ import { readFile, readdir, mkdir, writeFile, access } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { assertIsolatedRoot, safeBinding } from './qualification-support.mjs'
 import { verifyModelPlugins } from './qualification-model-plugins.mjs'
+import {
+  TEAM_CHILD_PROMPT,
+  verifyOfficialCapabilities,
+} from './qualification-official-capabilities.mjs'
 // Run against an already booted, isolated official Desktop. Never target a user's profile.
 const root = await assertIsolatedRoot(process.argv[2] ?? '')
 const binding = safeBinding(
@@ -165,6 +169,7 @@ assert.equal(
 )
 const requests = []
 let gitBashProbe = false
+let teamProbe = false
 const server = createServer(async (req, res) => {
   try {
     let bytes = ''
@@ -176,21 +181,46 @@ const server = createServer(async (req, res) => {
         m.role === 'tool' ||
         (Array.isArray(m.content) && m.content.some((b) => b.type === 'tool_result')),
     )
-    const toolName = gitBashProbe ? 'bash' : 'list_harness_combinations'
-    const toolInput = gitBashProbe
+    const teamChild =
+      teamProbe &&
+      body.messages.some(
+        (message) =>
+          message.role === 'user' && JSON.stringify(message.content).includes(TEAM_CHILD_PROMPT),
+      )
+    const toolName = teamProbe
+      ? 'spawn_teammate'
+      : gitBashProbe
+        ? 'bash'
+        : 'list_harness_combinations'
+    const toolInput = teamProbe
       ? {
-          command: 'git --version && printf OPL_GIT_BASH_OK > opl-git-bash-smoke.txt',
-          description: 'Verify Git Bash in the isolated workspace',
-          timeoutMs: 10000,
+          name: 'qualification-worker',
+          description: 'Verify the official Team child',
+          prompt: TEAM_CHILD_PROMPT,
+          context: 'fresh',
         }
-      : {}
-    const hasTool = body.tools?.some((t) => (t.name ?? t.function?.name) === toolName)
+      : gitBashProbe
+        ? {
+            command: 'git --version && printf OPL_GIT_BASH_OK > opl-git-bash-smoke.txt',
+            description: 'Verify Git Bash in the isolated workspace',
+            timeoutMs: 10000,
+          }
+        : {}
+    const hasTool = !teamChild && body.tools?.some((t) => (t.name ?? t.function?.name) === toolName)
+    const resultText = teamProbe
+      ? teamChild
+        ? 'OPL_OFFICIAL_TEAM_CHILD_VERIFIED'
+        : 'OPL_OFFICIAL_TEAM_LEAD_VERIFIED'
+      : 'runtime verified'
     requests.push({
       path: req.url,
       model: body.model,
       key: req.headers['x-api-key'] ?? req.headers.authorization,
       usedTool,
       hasTool,
+      ...(teamProbe && !teamChild
+        ? { teamTools: body.tools?.map((t) => t.name ?? t.function?.name) ?? [] }
+        : {}),
     })
     res.writeHead(200, { 'content-type': 'text/event-stream' })
     if (isMessages) {
@@ -222,7 +252,7 @@ const server = createServer(async (req, res) => {
         send({
           type: 'content_block_delta',
           index: 0,
-          delta: { type: 'text_delta', text: 'runtime verified' },
+          delta: { type: 'text_delta', text: resultText },
         })
       }
       send({ type: 'content_block_stop', index: 0 })
@@ -257,7 +287,7 @@ const server = createServer(async (req, res) => {
             },
           ],
         })
-      else send({ content: 'runtime verified' })
+      else send({ content: resultText })
       res.write(
         'data: ' +
           JSON.stringify({
@@ -338,6 +368,15 @@ try {
   assert.equal(models.find((m) => m.id === 'deepseek-flash').reasoning.defaultEffort, 'high')
   for (const id of ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna'])
     assert.equal(models.find((m) => m.id === 'codex::' + id).reasoning.defaultEffort, 'medium')
+  teamProbe = true
+  const officialCapabilities = await verifyOfficialCapabilities({
+    wire,
+    rpc,
+    project,
+    officialVersion: process.env.OPL_QUALIFICATION_OFFICIAL_VERSION,
+    readTools: () => requests.flatMap((request) => request.teamTools ?? []),
+  })
+  teamProbe = false
   const catalog = await harness('catalog')
   assert(
     !catalog.combinations.some(
@@ -735,6 +774,7 @@ try {
         controlProjectAttribution: true,
         groupedModels: models.map((m) => m.id),
         officialTools: true,
+        officialCapabilities,
         modelPlugins,
         externalOrdinaryConversation: {
           historyWithoutExecution: true,

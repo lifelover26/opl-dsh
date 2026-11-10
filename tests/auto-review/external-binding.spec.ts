@@ -22,6 +22,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import * as OfficialAutoReview from '@deepseek-ai/dsh-experimental-auto-review'
 import { testPeerConnection } from '../test-peer.ts'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { Session, SessionId, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
@@ -210,6 +211,7 @@ async function mount(options: { enabled?: boolean } = {}): Promise<Mounted> {
   })
   ctx.provide('shell', { sandboxMode: 'workspace-write' })
   ctx.provide('tools', {})
+  ctx.provide('workingDirectory', { ensure: async (agent: Agent) => agent.session.header.cwd })
   const reviewer = createReviewer()
   ctx.provide('llm', reviewer)
   ctx.provide('settings', createSettings(options.enabled ?? true))
@@ -238,6 +240,7 @@ async function mount(options: { enabled?: boolean } = {}): Promise<Mounted> {
       },
     },
   })
+  await ctx.plugin(OfficialAutoReview)
   await ctx.plugin(OplAutoReviewService, {
     enabled: options.enabled ?? true,
     reviewerProvider: '',

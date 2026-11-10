@@ -70,6 +70,8 @@ Issue 在实现前记录这些判断，PR 在合并前核对实现与用户目�
 
 ## 构建与契约
 
+官方升级同时承担能力迁回。先以用户任务判断新版官方 DSH、官方插件和公开接口是否已覆盖 [复用审计](dsh-reuse-audit.md) 中仍由 OPL 保留的差异。已覆盖时，在同次升级中验证最小真实链路，切换唯一调用者，再移除重复实现；只保留无法由官方表达的业务语义。官方 Team、Subagent、preset/persona 与原生权限不建立第二套 OPL 状态。模型与 Harness 的持久组合、外部协议和交付验收在官方尚未覆盖时继续由当前 owner 负责。新增 OPL 能力须写明官方缺口、接入位置与迁回条件；不以永久双写或静默回退维持旧路径。
+
 开发使用 Node.js 24.9.0 或更新版本。
 
 SuperAgent 原型以固定源码快照保存在 `vendor/dsh-superagent`，通过同一 npm workspace 和锁文件安装开发依赖。根类型检查和测试同时覆盖它；构建生成独立 bundle 并把摘要写入套件清单。官方服务仍为运行时 peer，原版面板与存储保持自身 owner；适配范围见其 `UPSTREAM.md` 和[使用说明](superagent.md)。
@@ -104,7 +106,7 @@ CLI 维护回读绕过版本缓存，并检查安装器返回的实际安装目�
 
 组合目录只保存模型引用、Harness 引用、默认/启用状态和权限。`ExecutionModelResolver` 从官方模型注册表和 Gateway 读取投影，不另存模型连接。新增执行器应提供一个适配器及其协议/权限/恢复测试，不在中心服务增加账户或 Provider 配置分支。
 
-通用协作后台记录父子对话、明确任务、验收要求、执行状态、交付和回传状态。执行完成不等于验收通过。同项目写任务按现有协作规则排队，只读任务可并行；取消父任务传递给后代，子任务不能扩大权限。主界面保持官方 DSH 会话 UI，不渲染第二套外部会话列表；外部 Codex 开关只限制外部桥接，不关闭内部 Codex CLI 组合。
+DSH 内部新子任务由官方 Subagent/Team 管理。OPL 协作后台只为跨 Harness 任务保留父子映射、明确任务、验收要求、执行状态、交付和回传状态，并兼容已有 OPL 原生任务。执行完成不等于验收通过。OPL 同项目写任务按现有协作规则排队，只读任务可并行；取消父任务传递给后代，子任务不能扩大权限。主界面保持官方 DSH 会话 UI，不渲染第二套外部会话列表；外部 Codex 开关只限制外部桥接，不关闭内部 Codex CLI 组合。
 
 TaskFeedback 的事件投影、纯状态决策、持久回执与投递调度分别位于 `session-facts.ts`、`state.ts`、`receipts.ts`、`delivery.ts`。Remote 服务仍负责唯一的恢复与编排，不再增加一套通知数据库。
 
@@ -120,7 +122,7 @@ TaskFeedback 的事件投影、纯状态决策、持久回执与投递调度分�
 | 组合配置                 | `profiles/desktop/execution-catalog.json`；不保存模型连接和密钥                                                          |
 | OPL 会话映射、轮次与交付 | `profiles/desktop/harness-sessions/`，每个会话一个按 ID 哈希命名的文件                                                   |
 | 原生对话的组合选择       | `profiles/desktop/combination-selection.json`                                                                            |
-| 官方 TaskFeedback 数据   | 官方 Storage Domain 的 `task_feedback` 域                                                                                |
+| OPL TaskFeedback 数据    | 官方 Storage Domain 的 `task_feedback` 域                                                                                |
 | 套件版本、更新缓存与状态 | 安装回执中的 `suiteRoot`；Mac 默认 `~/Library/Application Support/OPL DSH Suite`，Windows 默认 `%APPDATA%/OPL DSH Suite` |
 | Codex Skill 与派发账本   | 回执中的 `skillDir`、`ledgerDir`；已有账本路径在修复时保留                                                               |
 

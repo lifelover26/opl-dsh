@@ -29,7 +29,7 @@ export const AUTO_REVIEW_FIELD = 'toolAutoReview'
 /** Profile entry that carries {@link AUTO_REVIEW_FIELD}. */
 export const AUTO_REVIEW_OWNER_NS = 'opl-suite'
 
-/** Auto Review is off until a user explicitly enables it. */
+/** OPL reviewer routing and the external approval bridge are off by default. */
 export const DEFAULT_ENABLED = false
 /** Review request deadline; a suggestion, not a calibrated value. */
 export const DEFAULT_TIMEOUT_MS = 30000

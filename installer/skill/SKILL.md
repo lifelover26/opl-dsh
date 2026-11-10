@@ -173,7 +173,7 @@ ELECTRON_RUN_AS_NODE=1 '<配置中的 executable>' '<本 Skill>/control.mjs' rep
 
 MiniMax 候选的 Host 选择命令为 `minimax-candidate-select --version <候选版本> [--source <候选目录>]`。它通过公开 `oplExecution/select-minimax-candidate` 检查同一 Host 所有项目活动并持有维护互斥，把已校验启动器写入实际执行组合；不读取离线 `selection.json` 作为当前选择。省略来源可切回已导入版本，不覆盖已有版本或改官方账号。返回 `validation: static` 仅代表文件校验，仍须核对真实 ACP Shell、模型和 Bash。生产安装前按当前全局任务重新核验空闲；不能凭上一次审计或回执断言可切换。
 
-Auto Review 工具审批默认关闭；启用不自动改变现有会话权限。DSH 原生所有聊天模型和 ZCode 默认使用独立注册的 codex-auto-review，不继承聊天推理档位；显式固定审查模型仍优先。Codex、Claude 使用官方审核接口；其他未验证的外部 Auto 模式拒绝启动。审查模型只使用 Host 注册并广告的原生无工具 LLM 路线，不能把外部 MiniMax ACP 或其他 CLI 组合当作纯 LLM。已有完整访问授权的协作任务继续显式使用 danger-full-access/never，不为了测试审查而修改活动任务的权限。保存回执未知时先读取生效状态，不重发不确定保存；停用前由用户切换空闲 Auto 会话的权限，不自动放宽为完全权限或代答人工审批。
+DSH 原生 Auto Review 由官方插件负责，profile 插件管理控制启停，会话中仍须显式选择 Auto。OPL 路线适配默认关闭；开启后 DSH 原生和 ZCode 使用独立注册的 codex-auto-review 或显式选择的 reviewer，关闭后官方 Auto 使用当前会话模型。OPL 不注册第二套原生 gate、preset 或卸载逻辑。Codex、Claude 使用各自官方审核接口；其他未验证的外部 Auto 模式拒绝启动。审查模型只使用 Host 注册并广告的无工具 LLM 路线，不从外部 CLI 执行组合拼装。已有完整访问授权的协作任务继续显式使用 danger-full-access/never，不为测试改变活动任务权限。保存回执未知时先读取生效状态；关闭 OPL 适配不修改会话权限。官方插件自身的卸载权限行为以官方说明和实际会话读回为准，不代答人工审批。
 
 Todo 面板只读取官方记录的 todos 投影。停止后未完成项静态显示，不能把会话或子会话结束解释为项目已完成；父与子会话活动独立，读不到状态时保留未知。不从正文解析清单，不按项目文字关联子会话，不为展示修改历史或发送模型请求。
 

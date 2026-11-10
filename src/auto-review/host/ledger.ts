@@ -124,10 +124,38 @@ const resultRecordSchema = z.strictObject({
   reason: z.string().optional(),
 })
 
+/** Native transport observations do not claim what the official tool gate decided. */
+const nativeRequestSchema = z.strictObject({
+  kind: z.literal('native-request'),
+  seq: z.number().int(),
+  at: z.string(),
+  sessionId: z.string(),
+  requestId: z.string(),
+  selectionRevision: z.string(),
+  policyOwner: z.literal('@deepseek-ai/dsh-experimental-auto-review'),
+  reviewer: routeSchema,
+  timeoutMs: z.number().int(),
+  maxOutputTokens: z.number().int(),
+  request: z.strictObject({ system: z.string(), messages: z.string() }),
+})
+
+const nativeResponseSchema = z.strictObject({
+  kind: z.literal('native-response'),
+  seq: z.number().int(),
+  at: z.string(),
+  sessionId: z.string(),
+  requestId: z.string(),
+  status: z.enum(['finished', 'failed', 'cancelled']),
+  /** Verbatim final text is evidence for the official parser, never authorization. */
+  text: z.string(),
+})
+
 /** Every durable review record this service writes. */
 export const reviewRecordSchema = z.discriminatedUnion('kind', [
   beginRecordSchema,
   resultRecordSchema,
+  nativeRequestSchema,
+  nativeResponseSchema,
 ])
 
 /** One durable review record. */
@@ -158,9 +186,8 @@ export const autoReviewDomainSpec = defineDomain({
  * @returns a control-key-safe, collision-free key.
  */
 export function reviewRecordKey(record: ReviewRecord): string {
-  const identity = [record.sessionId, record.pending.callId, record.kind, String(record.seq)].join(
-    '\u0000',
-  )
+  const call = 'pending' in record ? record.pending.callId : record.requestId
+  const identity = [record.sessionId, call, record.kind, String(record.seq)].join('\u0000')
   return Buffer.from(identity, 'utf8').toString('base64url')
 }
 

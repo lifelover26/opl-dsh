@@ -1,6 +1,6 @@
 # Jev Auto Review 决策模型
 
-在 **设置 → 执行与组合 → 工具审批** 中选择 **决策模型 → OpenCode · Jev / Jev 1.13 Free**，保存后用于选择 Auto 权限的 DSH 或 ZCode 会话。现有审查路线不会自动切换，保存也不改变会话权限。
+在 **设置 → 执行与组合 → 审查模型路线** 中启用 OPL 路线适配，选择 **决策模型 → OpenCode · Jev / Jev 1.13 Free**，保存后用于选择 Auto 权限的 DSH 或 ZCode 会话。现有审查路线不会自动切换，保存也不改变会话权限。
 
 这条路线使用 OpenCode 官方公布的 `https://opencode.ai/inference/systemone/v1/systemone`，模型为 `jev-1.13-free`，免费入口无需个人 API Key。Jev 接收冻结的审查策略、授权历史及待执行动作，返回固定选项、概率和置信度。它没有聊天、工具执行或推理档位接口，因而不出现在普通聊天或独立 reviewer 列表中。OFM 的同名聊天条目也不能作为审查路线。
 
@@ -14,7 +14,7 @@
 
 ## 个人 TypeSafe API
 
-在“设置 → 模型供应商”添加 **TypeSafe · Jev** 并保存自己的 API Key，然后在工具审批的“决策模型”下拉列表选择 **TypeSafe · Jev / Jev 1.13 · 个人 API**。密钥仅保存在 Windows Credential Manager 的 `OPLDSH:TypeSafeJev:ApiKey`，不保存到配置文件；未配置或无法读取密钥时不展示此路线。不支持 Windows Keyring 的平台不提供个人密钥存储。
+在“设置 → 模型供应商”添加 **TypeSafe · Jev** 并保存自己的 API Key，然后在审查模型路线的“决策模型”下拉列表选择 **TypeSafe · Jev / Jev 1.13 · 个人 API**。密钥仅保存在 Windows Credential Manager 的 `OPLDSH:TypeSafeJev:ApiKey`，不保存到配置文件；未配置或无法读取密钥时不展示此路线。不支持 Windows Keyring 的平台不提供个人密钥存储。
 
 个人路线固定调用 `https://api.typesafe.ai/v1/systemone` 和稳定版本 `jev-1.13.0`，按个人 TypeSafe 账户额度使用，与无需个人 Key 的 OpenCode 免费路线分开。删除密钥后路线撤下，在途请求发送前仍重新读取密钥；不会自动切换免费接口、环境变量或明文凭据。已发出的请求不能通过删除本地密钥撤回。
 

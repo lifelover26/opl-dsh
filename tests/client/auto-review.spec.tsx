@@ -1048,14 +1048,12 @@ describe('auto-review plugin wiring contract', () => {
 })
 
 describe('auto-review locale', () => {
-  it('keeps both dictionaries complete and distinct from the collaboration feature', () => {
+  it('keeps both dictionaries complete', () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort())
     for (const key of Object.keys(zh) as (keyof typeof zh)[]) {
       expect(zh[key].length).toBeGreaterThan(0)
       expect(en[key].length).toBeGreaterThan(0)
     }
-    expect(zh.distinction).toContain('协作')
-    expect(en.distinction).toContain('Collaboration')
   })
 })
 

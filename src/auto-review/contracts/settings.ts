@@ -11,7 +11,7 @@ export interface AutoReviewRoute {
   reasoningEffort?: string
 }
 
-/** Auto Review is off until explicitly enabled; enabling does not select a permission preset. */
+/** OPL routing/bridge is off by default; the official Auto plugin owns native permissions. */
 export interface AutoReviewPreferences {
   enabled: boolean
   reviewer:
@@ -40,6 +40,7 @@ export type AutoReviewFailure =
   | 'invalid-settings'
   | 'stale-settings'
   | 'sessions-active'
+  /** Compatibility with older Hosts; the current adapter does not emit this refusal. */
   | 'auto-sessions-remain'
   | 'save-failed'
 
