@@ -20,6 +20,8 @@ export {
   MIMO_CODE_HARNESS,
   MIMO_OFM_PROVIDER,
   MIMO_OFM_MODEL,
+  MIMO_AMD_MODEL,
+  MIMO_OFM_MODELS,
 } from './mimo.ts'
 export {
   buildMimoRouteConfig,

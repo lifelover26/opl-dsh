@@ -192,6 +192,7 @@ describe('Kilo 声明面', () => {
   it('声明 Kilo 已验证的 OFM 来源模型配对', () => {
     expect(kiloModels().map((entry) => entry.model)).toEqual([
       'inclusionai/ling-3.1-flash-1019-free',
+      'inclusionai/ling-3.2-flash:free',
       'dots-studio/dots-3-note-preview:free',
       'stealth/glyph-cluster',
       'stealth/crouton-alpha',

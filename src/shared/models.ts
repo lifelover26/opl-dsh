@@ -39,6 +39,15 @@ export function isRetiredModel(ref: ModelRef): boolean {
 export function displayModelName(ref: ModelRef, name?: string): string {
   const id = ref.model.includes('::') ? ref.model.slice(ref.model.lastIndexOf('::') + 2) : ref.model
   if (ref.provider === 'our-free-model') {
+    if (id === 'amd/Qwen3.8-27B') return 'EAC Qwen3.8 27B（AMD）'
+    if (id === 'amd/DeepSeek-V4.1-Flash') return 'EAC DeepSeek V4.1 Flash（AMD）'
+    if (id === 'amd/DeepSeek-V4-Flash') return 'EAC DeepSeek V4 Flash（AMD）'
+    if (id === 'amd/MiMo-V2.6-Flash') return 'EAC MiMo V2.6 Flash（AMD）'
+    if (id === 'amd/GLM-5.3-Flash') return 'EAC GLM 5.3 Flash（AMD）'
+    if (id === 'amd/MiniCPM-V-4.7-35B-A3B') return 'EAC MiniCPM-V 4.7 35B-A3B（AMD）'
+    if (id === 'amd/MiniCPM5-2B') return 'EAC MiniCPM5 2B（AMD）'
+    if (id === 'amd/Gemma-4-31B-IT') return 'EAC Gemma 4 31B IT（AMD）'
+    if (id === 'amd/MiniCPM-V-4.7-1B') return 'EAC MiniCPM-V 4.7 1B（AMD）'
     if (id === 'longcat-2.5-free') return 'LongCat 2.5 Free'
     if (id === 'iceman-free') return 'Iceman Free'
     if (id === 'inkling-2-small-free') return 'Inkling 2 Small Free'
@@ -51,6 +60,7 @@ export function displayModelName(ref: ModelRef, name?: string): string {
     if (id === 'stepfun-ai/step-5-preview') return 'EAC Step 5 Preview'
     if (id === 'mistralai/mistral-large-4-1t-a52b') return 'EAC Mistral Large 4'
     if (id === 'inclusionai/ling-3.1-flash-1019-free') return 'Kilo Ling 3.1 Flash 1019'
+    if (id === 'inclusionai/ling-3.2-flash:free') return 'Kilo Ling 3.2 Flash'
     if (id === 'stealth/crouton-alpha') return 'Kilo Crouton Alpha'
     if (id === 'liquid/lfm-3-1.7b:free') return 'Kilo LFM3-1.7B'
     if (id === 'thinkingmachines/inkling-2-small:free') return 'Kilo Inkling 2 Small'

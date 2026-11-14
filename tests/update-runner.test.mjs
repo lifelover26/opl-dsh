@@ -920,7 +920,24 @@ test(
   { skip: process.platform !== 'win32' },
   async (t) => {
     const root = await mkdtemp(join(tmpdir(), 'opl-wrapper-'))
-    t.after(() => rm(root, { recursive: true, force: true }))
+    let wrapperPid, targetPid
+    t.after(async () => {
+      for (const pid of [wrapperPid, targetPid]) {
+        if (!Number.isSafeInteger(pid) || pid <= 0) continue
+        const deadline = Date.now() + 10_000
+        while (true) {
+          try {
+            process.kill(pid, 0)
+          } catch (error) {
+            if (error.code === 'ESRCH') break
+            throw error
+          }
+          assert.ok(Date.now() < deadline, `fixture process ${pid} did not exit`)
+          await new Promise((done) => setTimeout(done, 50))
+        }
+      }
+      await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+    })
     const directory = join(root, '中文 路径')
     await mkdir(directory)
     const output = join(directory, 'observed.json'),
@@ -929,7 +946,7 @@ test(
       codexHome = join(directory, 'Codex home')
     await writeFile(
       target,
-      `import{writeFileSync}from'node:fs';writeFileSync(${JSON.stringify(output)},JSON.stringify({args:process.argv.slice(2),codexHome:process.env.CODEX_HOME,electron:process.env.ELECTRON_RUN_AS_NODE,ca:process.env.NODE_USE_SYSTEM_CA}))`,
+      `import{writeFileSync,renameSync}from'node:fs';writeFileSync(${JSON.stringify(output + '.tmp')},JSON.stringify({pid:process.pid,args:process.argv.slice(2),codexHome:process.env.CODEX_HOME,electron:process.env.ELECTRON_RUN_AS_NODE,ca:process.env.NODE_USE_SYSTEM_CA}));renameSync(${JSON.stringify(output + '.tmp')},${JSON.stringify(output)})`,
     )
     const args = [target, 'a"b', '中文 参数', 'C:\\path with space\\']
     await writeFile(
@@ -941,6 +958,7 @@ test(
       ),
     )
     const started = launchIndependent({ command: 'wscript.exe', args: [wrapper] })
+    wrapperPid = started.pid
     assert.equal(started.guarantee, 'job-independent')
     const deadline = Date.now() + 10_000
     let observed
@@ -953,6 +971,9 @@ test(
       }
       await new Promise((done) => setTimeout(done, 100))
     }
-    assert.deepEqual(observed, { args: args.slice(1), codexHome, electron: '1', ca: '1' })
+    targetPid = observed?.pid
+    assert.ok(Number.isSafeInteger(targetPid) && targetPid > 0)
+    const { pid, ...actual } = observed
+    assert.deepEqual(actual, { args: args.slice(1), codexHome, electron: '1', ca: '1' })
   },
 )

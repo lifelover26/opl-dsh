@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -111,7 +119,10 @@ exit $LASTEXITCODE
 `
 
 function runInstaller(t, vendorExitCode, { forwardSlashReceipt = false } = {}) {
-  const scratch = mkdtempSync(join(tmpdir(), 'opl-windows-official-installer-'))
+  // PowerShell resolves 8.3 TEMP aliases before checking the fixture's paths.
+  const scratch = realpathSync.native(
+    mkdtempSync(join(tmpdir(), 'opl-windows-official-installer-')),
+  )
   t.after(() => rmSync(scratch, { recursive: true, force: true }))
   const root = join(scratch, 'Suite root')
   const payload = join(scratch, 'Enhancement payload')
