@@ -1,0 +1,13 @@
+{
+  "schema_version": "opl.product-release.v1",
+  "product_id": "opl-dsh",
+  "repository": "gaofeng21cn/opl-dsh",
+  "strategy": "owner_schedule",
+  "trigger": "owner_schedule",
+  "publisher_workflow": "stable-release.yml",
+  "channel": {
+    "kind": "github_release"
+  },
+  "schedule_utc": "37 18 * * *",
+  "scope": "Own enhancement and official desktop feed changes; existing owner scheduler remains the single writer."
+}
