@@ -835,9 +835,8 @@ it.each(['opencode/glm-5.3-flash-free', 'opencode/deepseek-v4.1-flash-free'])(
 
 it('omits empty default harness setups but retains an explicitly configured existing engine', () => {
   const fresh = defaultExecutionCatalog()
-  for (const id of ['mimo-code', 'muse-code'])
-    expect(fresh.harnesses.some((h) => h.id === id)).toBe(false)
-  for (const id of ['opencode', 'step-code', 'pool'])
+  for (const id of ['muse-code']) expect(fresh.harnesses.some((h) => h.id === id)).toBe(false)
+  for (const id of ['mimo-code', 'opencode', 'step-code', 'pool'])
     expect(fresh.harnesses.some((h) => h.id === id)).toBe(true)
   fresh.harnesses.push({
     id: 'muse-code',
@@ -852,12 +851,6 @@ it('omits empty default harness setups but retains an explicitly configured exis
 
 it('offers an OpenCode-only MiMo lane without generating a vendor CLI combination', async () => {
   const catalog = defaultExecutionCatalog()
-  catalog.harnesses.push({
-    id: 'mimo-code',
-    name: 'MiMo Code',
-    kind: 'acp',
-    command: 'mimo',
-  })
   const ctx = {
     get: () => undefined,
     llm: {

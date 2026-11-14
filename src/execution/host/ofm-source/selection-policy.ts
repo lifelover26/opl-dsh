@@ -19,7 +19,7 @@ export function isHiddenOfmSelection(ref: ModelRef): boolean {
 }
 
 /** No default CLI setup when every supported lane is excluded from the picker. */
-export const OFM_INACTIVE_DEFAULT_HARNESSES: readonly string[] = ['mimo-code', 'muse-code']
+export const OFM_INACTIVE_DEFAULT_HARNESSES: readonly string[] = ['muse-code']
 
 /**
  * OFM-discovered identities routed through the official CLI's own `opencode` free provider.

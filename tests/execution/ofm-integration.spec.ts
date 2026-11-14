@@ -54,7 +54,7 @@ describe('central OFM wiring', () => {
     it(`${pairing.id} binds every declared lane and refuses unrelated models`, async () => {
       const test = fixture()
       const catalog = defaultExecutionCatalog()
-      if (['mimo-code', 'muse-code'].includes(pairing.id)) {
+      if (pairing.id === 'muse-code') {
         expect(catalog.harnesses.some((h) => h.id === pairing.id)).toBe(false)
         catalog.harnesses.push({
           id: pairing.id,

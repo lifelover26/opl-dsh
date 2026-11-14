@@ -535,6 +535,7 @@ export class ExecutionModelResolver {
       const declaredOfficial = officialHarnessFor(model.ref)
       const official =
         declaredOfficial &&
+        !officialOpenCodeModel(model.ref) &&
         !OFM_INACTIVE_DEFAULT_HARNESSES.includes(declaredOfficial) &&
         catalog.harnesses.some(
           (harness) =>
