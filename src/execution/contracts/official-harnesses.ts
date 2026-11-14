@@ -21,6 +21,8 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
       { provider: 'deepseek-official', model: '*' },
       { provider: 'deepseek-account', model: '*' },
       { provider: 'opl-gateway', model: 'deepseek-flash' },
+      { provider: 'our-free-model', model: 'amd/DeepSeek-V4.1-Flash' },
+      { provider: 'our-free-model', model: 'amd/DeepSeek-V4-Flash' },
     ],
   },
   {
@@ -68,7 +70,10 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
   },
   {
     id: 'mimo-code',
-    officialModels: [{ provider: 'our-free-model', model: 'mimo-v2.6-flash-free' }],
+    officialModels: [
+      { provider: 'our-free-model', model: 'mimo-v2.6-flash-free' },
+      { provider: 'our-free-model', model: 'amd/MiMo-V2.6-Flash' },
+    ],
   },
   {
     id: 'pool',

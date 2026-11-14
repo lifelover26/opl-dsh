@@ -57,6 +57,10 @@ Kilo ERNIE-5.5-Flash-Preview 使用精确 ID `baidu/ernie-5.5-flash-preview:free
 
 当前另支持 Kilo Particle-1（`particle-ai/particle-1:free`）和 Kilo Apodex 1.1 Mini（`apodex/apodex-1.1-mini:free`）：两者保留精确 ID，通过 Kilo Code 和 OFM Chat 转发执行，默认推荐 Kilo Code，不显示推理档位。
 
+Kilo Ling 3.2 Flash（`inclusionai/ling-3.2-flash:free`）默认推荐 Kilo Code，经 OFM Chat 转发，保留来源的默认思考设置，不显示推理档位菜单；上下文容量与用量沿用实时目录及官方统计。
+
+EAC 的 AMD 路由保留完整 `amd/` ID：`amd/DeepSeek-V4.1-Flash`、`amd/DeepSeek-V4-Flash` 推荐 DSH；`amd/MiMo-V2.6-Flash` 推荐 MiMo Code；`amd/GLM-5.3-Flash` 推荐 ZCode；`amd/Qwen3.8-27B`、`amd/MiniCPM-V-4.7-35B-A3B`、`amd/MiniCPM5-2B`、`amd/Gemma-4-31B-IT`、`amd/MiniCPM-V-4.7-1B` 推荐 Pi。均经 OFM 的 EAC Chat 转发，不与同名免费渠道合并。来源当前未声明这些路由的真实推理档位，外部 Harness 保留来源默认设置；DSH 来源菜单的 light、balanced、deep 控制输出预算。图片与上下文能力沿用来源实时声明，不根据模型名称补齐。
+
 OFM 的 Kilo 目录对 `liquid/lfm-3-1.7b:free` 声明 `low`、`medium`、`high` 三档推理强度，默认 `high`，且不提供关闭思考。当前 OPL 适配使用的官方 Kilo ACP 自定义 provider 没有可写的 effort 配置项，因此不把来源档位伪装成 Kilo 选项；显式档位请求会在发送前拒绝，未指定档位时保留上游默认设置。
 
 EAC 的 `opencode/nemotron-3.5-lightning-free`、`opencode/nemotron-3.5-super-vl-free` 和 `opencode/flint-40b-free` 保留完整 ID，使用 OFM 转发，不改成裸 ID 的 OpenCode 直连通道。Pi 的 `thinkingmachines/inkling:free` 与已有的 `thinkingmachines/inkling-small:free` 分开配置；Kilo 的 `thinkingmachines/inkling-2-small:free` 是独立的 Kilo Gateway 免费路由；`google/gemma-4-31b-it:free` 不提供推理档位菜单。EAC 的 `deepseek-ai/deepseek-v4.1-flash` 在新模型发现中推荐 DSH；其他未知模型不会因此变成推荐项，组合仍需用户选择添加。
@@ -67,7 +71,7 @@ EAC 的 `opencode/nemotron-3.5-lightning-free`、`opencode/nemotron-3.5-super-vl
 
 上下文沿用官方圆环和详情，不增加独立文字栏。StepCode 的占用由官方会话统计估算，窗口使用来源配置并经 CLI 回读；Mistral Vibe 的窗口是 CLI 生效的压缩预算，占用来自最新请求统计。它们不是接口最大容量的探测结果。切换模型、运行中或没有完整读数时不显示旧值；压缩后占用未知时保留未知，不能用整轮累计账单代替。
 
-`step-5-preview-free` 与 `muse-spark-1.2-contributor-free` 当前从 OPL 选择器隐藏；Jev 与 Content Safety 不作为编码组合提供。MiMo Code、Muse Code 没有可用默认组合，不默认登记或提示安装，已有程序与显式配置保留。
+`step-5-preview-free` 与 `muse-spark-1.2-contributor-free` 当前从 OPL 选择器隐藏；Jev 与 Content Safety 不作为编码组合提供。Muse Code 没有可用默认组合，不默认登记或提示安装，已有程序与显式配置保留。
 
 OPL Gateway 的 Gemini 4 Argon 与 Gemini 3.8 Flash 默认搭配官方 Antigravity CLI，通过 Gateway 原生 Gemini 接口使用该分组凭据，无需 Google 账号登录。新建和恢复均先固定模型及 low、medium、high 推理档位并回读；没有指定档位时明确使用 high。支持来源声明的图片输入，Windows 命令通过独占 profile 的官方 Hook 使用 Git Bash。只支持明确选择的完全权限，不支持 Auto Review。Token 账单取本轮 ACP 用量，上下文占用另取最后一次模型请求的估计，不混用累计用量。
 

@@ -58,7 +58,15 @@ export function automaticHarness(ref: ModelRef): string | undefined {
   if (isHiddenOfmSelection(ref)) return undefined
   if (antigravityAdapter.matches(ref)) return antigravityAdapter.id
   if (officialOpenCodeModel(ref) !== undefined) return 'opencode'
-  if (ref.provider === OFM_PROVIDER && ref.model === 'deepseek-ai/deepseek-v4.1-flash') return 'dsh'
+  if (
+    ref.provider === OFM_PROVIDER &&
+    [
+      'deepseek-ai/deepseek-v4.1-flash',
+      'amd/DeepSeek-V4.1-Flash',
+      'amd/DeepSeek-V4-Flash',
+    ].includes(ref.model)
+  )
+    return 'dsh'
   if (OFM_PROVIDERS.includes(ref.provider) || ref.provider === 'opl-gateway') {
     const recommended = [openCodeAdapter, piAdapter, kiloAdapter, zcodeOfmAdapter].find((adapter) =>
       adapter.matches(ref),

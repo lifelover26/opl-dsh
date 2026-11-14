@@ -6,6 +6,9 @@
  * actually be reached is decided by the model-source plugin that owns the account, and
  * by the CLI's own advertisement at session time; neither is inferred from these
  * constants.
+ *
+ * EAC AMD MiMo retains its complete catalog id in the custom Chat provider.
+ * The official ACP model selector accepts the embedded slash; it has no effort control.
  */
 import type { ModelRef } from '../../../contracts/catalog.ts'
 
@@ -13,21 +16,24 @@ import type { ModelRef } from '../../../contracts/catalog.ts'
 export const MIMO_CODE_HARNESS = 'mimo-code'
 /** Provider id of the model source that owns this model's account and channels. */
 export const MIMO_OFM_PROVIDER = 'our-free-model'
-/** The single model this adapter declares for that provider. */
+/** Catalog id of the free lane. */
 export const MIMO_OFM_MODEL = 'mimo-v2.6-flash-free'
+/** Catalog id of EAC AMD MiMo, distinct from the free lane. */
+export const MIMO_AMD_MODEL = 'amd/MiMo-V2.6-Flash'
+/** Supported catalog ids; source membership and CLI advertisement are checked at launch. */
+export const MIMO_OFM_MODELS: readonly string[] = [MIMO_OFM_MODEL, MIMO_AMD_MODEL]
 /** Wire method that selects the model in this CLI. */
 export const MIMO_SET_CONFIG_OPTION = 'session/set_config_option'
 /** Config id the CLI advertises for model selection. */
 export const MIMO_MODEL_OPTION = 'model'
 
-/** The declared model, as a catalog entry the execution combination can bind. */
-export const mimoCodeModels = (): readonly ModelRef[] => [
-  { provider: MIMO_OFM_PROVIDER, model: MIMO_OFM_MODEL },
-]
+/** The declared models, as catalog entries the execution combination can bind. */
+export const mimoCodeModels = (): readonly ModelRef[] =>
+  MIMO_OFM_MODELS.map((model) => ({ provider: MIMO_OFM_PROVIDER, model }))
 
 /** True only for the exact provider/model pair this adapter declares. */
 export const isMimoCodeModel = (ref: ModelRef): boolean =>
-  ref.provider === MIMO_OFM_PROVIDER && mimoCodeModels().some((item) => item.model === ref.model)
+  ref.provider === MIMO_OFM_PROVIDER && (MIMO_OFM_MODELS as readonly string[]).includes(ref.model)
 
 const text = (value: unknown): string => (typeof value === 'string' ? value : '')
 

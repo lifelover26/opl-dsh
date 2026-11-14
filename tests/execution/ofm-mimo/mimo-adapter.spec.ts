@@ -221,8 +221,11 @@ const configEnv = () => ({
 })
 
 describe('MiMo Code 声明面', () => {
-  it('只声明唯一的官方来源模型配对', () => {
-    expect(mimoCodeModels()).toEqual([{ provider: MIMO_OFM_PROVIDER, model: MIMO_OFM_MODEL }])
+  it('只声明官方来源的模型配对', () => {
+    expect(mimoCodeModels()).toEqual([
+      { provider: MIMO_OFM_PROVIDER, model: MIMO_OFM_MODEL },
+      { provider: MIMO_OFM_PROVIDER, model: 'amd/MiMo-V2.6-Flash' },
+    ])
     expect(mimoCodeAdapter.matches({ provider: MIMO_OFM_PROVIDER, model: MIMO_OFM_MODEL })).toBe(
       true,
     )

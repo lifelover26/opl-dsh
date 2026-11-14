@@ -1,0 +1,12 @@
+{
+  "extends": "../../../tsconfig.host.json",
+  "include": [
+    "../../../src/execution/host/adapters/pi/**/*.ts",
+    "../../../tests/execution/ofm-amd-pi/**/*.ts",
+    "../../../src/execution/host/contracts/**/*.ts",
+    "../../../src/execution/contracts/**/*.ts",
+    "../../../src/contracts/**/*.ts",
+    "../../../src/shared/models.ts",
+    "../../../src/gateway/host/account-service.ts"
+  ]
+}

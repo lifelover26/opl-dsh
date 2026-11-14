@@ -68,6 +68,11 @@ describe('Pi adapter capabilities', () => {
       'thinkingmachines/inkling-small:free',
       'thinkingmachines/inkling:free',
       'google/gemma-4-31b-it:free',
+      'amd/Qwen3.8-27B',
+      'amd/MiniCPM-V-4.7-35B-A3B',
+      'amd/MiniCPM5-2B',
+      'amd/Gemma-4-31B-IT',
+      'amd/MiniCPM-V-4.7-1B',
     ])
     expect(piCodeModels()).toEqual(PI_CODE_MODELS.map((model) => ref(model)))
   })

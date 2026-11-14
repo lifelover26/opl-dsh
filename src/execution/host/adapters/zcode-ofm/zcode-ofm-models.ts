@@ -12,8 +12,10 @@ export const ZCODE_OFM_PROVIDER_ID = OFM_PROVIDER
  * These ids are the Our Free Model catalog ids, not ZCode's own `GLM-5.3`
  * spelling. They are an adaptation intent, not proof of availability: the owning
  * plugin's live catalog decides that, and `resolve()` proves it before every launch.
+ *
+ * The EAC AMD lane keeps its namespaced id through the same personal provider.
  */
-export const ZCODE_OFM_MODELS = ['z-ai/glm-5.3', 'z-ai/glm-5.3-flash'] as const
+export const ZCODE_OFM_MODELS = ['z-ai/glm-5.3', 'z-ai/glm-5.3-flash', 'amd/GLM-5.3-Flash'] as const
 export type ZcodeOfmModel = (typeof ZCODE_OFM_MODELS)[number]
 
 /** Wire protocol this route speaks. `openai-chat-completions` is the only OFM surface ZCode has. */

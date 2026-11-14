@@ -72,9 +72,9 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
   claude: [],
   vibe: ['mistralai/mistral-large-4-1t-a52b'],
   kimi: ['moonshotai/kimi-k2.6', 'moonshotai/kimi-k3'],
-  mimo: ['mimo-v2.6-flash-free'],
+  mimo: ['mimo-v2.6-flash-free', 'amd/MiMo-V2.6-Flash'],
   pool: ['poolside/laguna-s-2.1:free', 'poolside/laguna-xs-2.1:free'],
-  zcode: ['z-ai/glm-5.3', 'z-ai/glm-5.3-flash'],
+  zcode: ['z-ai/glm-5.3', 'z-ai/glm-5.3-flash', 'amd/GLM-5.3-Flash'],
   'step-code': ['step-5-preview-free', 'stepfun/step-5-preview-free', 'stepfun-ai/step-5-preview'],
   'muse-code': ['muse-spark-1.2-contributor-free', 'muse-spark-1.3-contributor-free'],
   opencode: [
@@ -110,6 +110,11 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'flint-40b-free',
   ],
   pi: [
+    'amd/Qwen3.8-27B',
+    'amd/MiniCPM-V-4.7-35B-A3B',
+    'amd/MiniCPM5-2B',
+    'amd/Gemma-4-31B-IT',
+    'amd/MiniCPM-V-4.7-1B',
     'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
     'liquid/lfm-2.5-2.6b:free',
     'thinkingmachines/inkling-small:free',
@@ -118,6 +123,7 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
   ],
   kilo: [
     'inclusionai/ling-3.1-flash-1019-free',
+    'inclusionai/ling-3.2-flash:free',
     'dots-studio/dots-3-note-preview:free',
     'stealth/glyph-cluster',
     'stealth/crouton-alpha',

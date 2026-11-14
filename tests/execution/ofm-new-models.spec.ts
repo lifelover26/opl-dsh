@@ -29,6 +29,7 @@ const lanes = [
   ['stepfun-ai/step-5-preview', 'step-code', 'EAC Step 5 Preview'],
   [VIBE_MODEL, 'vibe', 'EAC Mistral Large 4'],
   ['inclusionai/ling-3.1-flash-1019-free', 'kilo', 'Kilo Ling 3.1 Flash 1019'],
+  ['inclusionai/ling-3.2-flash:free', 'kilo', 'Kilo Ling 3.2 Flash'],
   ['stealth/crouton-alpha', 'kilo', 'Kilo Crouton Alpha'],
   ['liquid/lfm-3-1.7b:free', 'kilo', 'Kilo LFM3-1.7B'],
   ['thinkingmachines/inkling-2-small:free', 'kilo', 'Kilo Inkling 2 Small'],
@@ -123,6 +124,7 @@ describe('new OFM channel pairings', () => {
   it.each([
     ['minimaxai/minimax-m3.1-flash', buildOpenCodeRouteConfig, 'oplopencode'],
     ['inclusionai/ling-3.1-flash-1019-free', buildKiloRouteConfig, 'oplkilo'],
+    ['inclusionai/ling-3.2-flash:free', buildKiloRouteConfig, 'oplkilo'],
     ['stealth/crouton-alpha', buildKiloRouteConfig, 'oplkilo'],
     ['liquid/lfm-3-1.7b:free', buildKiloRouteConfig, 'oplkilo'],
     ['thinkingmachines/inkling-2-small:free', buildKiloRouteConfig, 'oplkilo'],

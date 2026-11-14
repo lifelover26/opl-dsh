@@ -51,6 +51,7 @@ import type {
 } from '../types.ts'
 
 export { MIMO_CODE_HARNESS, MIMO_OFM_PROVIDER, MIMO_OFM_MODEL } from './mimo-models.ts'
+export { MIMO_AMD_MODEL, MIMO_OFM_MODELS } from './mimo-models.ts'
 export {
   MIMO_ROUTE_PROVIDER_ID,
   MIMO_SUPPORTED_PROTOCOLS,

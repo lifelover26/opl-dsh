@@ -16,6 +16,9 @@
  * **No credential is named here.** The route — base URL, model, key, protocol — is
  * resolved by the model-source owner through `options.modelSources.resolve`; this
  * module only checks that what came back is still the model the combination names.
+ *
+ * EAC AMD ids retain their namespace and use Chat. The source advertises no
+ * upstream effort menu, so these lanes retain its default thinking settings.
  */
 import type { ModelRef } from '../../../contracts/catalog.ts'
 
@@ -36,6 +39,26 @@ export const PI_MODEL_INKLING_FULL = 'thinkingmachines/inkling:free'
 /** Catalog id: Google Gemma 4 31B IT, free lane. */
 export const PI_MODEL_GEMMA = 'google/gemma-4-31b-it:free'
 
+/** Catalog id: EAC AMD Qwen3.8 27B. */
+export const PI_MODEL_AMD_QWEN3_8_27B = 'amd/Qwen3.8-27B'
+/** Catalog id: EAC channel MiniCPM-V 4.7 35B A3B. */
+export const PI_MODEL_AMD_MINICPM_V_35B_A3B = 'amd/MiniCPM-V-4.7-35B-A3B'
+/** Catalog id: EAC channel MiniCPM5 2B. */
+export const PI_MODEL_AMD_MINICPM5_2B = 'amd/MiniCPM5-2B'
+/** Catalog id: EAC channel Gemma 4 31B IT. */
+export const PI_MODEL_AMD_GEMMA4_31B_IT = 'amd/Gemma-4-31B-IT'
+/** Catalog id: EAC channel MiniCPM-V 4.7 1B. */
+export const PI_MODEL_AMD_MINICPM_V_1B = 'amd/MiniCPM-V-4.7-1B'
+
+/** The five AMD rows, in catalog order, as one reviewable group. */
+export const PI_AMD_MODELS: readonly string[] = [
+  PI_MODEL_AMD_QWEN3_8_27B,
+  PI_MODEL_AMD_MINICPM_V_35B_A3B,
+  PI_MODEL_AMD_MINICPM5_2B,
+  PI_MODEL_AMD_GEMMA4_31B_IT,
+  PI_MODEL_AMD_MINICPM_V_1B,
+]
+
 /**
  * Every catalog id this adapter is prepared to pin, in catalog order.
  *
@@ -49,6 +72,7 @@ export const PI_CODE_MODELS: readonly string[] = [
   PI_MODEL_INKLING,
   PI_MODEL_INKLING_FULL,
   PI_MODEL_GEMMA,
+  ...PI_AMD_MODELS,
 ]
 
 /** Official Pi thinking levels mapped to provider values; `null` removes a level. */
@@ -128,6 +152,11 @@ const LANE_PROTOCOLS: Readonly<Record<string, PiProtocol>> = {
   [PI_MODEL_INKLING]: 'chat',
   [PI_MODEL_INKLING_FULL]: 'chat',
   [PI_MODEL_GEMMA]: 'chat',
+  [PI_MODEL_AMD_QWEN3_8_27B]: 'chat',
+  [PI_MODEL_AMD_MINICPM_V_35B_A3B]: 'chat',
+  [PI_MODEL_AMD_MINICPM5_2B]: 'chat',
+  [PI_MODEL_AMD_GEMMA4_31B_IT]: 'chat',
+  [PI_MODEL_AMD_MINICPM_V_1B]: 'chat',
 }
 
 /** The protocol this harness pins for one lane, or `undefined` for an unknown id. */
@@ -153,6 +182,11 @@ const LANE_REASONING: Readonly<Record<string, boolean>> = {
   [PI_MODEL_INKLING]: false,
   [PI_MODEL_INKLING_FULL]: true,
   [PI_MODEL_GEMMA]: false,
+  [PI_MODEL_AMD_QWEN3_8_27B]: false,
+  [PI_MODEL_AMD_MINICPM_V_35B_A3B]: false,
+  [PI_MODEL_AMD_MINICPM5_2B]: false,
+  [PI_MODEL_AMD_GEMMA4_31B_IT]: false,
+  [PI_MODEL_AMD_MINICPM_V_1B]: false,
 }
 
 /** Whether the lane exposes a reasoning tier, or `undefined` for an unknown id. */
@@ -175,6 +209,31 @@ const LANES: readonly PiLane[] = [
   {
     model: PI_MODEL_GEMMA,
     provider: 'opl-pi-gemma-lane',
+    thinking: 'upstream-default',
+  },
+  {
+    model: PI_MODEL_AMD_QWEN3_8_27B,
+    provider: 'opl-pi-amd-qwen3-8-27b-lane',
+    thinking: 'upstream-default',
+  },
+  {
+    model: PI_MODEL_AMD_MINICPM_V_35B_A3B,
+    provider: 'opl-pi-amd-minicpm-v-4-7-35b-a3b-lane',
+    thinking: 'upstream-default',
+  },
+  {
+    model: PI_MODEL_AMD_MINICPM5_2B,
+    provider: 'opl-pi-amd-minicpm5-2b-lane',
+    thinking: 'upstream-default',
+  },
+  {
+    model: PI_MODEL_AMD_GEMMA4_31B_IT,
+    provider: 'opl-pi-amd-gemma-4-31b-lane',
+    thinking: 'upstream-default',
+  },
+  {
+    model: PI_MODEL_AMD_MINICPM_V_1B,
+    provider: 'opl-pi-amd-minicpm-v-4-7-1b-lane',
     thinking: 'upstream-default',
   },
 ]

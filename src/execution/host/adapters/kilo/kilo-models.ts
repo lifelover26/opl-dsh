@@ -56,6 +56,9 @@
  * no capability the measured surface does not offer. The pinned CLI advertises no writable
  * effort option for any declared model, so neither entry gets an invented reasoning tier and
  * an explicit effort request is refused before launch rather than silently dropped.
+ *
+ * `inclusionai/ling-3.2-flash:free` also uses this route. Its source advertises an
+ * instant/thinking toggle; the custom-provider ACP path keeps the source default.
  */
 import type { ModelRef } from '../../../contracts/catalog.ts'
 
@@ -90,6 +93,7 @@ export const KILO_EFFORT_OPTION = 'effort'
  */
 export const KILO_OFM_MODELS: readonly string[] = [
   'inclusionai/ling-3.1-flash-1019-free',
+  'inclusionai/ling-3.2-flash:free',
   'dots-studio/dots-3-note-preview:free',
   'stealth/glyph-cluster',
   'stealth/crouton-alpha',
