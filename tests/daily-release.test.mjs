@@ -56,6 +56,18 @@ test('an unversioned product fix gets the next stable patch', async (t) => {
   })
 })
 
+test('a split-plugin packaging fix prepares the next stable patch', async (t) => {
+  const { root, latest, commit } = await fixture(t)
+  await mkdir(join(root, 'scripts'))
+  await writeFile(join(root, 'scripts/build-feature-plugins.mjs'), 'export const fixed = true\n')
+  commit()
+  assert.deepEqual(await planDailyRelease(root, latest), {
+    action: 'prepare',
+    version: '0.2.22',
+    baseline: latest.tag_name,
+  })
+})
+
 test('an official-only update prepares one new patch, resumes it and skips after publication', async (t) => {
   const { root, git, latest, commit } = await fixture(t)
   const upstream = { officialVersion: '0.2.2-rc.1', publishedOfficialVersion: '0.2.1-rc.5' }

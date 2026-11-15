@@ -23,5 +23,7 @@ export async function buildNativeBridge(root, output = join(root, 'dist')) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url))
-  await buildNativeBridge(resolve(import.meta.dirname, '..'))
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const repoRoot = resolve(import.meta.dirname, '..')
+  await buildNativeBridge(repoRoot, join(repoRoot, 'dist/execution-package'))
+}

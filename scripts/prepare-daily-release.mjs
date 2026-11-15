@@ -21,6 +21,7 @@ const productPaths = [
   'install.ps1',
   'scripts/build-native-bridge.mjs',
   'scripts/build-superagent.mjs',
+  'scripts/build-feature-plugins.mjs',
   'vendor/dsh-superagent/src',
   'vendor/dsh-superagent/cordis.patch.yml',
   'vendor/dsh-superagent/package.json',
