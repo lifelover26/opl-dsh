@@ -4,7 +4,14 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "description": "OPL enhancements and one-click installation for official DeepSeek Harness Desktop",
+  "description": "OPL Gateway models, execution combinations and collaboration for DeepSeek Harness Desktop",
+  "author": "One Person Lab",
+  "homepage": "https://github.com/gaofeng21cn/opl-dsh",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gaofeng21cn/opl-dsh.git"
+  },
+  "icon": "./src/setup/client/opl-app-logo.png",
   "scripts": {
     "build": "node build.mjs",
     "build:bridge": "node scripts/build-native-bridge.mjs",
@@ -103,7 +110,9 @@
   },
   "exports": {
     ".": "./src/suite/host.ts",
-    "./types": "./src/contracts/types.ts"
+    "./types": "./src/contracts/types.ts",
+    "./icon": "./src/setup/client/opl-app-logo.png",
+    "./locale/*.json": "./src/suite/locale/*.json"
   },
   "workspaces": [
     "vendor/dsh-superagent"

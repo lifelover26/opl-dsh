@@ -17,6 +17,7 @@ test('tarball checksum and contents bind the installer to an external plugin', a
     encoding: 'utf8',
   })
   assert.doesNotMatch(files, /node_modules|app\.asar|credentials|\/\.env/)
+  assert.doesNotMatch(files, /(?:^|\/)\._/m, 'macOS metadata must not become plugin resources')
   assert.ok(!files.includes('package/lib/zcode-harness-bridge.mjs'))
   for (const bridge of [
     'native-harness-bridge.mjs',
@@ -34,6 +35,22 @@ test('tarball checksum and contents bind the installer to an external plugin', a
   const project = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
   assert.equal(pkg.dependencies.zod, project.devDependencies.zod)
   assert.equal(pkg.peerDependencies.zod, undefined)
+  assert.equal(pkg.exports['./locale/*.json'], './locale/*.json')
+  assert.equal(pkg.exports['./icon'], pkg.icon)
+  assert.ok(files.includes('package/' + pkg.icon.slice(2)))
+  assert.deepEqual(
+    await readFile(new URL('package/' + pkg.icon.slice(2), output)),
+    await readFile(new URL('../' + project.icon.slice(2), import.meta.url)),
+  )
+  for (const language of ['zh', 'en']) {
+    const resource = pkg.exports['./locale/*.json'].replace('*', language)
+    const { meta } = JSON.parse(await readFile(new URL('package/' + resource.slice(2), output)))
+    assert.equal(typeof meta.title, 'string')
+    assert.notEqual(meta.title, pkg.name)
+    assert.equal(typeof meta.description, 'string')
+    assert.ok(files.includes('package/' + meta.detail))
+    assert.ok(await readFile(new URL('package/' + meta.detail, output), 'utf8'))
+  }
   assert.equal(manifest.version, manifest.officialVersion)
   assert.equal(manifest.updateProtocolVersion, 1)
   assert.equal(manifest.enhancementVersion, pkg.version)

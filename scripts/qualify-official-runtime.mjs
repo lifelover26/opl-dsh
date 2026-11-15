@@ -12,7 +12,11 @@ import {
   sha256,
   installationDiagnostics,
 } from './qualification-support.mjs'
-import { DesktopPipe, verifyDesktopClient } from './qualification-client.mjs'
+import {
+  DesktopPipe,
+  verifyDesktopClient,
+  verifyPluginPresentation,
+} from './qualification-client.mjs'
 import { startModelPluginFixture } from './qualification-model-plugins.mjs'
 import {
   verifyHarnessTranscriptClient,
@@ -651,6 +655,10 @@ try {
       root,
       '--readback-selections',
     ]),
+  )
+  evidence.checks.pluginPresentation = await verifyPluginPresentation(
+    desktopPipe,
+    evidenceFile.replace(/\.json$/, '') + '-plugins',
   )
   await stopDesktop()
   if (process.platform === 'darwin' && artifact.superagent) {

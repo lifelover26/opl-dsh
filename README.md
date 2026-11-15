@@ -17,6 +17,8 @@
 
 打开安装器后，按提示选择 OPL Gateway、DeepSeek 官方或稍后登录。安装器会联网下载并校验官方桌面，通过官方插件管理器安装增强插件，并安装 Codex Skill。首次迁移会启用官方 Agent Team 与 Auto Review 插件；已有明确禁用及后续在官方插件管理器中的选择会保留。OPL 安装器未签名，首次可能需要按系统提示允许打开。
 
+在“插件 → 已安装插件”中，增强包显示为 **OPL DSH 增强套件**，使用套件图标并提供用途说明；打开详情可查看功能入口与关闭后的影响。技术包名仍为 `@one-person-lab/dsh-opl`。
+
 安装或升级前请退出 DeepSeek Harness。已有登录、会话、设置和用户修改过的 Skill 会保留。安装完成后，日常直接打开官方 **DeepSeek Harness**；macOS 默认位于 `~/Applications/DeepSeek Harness.app`。
 
 ### 终端安装

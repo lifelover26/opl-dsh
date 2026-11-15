@@ -26,7 +26,9 @@ export async function buildSuperagent(root, output, tar) {
   ])
     await cp(join(source, name), join(stage, 'package', name), { recursive: true })
   const temporary = join(output, 'dsh-superagent.tgz')
-  execFileSync(tar, ['-czf', temporary, '-C', stage, 'package'])
+  execFileSync(tar, ['-czf', temporary, '-C', stage, 'package'], {
+    env: { ...process.env, COPYFILE_DISABLE: '1' },
+  })
   const sha256 = createHash('sha256')
     .update(await readFile(temporary))
     .digest('hex')

@@ -122,12 +122,19 @@ await writeFile(
       version,
       type: 'module',
       license: 'MIT',
+      description: project.description,
+      author: project.author,
+      homepage: project.homepage,
+      repository: project.repository,
+      icon: './icon.png',
       main: './lib/index.js',
       exports: {
         '.': './lib/index.js',
         './client': './lib/client.js',
         './typert': './lib/typert.host.js',
         './package.json': './package.json',
+        './icon': './icon.png',
+        './locale/*.json': './locale/*.json',
       },
       peerDependencies: peers,
       dependencies: { zod: project.devDependencies.zod },
@@ -143,6 +150,10 @@ await writeFile(
     2,
   ) + '\n',
 )
+await cp(join(root, 'src/suite/locale'), join(output, 'package/locale'), { recursive: true })
+await cp(join(root, project.icon), join(output, 'package/icon.png'))
+await cp(join(root, 'docs/plugins/opl-dsh.zh.md'), join(output, 'package/README.md'))
+await cp(join(root, 'docs/plugins/opl-dsh.en.md'), join(output, 'package/README.en.md'))
 await cp(join(root, 'installer/skill/harness-mcp.mjs'), join(output, 'package/lib/harness-mcp.mjs'))
 await cp(join(root, 'cordis.patch.yml'), join(output, 'package/cordis.patch.yml'))
 await mkdir(join(output, 'package/licenses'), { recursive: true })
@@ -161,13 +172,11 @@ const tar =
     ? join(process.env.SystemRoot ?? 'C:/Windows', 'System32', 'tar.exe')
     : 'tar'
 const superagent = await buildSuperagent(root, output, tar)
-execFileSync(tar, [
-  '-czf',
-  join(output, `opl-dsh-enhancements-${version}.tgz`),
-  '-C',
-  output,
-  'package',
-])
+execFileSync(
+  tar,
+  ['-czf', join(output, `opl-dsh-enhancements-${version}.tgz`), '-C', output, 'package'],
+  { env: { ...process.env, COPYFILE_DISABLE: '1' } },
+)
 const archive = join(output, `opl-dsh-enhancements-${version}.tgz`)
 const digest = createHash('sha256')
   .update(await readFile(archive))

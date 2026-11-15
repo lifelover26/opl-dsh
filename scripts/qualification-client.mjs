@@ -84,6 +84,77 @@ export class DesktopPipe {
   }
 }
 
+/** Read the installed OPL card and its local detail document through the official plugin UI. */
+export async function verifyPluginPresentation(pipe, screenshotPrefix) {
+  const { targetInfos } = await pipe.command('Target.getTargets')
+  const target = targetInfos.find(
+    (item) =>
+      item.type === 'page' &&
+      (/^https?:\/\/127\.0\.0\.1(?::|\/)/.test(item.url) || item.url.startsWith('dsh-app://app/')),
+  )
+  if (!target) throw new Error('未发现插件展示验收的官方 Client 页面')
+  const { sessionId } = await pipe.command('Target.attachToTarget', {
+    targetId: target.targetId,
+    flatten: true,
+  })
+  async function waitFor(expression, failure) {
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const value = await pipe.evaluate(sessionId, expression)
+      if (value) return value
+      await delay(250)
+    }
+    throw new Error(failure)
+  }
+  try {
+    await waitFor(
+      `(() => {const button=Array.from(document.querySelectorAll('button')).find(node=>node.getClientRects().length && ['插件','Plugins'].includes((node.getAttribute('aria-label')||node.textContent||'').trim()));if(!button)return false;button.click();return true})()`,
+      '官方插件入口未显示',
+    )
+    const card = 'document.querySelector(\'[data-plugin-package="@one-person-lab/dsh-opl"]\')'
+    const presentation = await waitFor(
+      `(() => {const card=${card};if(!card)return false;const title=card.querySelector('button[aria-describedby]');const description=title && document.getElementById(title.getAttribute('aria-describedby'));const icon=card.querySelector('img');if(!title || !description || !icon?.complete || !icon.naturalWidth)return false;card.scrollIntoView({block:'center'});return {title:title.textContent.trim(),description:description.textContent.trim(),iconDecoded:true,metadataError:Boolean(card.querySelector('[data-package-meta-error]'))}})()`,
+      'OPL 插件名称、说明或图标未完整加载',
+    )
+    if (
+      !['OPL DSH 增强套件', 'OPL DSH Suite'].includes(presentation.title) ||
+      presentation.metadataError
+    )
+      throw new Error('官方插件列表未正确读取 OPL 品牌信息')
+    const screenshots = []
+    const screenshotFailures = []
+    async function capture(name, clip) {
+      for (const params of [{ format: 'png' }, { format: 'png', fromSurface: false }]) {
+        try {
+          const screenshot = await pipe.command(
+            'Page.captureScreenshot',
+            { ...params, ...(clip ? { clip } : {}) },
+            sessionId,
+          )
+          const file = screenshotPrefix + '-' + name + '.png'
+          await writeFile(file, Buffer.from(screenshot.data, 'base64'))
+          screenshots.push(file)
+          return
+        } catch {}
+      }
+      screenshotFailures.push(name)
+    }
+    const listClip = await pipe.evaluate(
+      sessionId,
+      `(() => {const bounds=${card}.closest('section').getBoundingClientRect();return {x:bounds.x,y:bounds.y,width:bounds.width,height:bounds.height,scale:1}})()`,
+    )
+    await capture('list', listClip)
+    await pipe.evaluate(sessionId, `${card}.querySelector('button[aria-describedby]').click()`)
+    await waitFor(
+      `Boolean(document.querySelector('[data-plugin-detail="@one-person-lab/dsh-opl"] table'))`,
+      'OPL 插件离线详情文档未显示',
+    )
+    await capture('detail')
+    return { ...presentation, detailDocument: true, screenshots, screenshotFailures }
+  } finally {
+    await pipe.command('Target.detachFromTarget', { sessionId })
+  }
+}
+
 export async function verifyDesktopClient(
   pipe,
   screenshotPrefix,
