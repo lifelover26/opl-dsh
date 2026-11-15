@@ -1,5 +1,8 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { installPermissionMemory } from '../../src/compat/host/permission-memory.ts'
+import {
+  installPermissionMemory,
+  withoutRememberingPermission,
+} from '../../src/compat/host/permission-memory.ts'
 
 type Handler = (...args: any[]) => void
 
@@ -91,6 +94,29 @@ it('persists only supported explicit preset events', async () => {
     data: { preset: 'auto' },
   })
   await Promise.resolve()
+  expect(f.settings.mutate).not.toHaveBeenCalled()
+  f.dispose()
+})
+
+it('keeps delegated permissions and role restrictions out of global defaults', async () => {
+  const f = fixture('danger-full-access')
+  const member = { ...session('member'), header: { isSeeded: false, origin: 'subagent' } }
+  f.handlers.get('session/created')!(member)
+  f.handlers.get('session/event')!(member, {
+    type: 'permission/preset',
+    data: { preset: 'read-only' },
+  })
+  const role = session('role')
+  f.handlers.get('session/created')!(role)
+  withoutRememberingPermission(role as never, () =>
+    f.handlers.get('session/event')!(role, {
+      type: 'permission/preset',
+      data: { preset: 'read-only' },
+    }),
+  )
+  await Promise.resolve()
+  expect(f.permissionPresets.set).not.toHaveBeenCalledWith(member, expect.anything())
+  expect(f.permissionPresets.set).toHaveBeenCalledWith(role, 'danger-full-access')
   expect(f.settings.mutate).not.toHaveBeenCalled()
   f.dispose()
 })

@@ -58,7 +58,7 @@ jobs:
       - run: node --test tests/qualification.test.mjs
       - name: Verify split plugins and official collaboration contracts
         run: |
-          node node_modules/vitest/vitest.mjs run tests/collaboration/official-tools.spec.ts tests/collaboration/external-wait.spec.ts tests/collaboration/suite-control.spec.ts tests/updates/admission.spec.ts
+          node node_modules/vitest/vitest.mjs run tests/collaboration/official-tools.spec.ts tests/collaboration/external-wait.spec.ts tests/collaboration/suite-control.spec.ts tests/execution/permission-memory.spec.ts tests/updates/admission.spec.ts
           node --test --test-concurrency=1 tests/artifact.test.mjs tests/split-plugins.test.mjs tests/profile.test.mjs tests/superagent.test.mjs
       - name: Verify shared SuperAgent tests on Windows
         if: matrix.os == 'windows-latest'

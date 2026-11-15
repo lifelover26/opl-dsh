@@ -1,4 +1,5 @@
 import { featureSettings } from '../../shared/host/feature-settings.ts'
+import { withoutRememberingPermission } from '../../compat/host/permission-memory.ts'
 import { LlmError } from '../../shared/llm-error.ts'
 import type {} from '../contracts/official-collaboration.ts'
 import type { MiniMaxAccountLoginRequest } from '../contracts/minimax-account.ts'
@@ -5395,7 +5396,9 @@ export class HarnessService {
     // The official child already carries its parent's permission seed. A role
     // may narrow it; selecting a combination never grants a wider permission.
     if (definition.permissionPolicy === 'read-only' && !definition.generated)
-      this.ctx.permissionPresets.set(agent.session, 'read-only')
+      withoutRememberingPermission(agent.session, () =>
+        this.ctx.permissionPresets.set(agent.session, 'read-only'),
+      )
     agent.model.select(await this.normalizeConversationSelection(definition.modelRef, definition))
     await this.bindSelection(agent.id, definition.id)
   }

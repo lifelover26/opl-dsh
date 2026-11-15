@@ -6,6 +6,17 @@ import type {} from '@deepseek-ai/dsh-permission-presets'
 const SETTINGS_NS = 'opl-execution'
 const PERMISSION_PRESETS = new Set(['read-only', 'workspace-write', 'danger-full-access'])
 type RememberedPreset = 'read-only' | 'workspace-write' | 'danger-full-access'
+const sessionOnlySelections = new WeakSet<Session>()
+
+/** A role narrows this Session without changing the person's default for later chats. */
+export function withoutRememberingPermission<T>(session: Session, operation: () => T): T {
+  sessionOnlySelections.add(session)
+  try {
+    return operation()
+  } finally {
+    sessionOnlySelections.delete(session)
+  }
+}
 
 function rememberedPreset(ctx: Context): RememberedPreset | undefined {
   const value = featureSettings(ctx, SETTINGS_NS)?.value
@@ -66,6 +77,7 @@ export function installPermissionMemory(ctx: Context): () => void {
     known.add(session.id)
     if (
       !fresh ||
+      session.header.origin === 'subagent' ||
       session.header.isSeeded ||
       session.snapshotEvents().some((event) => event.type === 'session/end-seed')
     )
@@ -87,7 +99,12 @@ export function installPermissionMemory(ctx: Context): () => void {
     })
   })
   const disposeEvent = ctx.on('session/event', (session, event) => {
-    if (!known.has(session.id)) return
+    if (
+      !known.has(session.id) ||
+      session.header.origin === 'subagent' ||
+      sessionOnlySelections.has(session)
+    )
+      return
     const preset = presetFrom(event)
     if (preset) persist(preset)
   })
