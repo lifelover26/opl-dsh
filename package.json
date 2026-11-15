@@ -89,7 +89,7 @@
     "@deepseek-ai/dsh-web": "0.2.2-rc.3",
     "@deepseek-ai/dsh-workspace": "0.2.2-rc.3",
     "@deepseek-ai/schemastery": "3.19.0",
-    "@types/jsdom": "28.0.3",
+    "@types/jsdom": "30.0.0",
     "@types/node": "^26.6.6",
     "@types/proper-lockfile": "4.1.4",
     "@types/react": "~19.3.0",
