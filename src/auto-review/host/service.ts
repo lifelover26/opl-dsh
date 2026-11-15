@@ -337,7 +337,8 @@ export class OplAutoReviewService extends TypertRemoteService {
             return { failure: 'sessions-active' as const }
           try {
             await settings.update(
-              AUTO_REVIEW_OWNER_NS,
+              settings.describe().find((item) => item.ns === AUTO_REVIEW_OWNER_NS)?.ns ??
+                'opl-suite',
               { [AUTO_REVIEW_FIELD]: configFromPreferences(next) },
               revision,
             )
@@ -381,7 +382,10 @@ export class OplAutoReviewService extends TypertRemoteService {
     }
     let descriptor: { ns: string; value: unknown; revision: number } | undefined
     try {
-      descriptor = settings.describe().find((item) => item.ns === AUTO_REVIEW_OWNER_NS)
+      const sections = settings.describe()
+      descriptor =
+        sections.find((item) => item.ns === AUTO_REVIEW_OWNER_NS) ??
+        sections.find((item) => item.ns === 'opl-suite')
     } catch {
       this.accepting = this.current.enabled && !this.draining
       return

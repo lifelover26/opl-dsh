@@ -110,3 +110,4 @@ export type {
 
 export type * from '../execution/contracts/codex-runtime.ts'
 export type * from '../execution/contracts/capabilities.ts'
+export type { RoleExecutionCatalog } from '../collaboration/contracts/roles.ts'

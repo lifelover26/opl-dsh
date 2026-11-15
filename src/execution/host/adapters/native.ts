@@ -87,6 +87,9 @@ export async function prepareNative(
       OPL_NATIVE_BASE_URL: base,
       OPL_NATIVE_API_KEY: key,
       OPL_NATIVE_IMAGE_INPUT: route.imageInput === true ? '1' : '0',
+      ...(record.officialInstructions
+        ? { OPL_NATIVE_INSTRUCTIONS: record.officialInstructions }
+        : {}),
       ...(gitBash ? { OPL_NATIVE_GIT_BASH: gitBash } : {}),
       // Codex has no upstream Git Bash interface, so the opt-in is carried explicitly and the
       // bridge verifies the real shell instead of assuming the request took effect.

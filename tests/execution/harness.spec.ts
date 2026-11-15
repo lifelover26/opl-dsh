@@ -609,6 +609,65 @@ async function nativeSetup(
   }
 }
 
+describe('official role execution binding', () => {
+  it('pins the exact combination and only narrows inherited permission', async () => {
+    const { Session, SessionId } = await import('@deepseek-ai/dsh-session')
+    const f = await nativeSetup()
+    const catalog = await f.service.executionCatalog()
+    const codex = catalog.combinations.find((item) => item.harnessRef === 'codex')!
+    expect(codex).toBeDefined()
+    Object.assign(f.ctx.llm, { resolveModelInfo: async () => ({ id: codex.modelRef.model }) })
+    const permission = vi.fn()
+    Object.assign(f.ctx.permissionPresets, { set: permission })
+    const inherited = Session.create(SessionId('inherited-permission-member'))
+    await f.service.bindRoleCombination(
+      { id: inherited.id, session: inherited, model: { select: vi.fn() } } as never,
+      codex.id,
+    )
+    expect(permission).not.toHaveBeenCalled()
+    const restricted = {
+      ...codex,
+      id: 'role-readonly',
+      generated: false,
+      permissionPolicy: 'read-only' as const,
+    }
+    await f.service.saveExecutionCatalog({
+      ...catalog,
+      combinations: [...catalog.combinations, restricted],
+    })
+    const session = Session.create(SessionId('official-role-member'))
+    const select = vi.fn()
+    const agent = { id: session.id, session, model: { select } }
+    await f.service.bindRoleCombination(agent as never, restricted.id)
+    expect(select).toHaveBeenCalledOnce()
+    expect(select).toHaveBeenCalledWith(expect.objectContaining(codex.modelRef))
+    expect(permission).toHaveBeenCalledWith(session, 'read-only')
+    await f.service.bindRoleCombination(agent as never, codex.id)
+    expect(select).toHaveBeenCalledOnce()
+    expect(permission).toHaveBeenCalledOnce()
+  })
+
+  it('preserves a started official session and refuses an invalid binding before selection', async () => {
+    const f = await nativeSetup()
+    const codex = (await f.service.executionCatalog()).combinations.find(
+      (item) => item.harnessRef === 'codex',
+    )!
+    const select = vi.fn()
+    await f.service.bindRoleCombination(
+      { id: f.session.id, session: f.session, model: { select } } as never,
+      codex.id,
+    )
+    expect(select).not.toHaveBeenCalled()
+    await expect(
+      f.service.bindRoleCombination(
+        { id: 'new-member', session: { snapshotEvents: () => [] }, model: { select } } as never,
+        'missing-combination',
+      ),
+    ).rejects.toThrow('不存在')
+    expect(select).not.toHaveBeenCalled()
+  })
+})
+
 describe('external input rejection and replay', () => {
   const ref = { provider: 'opl-gateway', model: 'grok::grok-4.7' }
   const user = (text: string) =>
@@ -616,6 +675,32 @@ describe('external input rejection and replay', () => {
   const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
   const native = vi.fn(async function* () {
     throw Error('external input must not fall through to the native provider')
+  })
+
+  it('continues official member messages once on the same external session', async () => {
+    const { service, root, session } = await nativeSetup([{ id: ref.model, name: 'Grok' }])
+    await service.selectCombination({ sessionId: session.id, combination: GROK_COMBINATION })
+    const first = createUserMessage({
+      source: { kind: 'agent-message', form: 'relay', senderSessionId: 'lead' } as never,
+      content: [{ type: 'text', text: 'member-first-task' }],
+    })
+    const request = { ...ref, sessionId: session.id, messages: [first] } as GenerateOptions
+    await Array.fromAsync(service.conversationStream(request, native))
+    const record = (await service.list()).sessions[0]!
+    const identity = record.acpSessionId
+    const followup = createUserMessage({
+      source: { kind: 'agent-message', form: 'relay', senderSessionId: 'lead' } as never,
+      content: [{ type: 'text', text: 'member-revision' }],
+    })
+    const continued = { ...request, messages: [first, followup] }
+    await Array.fromAsync(service.conversationStream(continued, native))
+    await Array.fromAsync(service.conversationStream(continued, native))
+    const after = await service.snapshot({ sessionId: record.id })
+    expect(after.acpSessionId).toBe(identity)
+    expect(after.turns).toHaveLength(2)
+    expect(await readFile(join(root, 'calls.txt'), 'utf8')).toBe(
+      'user: member-first-task\nuser: member-revision\n',
+    )
   })
 
   it('uses the latest ordinary user message when an earlier RPC message has an id', async () => {

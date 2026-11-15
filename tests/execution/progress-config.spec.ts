@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { Config, executionLimitsSchema } from '../../src/suite/config.ts'
+import { Config } from '../../src/execution/host/plugin-config.ts'
+import { executionLimitsSchema } from '../../src/execution/contracts/limits.ts'
 import { ProgressWatchdog } from '../../src/execution/host/progress-watchdog.ts'
 
 describe('execution progress limits', () => {

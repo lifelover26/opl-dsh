@@ -41,6 +41,8 @@ function parseRecord(raw: unknown): HarnessSession {
     throw Error('组合会话 Harness 引用无效，原文件已保留')
   if (item.title !== undefined && typeof item.title !== 'string')
     throw Error('组合会话标题无效，原文件已保留')
+  if (item.officialInstructions !== undefined && typeof item.officialInstructions !== 'string')
+    throw Error('官方角色指令无效，原文件已保留')
   if (item.titleFromHarness !== undefined && typeof item.titleFromHarness !== 'boolean')
     throw Error('组合会话标题来源无效，原文件已保留')
   if (

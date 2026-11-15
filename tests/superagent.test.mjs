@@ -54,8 +54,15 @@ test(
         sha256: digest('opl'),
         suiteSha256: 'v1',
         superagent: { name, sha256: digest('superagent') },
+        plugins: ['execution', 'collaboration'].map((id) => ({
+          package: '@one-person-lab/dsh-' + id,
+          name: `opl-dsh-${id}-1.0.0.tgz`,
+          sha256: digest(id),
+        })),
       }
       await writeFile(join(release, 'artifact.json'), JSON.stringify(artifact))
+      for (const plugin of artifact.plugins)
+        await writeFile(join(release, plugin.name), plugin.package.split('dsh-')[1])
       const installed = {
         app,
         release,
@@ -80,6 +87,10 @@ test(
       const patch = join(profile, 'cordis.patch.yml')
       assert.match(await readFile(patch, 'utf8'), /dsh-superagent/)
       assert.match(await readFile(calls, 'utf8'), new RegExp(name))
+      for (const plugin of artifact.plugins)
+        assert.ok(
+          (await readFile(calls, 'utf8')).includes('--plugin=' + join(release, plugin.name)),
+        )
       const beforeCalls = await readFile(calls, 'utf8')
       assert.deepEqual(await openSuperagent(installed, { start }), { state: 'running' })
       assert.equal(

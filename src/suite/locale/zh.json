@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "OPL DSH 增强套件",
-    "description": "管理 OPL Gateway 账号与模型，选择执行引擎，并在不同引擎间派发、续作和验收任务。",
+    "title": "OPL DSH 基础增强",
+    "description": "管理 OPL Gateway 账号与模型，提供首启设置、增强层更新和通用桌面体验。",
     "detail": "README.md"
   }
 }

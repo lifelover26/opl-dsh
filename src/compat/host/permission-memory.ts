@@ -1,15 +1,14 @@
+import { featureSettings } from '../../shared/host/feature-settings.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-permission-presets'
 
-const SETTINGS_NS = 'opl-suite'
+const SETTINGS_NS = 'opl-execution'
 const PERMISSION_PRESETS = new Set(['read-only', 'workspace-write', 'danger-full-access'])
 type RememberedPreset = 'read-only' | 'workspace-write' | 'danger-full-access'
 
 function rememberedPreset(ctx: Context): RememberedPreset | undefined {
-  const value = ctx.settings
-    .describe({ redactSecrets: true })
-    .find((item) => item.ns === SETTINGS_NS)?.value
+  const value = featureSettings(ctx, SETTINGS_NS)?.value
   if (!value || typeof value !== 'object' || !('lastPermissionPreset' in value)) return
   const candidate = value.lastPermissionPreset
   return typeof candidate === 'string' && PERMISSION_PRESETS.has(candidate)
@@ -45,12 +44,12 @@ export function installPermissionMemory(ctx: Context): () => void {
     remembered = preset
     writes = writes
       .then(async () => {
-        const descriptor = ctx.settings.describe().find((item) => item.ns === SETTINGS_NS)
+        const descriptor = featureSettings(ctx, SETTINGS_NS)
         if (!descriptor) return
         const current = rememberedPreset(ctx)
         if (current === preset) return
         await ctx.settings.mutate(
-          SETTINGS_NS,
+          descriptor.ns,
           [{ op: 'set', path: ['lastPermissionPreset'], value: preset }],
           descriptor.revision,
         )

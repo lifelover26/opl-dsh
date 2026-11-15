@@ -1,38 +1,29 @@
+import type {} from '../../shared/host/suite-control.ts'
 import { sessionPermissions } from '../../compat/host/session-permissions.ts'
-import {
-  hostPeer,
-  invokeHostRemote,
-  streamHostRemote,
-} from '../../compat/host/remote-invocation.ts'
+import { invokeHostRemote, streamHostRemote } from '../../compat/host/remote-invocation.ts'
 /** Optional external Codex transport; shares the internal collaboration owner. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { TypertGateway } from '@deepseek-ai/dsh-api-gateway'
 import type { SessionId } from '@deepseek-ai/dsh-session'
-import { join } from 'node:path'
-import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
-import { setupStatus, finishSetup } from '../../setup/host/state.ts'
 import { waitForSession } from '../../execution/host/session-wait.ts'
-import { startControlBridge } from '../../shared/host/control-bridge.ts'
 import { HARNESS_NAMESPACE, type HarnessService } from '../../execution/host/harness.ts'
 import { invokeExecutionRpc } from '../../compat/host/execution-rpc.ts'
 const sessionId = (value: string) => value as SessionId
 export function installExternalCodex(ctx: Context, harness: HarnessService) {
+  const lifetime = new AbortController()
+  ctx.effect(() => () => lifetime.abort())
+  const requestSignal = (signal?: AbortSignal) =>
+    signal ? AbortSignal.any([signal, lifetime.signal]) : lifetime.signal
   const bridge = {
     stream: ((...args: Parameters<TypertGateway['stream']>) => {
       if (!harness.cooperationSettings().externalCodex) throw Error('外部 Codex 接入已关闭')
-      return streamHostRemote(ctx, args[0])
+      const request = { ...args[0], signal: requestSignal(args[0].signal) }
+      request.signal.throwIfAborted()
+      return streamHostRemote(ctx, request)
     }) as TypertGateway['stream'],
     invoke: async (request: Parameters<TypertGateway['invoke']>[0]) => {
-      if (request.namespace === 'oplSuite' && request.method === 'setupUrl')
-        return ctx.connection.authenticatedUrl(`http://127.0.0.1:${ctx.webServer.port}/#opl-setup`)
-      if (request.namespace === 'oplSuite' && request.method === 'setupStatus')
-        return setupStatus(ctx)
-      if (request.namespace === 'oplSuite' && request.method === 'finishSetup') {
-        const state = await setupStatus(ctx)
-        const choice = state.choice === 'undecided' ? 'gateway' : state.choice
-        await finishSetup(ctx, choice)
-        return { completed: true, choice }
-      }
+      request = { ...request, signal: requestSignal(request.signal) }
+      request.signal!.throwIfAborted()
       if (!harness.cooperationSettings().externalCodex)
         throw Error('外部 Codex 接入已关闭；内部协作不受影响')
       if (
@@ -100,11 +91,5 @@ export function installExternalCodex(ctx: Context, harness: HarnessService) {
       return invokeHostRemote(ctx, request)
     },
   }
-  ctx.effect(async () =>
-    startControlBridge(
-      bridge,
-      hostPeer(ctx),
-      join(dshHomePath(), 'profiles', 'desktop', 'control.json'),
-    ),
-  )
+  ctx.provide('oplExternalControl', bridge)
 }

@@ -94,6 +94,8 @@ export interface HarnessSession {
   acpSessionId: string
   /** Ordinary official DSH conversation; distinct from the CLI's ACP session. */
   nativeSessionId?: string
+  /** Official persona and member context frozen before the external session is created. */
+  officialInstructions?: string
   autoWakePaused?: boolean
   assignment?: CollaborationAssignment
   origin: HarnessOrigin

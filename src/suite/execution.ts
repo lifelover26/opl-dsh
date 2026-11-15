@@ -1,7 +1,6 @@
-import { executionLimitsSchema } from './config.ts'
+import { executionLimitsSchema } from '../execution/contracts/limits.ts'
 import { installNativeProgressGuard } from '../execution/host/native-progress-guard.ts'
 import type { ProgressWatchdogLimits } from '../execution/host/progress-watchdog.ts'
-import { installExternalCodex } from '../collaboration/host/external-codex.ts'
 import { installLegacyHarnessChannel } from '../compat/host/legacy-channel.ts'
 import { ExecutionService } from '../execution/host/service.ts'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
@@ -10,11 +9,11 @@ import type {} from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { Context } from '@deepseek-ai/cordis'
+import type { UpdateRuntime } from '../updates/host/runtime-admission.ts'
 import { createHarnessService } from '../execution/host/harness.ts'
 import { installConversationRequest } from '../execution/host/conversation-request.ts'
 import { MiniMaxCodeModelAdapter } from '../execution/host/adapters/minimax-models.ts'
 import { MINIMAX_CODE_PROVIDER } from '../execution/host/adapters/minimax.ts'
-import { installCollaborationTools } from '../collaboration/host/tools.ts'
 import { installPermissionMemory } from '../compat/host/permission-memory.ts'
 import { installComputerUse } from '../computer-use/host/index.ts'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
@@ -27,7 +26,6 @@ import {
   OFM_PROVIDER,
 } from '../execution/host/ofm-source/index.ts'
 import z from '@deepseek-ai/schemastery'
-import { installUpdateRuntime } from '../updates/host/runtime-admission.ts'
 
 export interface Config {
   executionLimits: ProgressWatchdogLimits
@@ -65,8 +63,11 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   const harness = createHarnessService(ctx, {
     readOfm: () => ofmOwner.read('/summary'),
   })
-  const updateRuntime = installUpdateRuntime(ctx, harness)
-  ctx.provide('oplUpdateRuntime', updateRuntime)
+  ctx.provide('oplHarness', harness)
+  let updateRuntime: UpdateRuntime | undefined
+  ctx.inject(['oplUpdateRuntime'], (child) => {
+    updateRuntime = child.oplUpdateRuntime
+  })
   harness.configureProgressLimits(config.executionLimits)
   ctx.provide('oplExternalModelSources', harness.modelSources)
   applyOfmModelSource(ctx, {
@@ -109,10 +110,8 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   new ExecutionService(ctx, harness)
   ctx.effect(() => async () => {
     await harness.dispose()
-    updateRuntime.drained('harness')
+    updateRuntime?.drained('harness')
   })
-  installCollaborationTools(ctx, harness)
   installComputerUse(ctx)
   installLegacyHarnessChannel(ctx)
-  installExternalCodex(ctx, harness)
 }

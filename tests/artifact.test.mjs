@@ -19,6 +19,13 @@ test('tarball checksum and contents bind the installer to an external plugin', a
   assert.doesNotMatch(files, /node_modules|app\.asar|credentials|\/\.env/)
   assert.doesNotMatch(files, /(?:^|\/)\._/m, 'macOS metadata must not become plugin resources')
   assert.ok(!files.includes('package/lib/zcode-harness-bridge.mjs'))
+  const executionArchive = manifest.plugins.find(
+    (plugin) => plugin.package === '@one-person-lab/dsh-execution',
+  )
+  const executionFiles = execFileSync('tar', ['-tzf', executionArchive.name], {
+    cwd: fileURLToPath(output),
+    encoding: 'utf8',
+  })
   for (const bridge of [
     'native-harness-bridge.mjs',
     'step-bridge.mjs',
@@ -28,7 +35,7 @@ test('tarball checksum and contents bind the installer to an external plugin', a
     'muse-bash-mcp.mjs',
     'muse-endpoint.mjs',
   ])
-    assert.ok(files.includes(`package/lib/${bridge}`), `missing packaged bridge ${bridge}`)
+    assert.ok(executionFiles.includes(`package/lib/${bridge}`), `missing packaged bridge ${bridge}`)
   const pkg = JSON.parse(await readFile(new URL('package/package.json', output), 'utf8'))
   assert.equal(pkg.name, '@one-person-lab/dsh-opl')
   assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-llm'], '*')
@@ -87,4 +94,43 @@ test('tarball checksum and contents bind the installer to an external plugin', a
     /require\("@deepseek-ai\/dsh-typert-protocol\/remote-info"\)/,
     'the official Client loader does not materialize the protocol remote-info leaf',
   )
+})
+
+test('three real packages own distinct Host and Client lifecycles', async () => {
+  const artifact = JSON.parse(await readFile(new URL('artifact.json', output), 'utf8'))
+  assert.deepEqual(
+    artifact.plugins.map((plugin) => plugin.package),
+    ['@one-person-lab/dsh-execution', '@one-person-lab/dsh-collaboration'],
+  )
+  for (const plugin of artifact.plugins) {
+    const id = plugin.package.split('dsh-')[1]
+    const bytes = await readFile(new URL(plugin.name, output))
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), plugin.sha256)
+    assert.equal(artifact.payloadFiles[plugin.name], plugin.sha256)
+    const pkg = JSON.parse(
+      await readFile(new URL(`${id}-package/package/package.json`, output), 'utf8'),
+    )
+    assert.equal(pkg.name, plugin.package)
+    const client = await readFile(new URL(`${id}-package/package/lib/client.js`, output), 'utf8')
+    assert.ok(client.includes(`id:"${plugin.package}"`))
+    const metadata = JSON.parse(
+      await readFile(new URL(`${id}-package/package/locale/zh.json`, output), 'utf8'),
+    )
+    assert.match(metadata.meta.title, /^OPL /)
+    assert.ok(
+      await readFile(new URL(`${id}-package/package/${metadata.meta.detail}`, output), 'utf8'),
+    )
+  }
+  const baseHost = await readFile(new URL('package/lib/index.js', output), 'utf8')
+  const executionHost = await readFile(
+    new URL('execution-package/package/lib/index.js', output),
+    'utf8',
+  )
+  const collaborationHost = await readFile(
+    new URL('collaboration-package/package/lib/index.js', output),
+    'utf8',
+  )
+  assert.doesNotMatch(baseHost, /class HarnessService|OfficialCollaborationBridge/)
+  assert.doesNotMatch(executionHost, /new OfficialCollaborationBridge/)
+  assert.match(collaborationHost, /OfficialCollaborationBridge/)
 })

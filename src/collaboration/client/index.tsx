@@ -15,7 +15,12 @@ export function apply(ctx: Context): void {
         inject: () => {
           // Optional execution settings must not block Skill/install settings.
           const execution = optionalRemote(ctx, 'oplExecution')
-          return { call, ...(execution ? { executionCall: remoteCall(execution) } : {}) }
+          const roles = optionalRemote(ctx, 'oplRoleExecution')
+          return {
+            call,
+            ...(execution ? { executionCall: remoteCall(execution) } : {}),
+            ...(roles ? { roleCall: remoteCall(roles) } : {}),
+          }
         },
       },
       CoordinationSection,

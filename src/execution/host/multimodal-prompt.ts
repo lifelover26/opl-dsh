@@ -134,7 +134,8 @@ export function conversationInput(
     .filter((item) => item.parts.length)
   const current = history.find((item) => item.message === user)?.parts ?? []
   const injected = history.filter(
-    (item) => item.message.role === 'user' && item.message.source?.kind !== 'user',
+    (item) =>
+      item.message !== user && item.message.role === 'user' && item.message.source?.kind !== 'user',
   )
   const context = history.filter((item) => item.message !== user && !injected.includes(item))
   const transcript = context.length

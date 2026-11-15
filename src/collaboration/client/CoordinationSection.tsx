@@ -3,13 +3,17 @@ import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import css from '../../shared/client/SettingsSection.module.css'
 import type { CoordinationStatus as Status } from '../../contracts/types.ts'
 import { useCooperationSettings } from './use-cooperation-settings.ts'
+import { RoleExecutions } from './RoleExecutions.tsx'
+import type { RoleExecutionCall } from '../../shared/client/remote-call.ts'
 import type { CoordinationCall, ExecutionCall } from '../../shared/client/remote-call.ts'
 export function CoordinationSection({
   call,
   executionCall,
+  roleCall,
 }: {
   call: CoordinationCall
   executionCall?: ExecutionCall
+  roleCall?: RoleExecutionCall
 }) {
   const {
     cooperation,
@@ -23,7 +27,7 @@ export function CoordinationSection({
     [notice, setNotice] = useState('')
   const load = async () => setStatus(await call('coordination-status'))
   useEffect(() => {
-    void load().catch(() => setNotice('无法读取协作配置，请重新运行增强安装器。'))
+    void load().catch(() => setNotice('无法读取外部接入的安装信息。'))
   }, [call])
   const act = async (operation: () => Promise<unknown>, message = '已保存。') => {
     setBusy(true)
@@ -45,6 +49,7 @@ export function CoordinationSection({
       aria-busy={busy || cooperationBusy || cooperationLoading || (!status && !notice)}
     >
       <h2 className={css.title}>协作与自动化</h2>
+      <RoleExecutions {...(roleCall ? { call: roleCall } : {})} />
       <p className={css.intro}>
         在当前项目委派其他执行组合。子任务独立执行，发起对话负责监督和验收。
       </p>

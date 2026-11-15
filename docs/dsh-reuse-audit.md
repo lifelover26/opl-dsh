@@ -1,6 +1,6 @@
 # 官方 DSH 能力复用检查
 
-检查日期：2026-11-13。对照官方 `0.2.2-rc.3` npm 包与 macOS/Windows `0.2.2-rc.3` 桌面分发的公开接口、实现与装配，沿 OPL Suite 的实际调用者检查职责边界；两平台 feed 已同步，当前候选可进入双平台资格验收。开发依赖固定在 rc.3 官方版本组；用户安装仍从官方桌面 feed 选择最新可用版本，兼容资格另行验证。
+检查日期：2026-11-15。对照官方 `0.2.2-rc.3` npm 包与 macOS/Windows `0.2.2-rc.3` 桌面分发的公开接口、实现与装配，沿 OPL Suite 的实际调用者检查职责边界；两平台 feed 已同步，当前候选可进入双平台资格验收。开发依赖固定在 rc.3 官方版本组；用户安装仍从官方桌面 feed 选择最新可用版本，兼容资格另行验证。
 
 OPL 先定义用户需要完成的任务，再选择能力负责人。官方已有的能力使用官方插件、公开 API 与持久状态；OPL 只补官方尚未覆盖的部分。官方后续补齐时，在同一升级任务中验证真实调用链、切换调用者并退役重复实现，避免把过渡适配变成永久分叉。
 
@@ -12,7 +12,7 @@ OPL 先定义用户需要完成的任务，再选择能力负责人。官方已�
 | 原生对话、模型执行与工具     | 官方 Session、Agent、LLM、工具、沙箱、权限预设与持久投影                                                                                     | OPL 通过公开事件和 Remote 接入账号与外部执行器。冷会话选择读取 `session.projections`，不为读取历史创建 Agent。                                                                       |
 | 原生会话读取、队列与等待     | `dsh-api-session-controller` 的 list/search/events/follow/projections、prompt/steer、requestId 去重、队列编辑、fork、state/observeState/wait | OPL 已删除私有等待状态投影，兼容结果读取官方 wait、事件流与历史后映射。idle、输入等待和具体 turn 结束事实分别解释；跨进程反馈只保留自身交付所需的事实。                              |
 | 普通 DSH 子任务与团队协作    | `dsh-subagent` 的 local spawn/fork；官方实验 Team 的 lead、具名 teammate、消息、持久 roster 和 task DAG                                      | DSH Agent 新建内部 DSH 子任务使用官方工具；OPL 组合工具只列外部 Harness，并在工具与 service 两层拒绝新建内部目标。旧 OPL DSH 子任务可凭原 sessionId 继续。                           |
-| 固定角色、模型与执行器的 Bot | 官方 agent preset、persona、具名 Subagent provider 与工具绑定                                                                                | 复用官方声明、选择和管理入口，不新增 OPL Bot 数据库。Codex/Claude 的具名 provider 可绑定固定模型与权限，但不是任意每轮模型/Harness 选择器。                                          |
+| 固定角色、模型与执行器的 Bot | 官方 agent preset、persona、具名 Subagent provider 与工具绑定                                                                                | 复用官方角色、人设、Skills 与配置入口。OPL 只保存预设到执行组合的引用，在公开 agent/created 事件中绑定新会话，不新增 Bot 数据库或修改官方预设包。                                    |
 | 一次性外部委派               | 官方 `subagent-codex`、`subagent-claude-code`、`subagent-acp`、`subagent-dsh-sdk`                                                            | 无续作、流式进度和 OPL 交付验收要求时使用官方 provider。需要完整连续对话时仍使用下述协议适配。                                                                                       |
 | 外部 Harness 连续对话        | 各官方 CLI/SDK 的 Agent 循环、工具与会话                                                                                                     | OPL 保留连续会话恢复、实时工具/思考流、取消、权限绑定、图片、编辑与真实用量的协议适配。官方 provider 覆盖这些必要语义后，切换对应适配器。                                            |
 | 模型与 Harness 组合          | 官方模型注册表、模型选择投影、provider 配置；外部 CLI 的执行能力                                                                             | OPL 组合只保存精确模型与 Harness 引用、权限及默认选择。官方目前没有可替代全部执行组合的统一绑定与连续会话合同，因此保留组合目录和输入栏选择。                                        |
@@ -30,6 +30,8 @@ OPL 先定义用户需要完成的任务，再选择能力负责人。官方已�
 ## 近期新增能力的实际范围
 
 官方 Team 目前只接收可继续的本地 spawn/fork provider。它不把一次性 Codex、Claude 或 ACP provider 变成可持续 teammate，也不为每次 `spawn_teammate` 提供任意模型/Harness 选择。团队共享工作目录；write scope 是协作提示，不能代替文件锁、隔离 worktree 或 OPL 跨 Harness 写队列。
+
+OPL 跨引擎团队使用官方 local spawn 的成员会话承载身份与生命周期，在 llm/stream 扩展点转接 Codex/Claude。外部 CLI 经每会话 MCP capability 调用官方 tools.resolve 与 tools.execute；不绕过官方权限，也不复制消息、任务板或成员目录。已在 macOS 的未修改官方桌面中验证 Codex、Claude、DSH 三方通信、任务完成、取消与冷恢复；双平台安装资格与发布状态另行记录。官方提供完整外部连续成员合同后，可直接替换这些适配点。
 
 官方外部 Subagent provider 每次执行新任务并返回最终结果。local spawn/fork 可继续、可恢复，但其父子身份、消息与取消归官方 `subagents` 管理。OPL 不应为了统一命名，再复制一份原生子任务生命周期。
 

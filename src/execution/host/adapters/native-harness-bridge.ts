@@ -513,6 +513,15 @@ async function claudePrompt(prompt: NativePromptPart[], effort?: string) {
       env: harnessEnv(),
       settingSources: [],
       strictMcpConfig: true,
+      ...(process.env.OPL_NATIVE_INSTRUCTIONS
+        ? {
+            systemPrompt: {
+              type: 'preset' as const,
+              preset: 'claude_code' as const,
+              append: process.env.OPL_NATIVE_INSTRUCTIONS,
+            },
+          }
+        : {}),
       mcpServers: servers,
       ...(hasHistory ? { resume: sessionId } : { sessionId }),
       // `bypassPermissions` is the official SDK mode for a task the user already authorized at full
@@ -1073,6 +1082,9 @@ async function invoke(method: string, p: any) {
       try {
         r = await codexRequest(method === 'session/load' ? 'thread/resume' : 'thread/start', {
           ...params,
+          ...(process.env.OPL_NATIVE_INSTRUCTIONS
+            ? { developerInstructions: process.env.OPL_NATIVE_INSTRUCTIONS }
+            : {}),
           ...(p.sessionId ? { threadId: p.sessionId } : {}),
         })
       } finally {

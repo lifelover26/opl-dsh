@@ -35,7 +35,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /** Install one gate before exposing OPL task dispatch and the update Remote. */
-export function installUpdateRuntime(ctx: Context, harness: HarnessService): UpdateRuntime {
+export function installUpdateRuntime(ctx: Context, harness?: HarnessService): UpdateRuntime {
   const resumed =
     process.env.OPL_UPDATE_TRANSACTION_ID && process.env.OPL_UPDATE_TRANSACTION_NONCE
       ? {
@@ -52,28 +52,35 @@ export function installUpdateRuntime(ctx: Context, harness: HarnessService): Upd
     ),
   )
   installUpdateAdmission(ctx, gate)
-  ctx.effect(() =>
-    guardUpdateMethods(
-      harness,
-      [
-        'start',
-        'prompt',
-        'delegateFrom',
-        'messageEditSend',
-        'stopEdit',
-        'selectCombination',
-        'createProjectlessSession',
-        'updateHarness',
-        'saveExecutionCatalog',
-        'saveHarnessProxy',
-        'selectMiniMaxCandidate',
-        'selectCodexRuntime',
-        'minimaxAccountLogin',
-        'minimaxAccountLogout',
-      ],
-      gate,
-    ),
-  )
+  const guardHarness = (scope: Context, owner: HarnessService) =>
+    scope.effect(() =>
+      guardUpdateMethods(
+        owner,
+        [
+          'start',
+          'prompt',
+          'delegateFrom',
+          'messageEditSend',
+          'stopEdit',
+          'selectCombination',
+          'createProjectlessSession',
+          'updateHarness',
+          'saveExecutionCatalog',
+          'saveHarnessProxy',
+          'selectMiniMaxCandidate',
+          'selectCodexRuntime',
+          'minimaxAccountLogin',
+          'minimaxAccountLogout',
+        ],
+        gate,
+      ),
+    )
+  if (harness) guardHarness(ctx, harness)
+  else
+    ctx.inject(['oplHarness'], (child) => {
+      guardHarness(child, child.oplHarness)
+    })
+  const currentHarness = () => harness ?? ctx.get('oplHarness')
   ctx.inject(['taskFeedback'], (child) => {
     child.effect(() =>
       guardUpdateMethods(
@@ -96,6 +103,7 @@ export function installUpdateRuntime(ctx: Context, harness: HarnessService): Upd
     )
   })
   let target: UpdateHandoffIdentity | undefined
+  let requireHarnessDrain = false
   const drained = new Set<string>()
   const failureListeners = new Set<() => void>()
   const onExit = (code: number) => {
@@ -104,7 +112,7 @@ export function installUpdateRuntime(ctx: Context, harness: HarnessService): Upd
       !target ||
       !gate.inspect().frozen ||
       !drained.has('controller') ||
-      !drained.has('harness')
+      (requireHarnessDrain && !drained.has('harness'))
     )
       return
     try {
@@ -129,10 +137,9 @@ export function installUpdateRuntime(ctx: Context, harness: HarnessService): Upd
   })
   const inspect = async () => {
     const feedback = ctx.get('taskFeedback')
-    if (!feedback) return false
     const result = await inspectUpdateActivity(ctx, {
-      harness: () => ({ busy: harness.updateBusy() }),
-      feedbackTasks: () => feedback.tasks(),
+      harness: () => ({ busy: currentHarness()?.updateBusy() ?? false }),
+      feedbackTasks: () => feedback?.tasks() ?? [],
     })
     return result.idle && gate.inspect().pending === 0
   }
@@ -146,7 +153,7 @@ export function installUpdateRuntime(ctx: Context, harness: HarnessService): Upd
         const drainTimer = setTimeout(() => drainAbort.abort(Error('更新排空超时')), 30_000)
         try {
           await drainUpdateActivity(ctx, drainAbort.signal)
-          await harness.drainForUpdate()
+          await currentHarness()?.drainForUpdate()
         } finally {
           clearTimeout(drainTimer)
         }
@@ -162,6 +169,7 @@ export function installUpdateRuntime(ctx: Context, harness: HarnessService): Upd
     },
     shutdownTarget(identity) {
       target = identity
+      requireHarnessDrain = currentHarness() !== undefined
       drained.clear()
     },
     drained(participant) {

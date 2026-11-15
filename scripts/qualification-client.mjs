@@ -84,6 +84,14 @@ export class DesktopPipe {
   }
 }
 
+/** A fresh third-party install may present its own deferred introduction and announcement. */
+export async function dismissQualificationNotices(pipe, session) {
+  await pipe.evaluate(
+    session,
+    `(() => {for(const dialog of document.querySelectorAll('.ofm_ann,.ofm_scrim[data-ofm-urgent],[role=dialog]')){if(!dialog.matches('.ofm_ann,.ofm_scrim[data-ofm-urgent]')&&!/重要公告|Important announcement/.test(dialog.textContent))continue;const button=Array.from(dialog.querySelectorAll('button')).find(node=>node.getClientRects().length&&!node.disabled&&['稍后再说','Later','知道了','Got it'].includes(node.textContent?.trim()));button?.click()}})()`,
+  )
+}
+
 /** Read the installed OPL card and its local detail document through the official plugin UI. */
 export async function verifyPluginPresentation(pipe, screenshotPrefix) {
   const { targetInfos } = await pipe.command('Target.getTargets')
@@ -99,6 +107,7 @@ export async function verifyPluginPresentation(pipe, screenshotPrefix) {
   })
   async function waitFor(expression, failure) {
     for (let attempt = 0; attempt < 80; attempt++) {
+      await dismissQualificationNotices(pipe, sessionId)
       const value = await pipe.evaluate(sessionId, expression)
       if (value) return value
       await delay(250)
@@ -116,13 +125,25 @@ export async function verifyPluginPresentation(pipe, screenshotPrefix) {
       'OPL 插件名称、说明或图标未完整加载',
     )
     if (
-      !['OPL DSH 增强套件', 'OPL DSH Suite'].includes(presentation.title) ||
+      !['OPL DSH 基础增强', 'OPL DSH Essentials'].includes(presentation.title) ||
       presentation.metadataError
     )
       throw new Error('官方插件列表未正确读取 OPL 品牌信息')
+    const featureCards = await pipe.evaluate(
+      sessionId,
+      `['execution','collaboration'].map(id=>{const card=document.querySelector('[data-plugin-package="@one-person-lab/dsh-'+id+'"]');const title=card?.querySelector('button[aria-describedby]');const description=title && document.getElementById(title.getAttribute('aria-describedby'));const icon=card?.querySelector('img');return {id,title:title?.textContent.trim(),description:description?.textContent.trim(),iconDecoded:Boolean(icon?.complete&&icon.naturalWidth)}})`,
+    )
+    for (const card of featureCards) {
+      if (!card.title?.startsWith('OPL ') || !card.description || !card.iconDecoded)
+        throw Error('功能插件品牌信息未完整展示：' + card.id)
+    }
     const screenshots = []
     const screenshotFailures = []
     async function capture(name, clip) {
+      await waitFor(
+        `!Array.from(document.querySelectorAll('.ofm_ann,.ofm_scrim[data-ofm-urgent],[role=dialog]')).some(node=>node.getClientRects().length&&(node.matches('.ofm_ann,.ofm_scrim[data-ofm-urgent]')||/重要公告|Important announcement/.test(node.textContent)))`,
+        '首次插件公告未关闭',
+      )
       for (const params of [{ format: 'png' }, { format: 'png', fromSurface: false }]) {
         try {
           const screenshot = await pipe.command(
@@ -145,11 +166,11 @@ export async function verifyPluginPresentation(pipe, screenshotPrefix) {
     await capture('list', listClip)
     await pipe.evaluate(sessionId, `${card}.querySelector('button[aria-describedby]').click()`)
     await waitFor(
-      `Boolean(document.querySelector('[data-plugin-detail="@one-person-lab/dsh-opl"] table'))`,
+      `Boolean(document.querySelector('[data-plugin-detail="@one-person-lab/dsh-opl"]')?.textContent.includes('One Person Lab'))`,
       'OPL 插件离线详情文档未显示',
     )
     await capture('detail')
-    return { ...presentation, detailDocument: true, screenshots, screenshotFailures }
+    return { ...presentation, featureCards, detailDocument: true, screenshots, screenshotFailures }
   } finally {
     await pipe.command('Target.detachFromTarget', { sessionId })
   }
@@ -244,10 +265,7 @@ export async function verifyDesktopClient(
       // Original plugin onboarding can arrive after the shell/setup is ready.
       // Dismiss its real deferred button whenever it appears, rather than
       // assuming a single early check has acknowledged the asynchronous gate.
-      await pipe.evaluate(
-        session,
-        `(() => {const dialog=document.querySelector('.ofm_ann');const node=dialog && Array.from(dialog.querySelectorAll('button')).find(x=>x.getClientRects().length && ['稍后再说','Later'].includes(x.textContent?.trim()));node?.click()})()`,
-      )
+      await dismissQualificationNotices(pipe, session)
       if (await pipe.evaluate(session, expression)) return
       if (recover) await recover()
       await delay(250)

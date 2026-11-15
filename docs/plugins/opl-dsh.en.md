@@ -1,14 +1,7 @@
-Connect OPL Gateway to the official DeepSeek Harness desktop, choose a model and execution engine, and collaborate across engines.
+Manage OPL Gateway accounts and models in official DeepSeek Harness, with first-run setup, enhancement updates and shared desktop features.
 
-| Task                                                      | Where to start                                                          |
-| --------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Sign in and manage your account, usage and group access   | Settings → OPL Gateway                                                  |
-| Manage executables, proxies and model combinations        | Settings → Execution & combinations                                     |
-| Choose an adapted DSH, Codex or Claude Code combination   | The model and engine menu in the composer                               |
-| Delegate work, continue revisions and review deliverables | Conversation collaboration tools; Settings → Collaboration & automation |
+Open **Settings → OPL Gateway** for account and model-group access. **OPL Execution** provides execution engines and combinations. **OPL Collaboration** provides role bindings and team integration and requires OPL Execution. Each plugin has its own switch in the official plugin manager.
 
-Each combination references an exact model source and engine. Availability depends on the source, adapter and installed executable. DSH continues to own its native teams, sessions and permissions.
+Disabling Essentials removes the OPL Gateway source. Execution remains usable with other ready model sources. Saved data is retained. Official application resources and official plugins remain unchanged.
 
-Disabling this plugin unloads OPL features and collaboration tools. Saved account settings, execution combinations and session data are retained. Independent plugins such as Our Free Model have their own switches.
-
-Maintained by **One Person Lab**. [Project and documentation](https://github.com/gaofeng21cn/opl-dsh)
+Maintained by **One Person Lab**. [Project](https://github.com/gaofeng21cn/opl-dsh)

@@ -1,3 +1,4 @@
+import { featureSettings } from '../../shared/host/feature-settings.ts'
 /** Manage the installed collaboration Skill without changing the desktop profile. */
 import { readFile, writeFile, rename } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -27,7 +28,7 @@ export async function coordinationAction(
       join(installed.suiteRoot, 'enhancement-update.json'),
       'utf8',
     ).catch(() => '{}')
-    const settings = ctx.settings.describe().find((item) => item.ns === 'opl-suite')?.value as {
+    const settings = featureSettings(ctx, 'opl-collaboration')?.value as {
       wakeTransport?: string
       wakeExecutable?: string
       wakeExecution?: string
@@ -96,12 +97,15 @@ export async function coordinationAction(
       typeof p.wakeDistro !== 'string'
     )
       throw new Error('无效的回调配置')
-    await ctx.settings.update('opl-suite', {
-      wakeTransport: p.wakeTransport,
-      wakeExecution: p.wakeExecution,
-      wakeExecutable: p.wakeExecutable,
-      wakeDistro: p.wakeDistro,
-    })
+    await ctx.settings.update(
+      featureSettings(ctx, 'opl-collaboration')?.ns ?? 'opl-collaboration',
+      {
+        wakeTransport: p.wakeTransport,
+        wakeExecution: p.wakeExecution,
+        wakeExecutable: p.wakeExecutable,
+        wakeDistro: p.wakeDistro,
+      },
+    )
     return null
   }
   throw new Error('未知协作设置操作')

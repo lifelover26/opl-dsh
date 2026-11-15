@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import { createElement } from 'react'
 import type { ComponentType, MouseEvent } from 'react'
 import type { ComposerBarProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -19,9 +20,6 @@ export const projectlessComposerEn: Record<keyof typeof projectlessComposerZh, s
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
     'conversation.oplProjectlessComposer': keyof typeof projectlessComposerZh
-  }
-  interface SlotMap {
-    'sidebar.workspaces': { kind: 'single'; scope: 'root' }
   }
 }
 

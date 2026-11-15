@@ -1,3 +1,8 @@
+import {
+  buildFeaturePlugins,
+  hostContract,
+  pluginNamespaces,
+} from './scripts/build-feature-plugins.mjs'
 /** Build a self-contained enhancement tarball; DSH services stay runtime peers. */
 import { mkdir, readFile, writeFile, cp, rm } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
@@ -122,7 +127,8 @@ await writeFile(
       version,
       type: 'module',
       license: 'MIT',
-      description: project.description,
+      description:
+        'OPL Gateway accounts and models, setup, updates and shared Desktop enhancements',
       author: project.author,
       homepage: project.homepage,
       repository: project.repository,
@@ -171,6 +177,15 @@ const tar =
   process.platform === 'win32'
     ? join(process.env.SystemRoot ?? 'C:/Windows', 'System32', 'tar.exe')
     : 'tar'
+const plugins = await buildFeaturePlugins({ root, output, project, tar, officialClientRuntime })
+await writeFile(
+  join(output, 'package/lib/typert.host.js'),
+  hostContract(
+    await readFile(join(root, 'src/generated/host.mjs'), 'utf8'),
+    project.name,
+    pluginNamespaces.base,
+  ),
+)
 const superagent = await buildSuperagent(root, output, tar)
 execFileSync(
   tar,
@@ -190,6 +205,7 @@ const installer = join(output, 'OPL DSH 一键安装')
 await rm(installer, { recursive: true, force: true })
 await cp(join(root, 'installer'), installer, { recursive: true })
 await cp(join(output, name), join(installer, name))
+for (const plugin of plugins) await cp(join(output, plugin.name), join(installer, plugin.name))
 await cp(join(output, superagent.name), join(installer, superagent.name))
 const payloadFiles = {}
 for (const file of [
@@ -201,6 +217,7 @@ for (const file of [
   'install.mjs',
   'profile.cjs',
   'model-plugins.cjs',
+  'split-plugins.cjs',
   'ofm-upgrade.cjs',
   'ofm-owner.cjs',
   'kimi-cu.mjs',
@@ -234,6 +251,7 @@ for (const file of [
   'windows-lifecycle.mjs',
   name,
   superagent.name,
+  ...plugins.map((plugin) => plugin.name),
 ]) {
   payloadFiles[file] = createHash('sha256')
     .update(await readFile(join(installer, file)))
@@ -278,6 +296,7 @@ const artifact = {
   updateProtocolVersion: 1,
   unattendedUpdateProtocolVersion: 1,
   superagent,
+  plugins,
   enhancementVersion: version,
   sourceCommit,
   sourceDirty,

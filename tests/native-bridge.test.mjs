@@ -11,7 +11,7 @@ for (const effort of ['high', 'max'])
     `packaged bridge forwards ${effort}, resumes native Codex identity and refuses sandbox escalation`,
     async () => {
       const bridge = fileURLToPath(
-        new URL('../dist/package/lib/native-harness-bridge.mjs', import.meta.url),
+        new URL('../dist/execution-package/package/lib/native-harness-bridge.mjs', import.meta.url),
       )
       const fixture = fileURLToPath(new URL('./fixtures/codex-app-server.mjs', import.meta.url))
       // The bridge spawns the native command as an executable, which relies on the fixture's
@@ -36,6 +36,8 @@ for (const effort of ['high', 'max'])
             OPL_NATIVE_API_KEY: 'fixture',
             OPL_NATIVE_BASE_URL: 'http://127.0.0.1:1/v1',
             OPL_FIXTURE_EFFORT: effort,
+            OPL_NATIVE_INSTRUCTIONS: 'Official reviewer persona and team policy.',
+            OPL_FIXTURE_INSTRUCTIONS: 'Official reviewer persona and team policy.',
           },
           stdio: ['pipe', 'pipe', 'pipe'],
         })

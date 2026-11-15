@@ -42,6 +42,8 @@ const allowed: Readonly<Record<string, readonly string[]>> = {
     'flush',
   ],
   harness: [
+    'official-tools',
+    'official-call',
     'delegate',
     'tasks',
     'report',

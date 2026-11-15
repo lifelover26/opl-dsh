@@ -5,7 +5,12 @@ const { createRequire } = require('node:module')
 const { mkdirSync, writeFileSync, readFileSync, existsSync } = require('node:fs')
 const { installModelPlugins, preserveModelPlugins } = require('./model-plugins.cjs')
 const { officialPnpm } = require('./official-pnpm.cjs')
-const [application, home, archive, companion, ...flags] = process.argv.slice(2)
+const [application, home, archive, ...options] = process.argv.slice(2)
+const companion = options.find((option) => !option.startsWith('--'))
+const flags = options.filter((option) => option.startsWith('--'))
+const plugins = flags
+  .filter((flag) => flag.startsWith('--plugin='))
+  .map((flag) => resolve(flag.slice(9)))
 const optionalBundles = [
   '@deepseek-ai/dsh-experimental-agent-team-profile',
   '@deepseek-ai/dsh-experimental-auto-review',
@@ -91,7 +96,33 @@ async function main() {
     process.stdout.write(JSON.stringify(result) + '\n')
     return
   }
-  await preserveModelPlugins({ dir, install: () => install(['add', resolve(archive)]) })
+  const { disabledOplPackages, migrateSplitSettings } = require('./split-plugins.cjs')
+  const names = [
+    '@one-person-lab/dsh-opl',
+    ...plugins.map((_, index) =>
+      index === 0 ? '@one-person-lab/dsh-execution' : '@one-person-lab/dsh-collaboration',
+    ),
+  ]
+  if (plugins.length && plugins.length !== 2) throw Error('OPL 多插件安装清单不完整')
+  const manifestBefore = boot.readProfileManifest('dsh', dir)
+  const disabled = disabledOplPackages(manifestBefore, names)
+  await preserveModelPlugins({ dir, install: () => install(['add', resolve(archive), ...plugins]) })
+  if (disabled.length) {
+    const manifest = boot.readProfileManifest('dsh', dir)
+    await restoreBundles(
+      (manifest.dsh?.profile?.bundles ?? []).filter((name) => !disabled.includes(name)),
+    )
+  }
+  if (plugins.length) {
+    const { withFileLock, writeFileAtomic } = await load('@deepseek-ai/dsh-atomic-write')
+    await migrateSplitSettings({
+      dir,
+      yaml: requireRuntime('yaml'),
+      withFileLock,
+      writeFileAtomic,
+      stopped: require('./ofm-owner.cjs').stopped,
+    })
+  }
   await installModelPlugins({ dir, install, restoreBundles })
   const { releaseOfmManaged } = require('./ofm-owner.cjs')
   await releaseOfmManaged({

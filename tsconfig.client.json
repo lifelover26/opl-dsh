@@ -9,21 +9,17 @@
     "allowImportingTsExtensions": true,
     "noImplicitOverride": true,
     "exactOptionalPropertyTypes": true,
-    "types": [
-      "react"
-    ],
+    "types": ["react"],
     "jsx": "react-jsx",
-    "lib": [
-      "ES2024",
-      "DOM",
-      "DOM.Iterable"
-    ]
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
   },
   "include": [
     "src/suite/client.tsx",
     "src/*/client/**/*.ts",
     "src/*/client/**/*.tsx",
     "src/generated/remote.d.mts",
-    "src/client-env.d.ts"
+    "src/client-env.d.ts",
+    "src/suite/execution-client.tsx",
+    "src/suite/collaboration-client.tsx"
   ]
 }

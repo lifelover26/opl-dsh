@@ -27,7 +27,7 @@ import {
  */
 export const AUTO_REVIEW_FIELD = 'toolAutoReview'
 /** Profile entry that carries {@link AUTO_REVIEW_FIELD}. */
-export const AUTO_REVIEW_OWNER_NS = 'opl-suite'
+export const AUTO_REVIEW_OWNER_NS = 'opl-execution'
 
 /** OPL reviewer routing and the external approval bridge are off by default. */
 export const DEFAULT_ENABLED = false

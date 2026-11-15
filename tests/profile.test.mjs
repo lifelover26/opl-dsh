@@ -38,6 +38,10 @@ async function runtime(
   await writeFile(join(runtime, 'package.json'), '{"type":"module"}\n')
   await copyFile(installer, join(payload, 'profile.cjs'))
   await copyFile(
+    new URL('../installer/split-plugins.cjs', import.meta.url),
+    join(payload, 'split-plugins.cjs'),
+  )
+  await copyFile(
     fileURLToPath(new URL('../installer/ofm-owner.cjs', import.meta.url)),
     join(payload, 'ofm-owner.cjs'),
   )

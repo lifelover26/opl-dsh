@@ -30,11 +30,24 @@ export async function openSuperagent(installed, { start } = {}) {
   const executable = join(installed.app, 'Contents/MacOS/DeepSeek Harness')
   const artifact = await read(join(installed.release, 'artifact.json'))
   const companion = artifact.superagent
+  const plugins = artifact.plugins ?? []
+  if (
+    plugins.length &&
+    (plugins.length !== 2 ||
+      plugins.some(
+        (plugin, index) =>
+          plugin.package !==
+            ['@one-person-lab/dsh-execution', '@one-person-lab/dsh-collaboration'][index] ||
+          !/^opl-dsh-(execution|collaboration)-[a-zA-Z0-9.-]+\.tgz$/.test(plugin.name),
+      ))
+  )
+    throw Error('SuperAgent 的 OPL 功能插件清单无效')
   if (!companion || !/^dsh-superagent-[a-f0-9]{12}\.tgz$/.test(companion.name))
     throw new Error('已安装套件缺少 SuperAgent，请更新 OPL DSH。')
   for (const [name, expected] of [
     [companion.name, companion.sha256],
     [artifact.name, artifact.sha256],
+    ...plugins.map((plugin) => [plugin.name, plugin.sha256]),
   ]) {
     if (digest(await readFile(join(installed.release, name))) !== expected)
       throw new Error('SuperAgent 安装包校验失败。')
@@ -87,6 +100,7 @@ export async function openSuperagent(installed, { start } = {}) {
           home,
           join(installed.release, artifact.name),
           join(installed.release, companion.name),
+          ...plugins.map((plugin) => '--plugin=' + join(installed.release, plugin.name)),
         ],
         { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 180000, maxBuffer: 1 << 20 },
       )

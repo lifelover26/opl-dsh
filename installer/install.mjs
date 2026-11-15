@@ -138,9 +138,32 @@ if (!existsSync(patch))
     '- id: webserver\n  config:\n    host: 127.0.0.1\n    port: 0\n    compression: gzip\n    compressionLevel: 1\n    compressionThresholdBytes: 1024\n',
     { mode: 0o600, flag: 'wx' },
   )
-run(executable, [join(release, 'profile.cjs'), app, home, join(release, artifact.name)], {
-  ELECTRON_RUN_AS_NODE: '1',
-})
+const featurePlugins = artifact.plugins ?? []
+if (
+  featurePlugins.length &&
+  (featurePlugins.length !== 2 ||
+    featurePlugins.some(
+      (plugin, index) =>
+        plugin.package !==
+          ['@one-person-lab/dsh-execution', '@one-person-lab/dsh-collaboration'][index] ||
+        !/^opl-dsh-(execution|collaboration)-[a-zA-Z0-9.-]+\.tgz$/.test(plugin.name) ||
+        artifact.payloadFiles[plugin.name] !== plugin.sha256,
+    ))
+)
+  throw Error('OPL 功能插件清单无效')
+run(
+  executable,
+  [
+    join(release, 'profile.cjs'),
+    app,
+    home,
+    join(release, artifact.name),
+    ...featurePlugins.map((plugin) => '--plugin=' + join(release, plugin.name)),
+  ],
+  {
+    ELECTRON_RUN_AS_NODE: '1',
+  },
+)
 const compatibilityLauncher = join(
   root,
   process.platform === 'win32' ? 'launch.vbs' : 'launch.command',

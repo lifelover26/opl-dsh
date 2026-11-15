@@ -23,6 +23,11 @@ createInterface({ input: process.stdin }).on('line', (line) => {
       throw Error('invalid native configuration')
     if (expectedSandbox && m.params.sandbox !== expectedSandbox)
       throw Error(`expected sandbox ${expectedSandbox} but the bridge sent ${m.params.sandbox}`)
+    if (
+      process.env.OPL_FIXTURE_INSTRUCTIONS &&
+      m.params.developerInstructions !== process.env.OPL_FIXTURE_INSTRUCTIONS
+    )
+      throw Error('official role instructions were not forwarded')
     threadId = m.params.threadId ?? threadId
     receivedSandbox = m.params.sandbox
     send({ id: m.id, result: { thread: { id: threadId }, model: m.params.model } })

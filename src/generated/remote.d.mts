@@ -5,7 +5,7 @@ import type {
   TypertRemoteInfo,
   TypertRemoteMethod,
 } from '@deepseek-ai/dsh-typert-protocol'
-import type { AutoReviewSaveRequest, AutoReviewSaveResult, AutoReviewStatus, CodexRuntimeRequest, CodexRuntimeResult, CooperationSettings, CoordinationStatus, DelegateRequest, DeliveryRecord, ExecutionCatalog, ExecutionLimits, GatewayAccountStatus, GatewayModelEdit, GatewayModelSettings, GatewayRememberedLogin, GatewaySignInResult, HarnessCatalog, HarnessContextReading, HarnessDetailPage, HarnessDetailRequest, HarnessInstallation, HarnessOrigin, HarnessPromptRequest, HarnessProxy, HarnessReasoningPreflight, HarnessSelection, HarnessSessionsPage, HarnessSessionsRequest, HarnessSnapshot, HarnessStartRequest, HarnessTaskSummary, LoginChoice, MessageEditSend, MessageEditState, MiniMaxAccountLoginRequest, MiniMaxAccountStatus, MiniMaxCandidateRequest, MiniMaxCandidateResult, ModelDraft, OplUpdatePolicy, OplUpdateStatus, ReportRequest, ReviewRequest, SessionRequest, SetupStatus, StopEditRequest, StopEditResult, StopEditState, StopEditStateRequest, TaskAckRequest, TaskAckValue, TaskConsumeRequest, TaskConsumeValue, TaskFlushValue, TaskLookupRequest, TaskReceipt, TaskReceiveRequest, TaskReceiveValue, TaskRecord, TaskRegistration, TaskRegistrationValue, TaskResumeRequest, TaskResumeValue, WakeSettings, WakeStatus } from '@one-person-lab/dsh-opl/types'
+import type { AutoReviewSaveRequest, AutoReviewSaveResult, AutoReviewStatus, CodexRuntimeRequest, CodexRuntimeResult, CooperationSettings, CoordinationStatus, DelegateRequest, DeliveryRecord, ExecutionCatalog, ExecutionLimits, GatewayAccountStatus, GatewayModelEdit, GatewayModelSettings, GatewayRememberedLogin, GatewaySignInResult, HarnessCatalog, HarnessContextReading, HarnessDetailPage, HarnessDetailRequest, HarnessInstallation, HarnessOrigin, HarnessPromptRequest, HarnessProxy, HarnessReasoningPreflight, HarnessSelection, HarnessSessionsPage, HarnessSessionsRequest, HarnessSnapshot, HarnessStartRequest, HarnessTaskSummary, LoginChoice, MessageEditSend, MessageEditState, MiniMaxAccountLoginRequest, MiniMaxAccountStatus, MiniMaxCandidateRequest, MiniMaxCandidateResult, ModelDraft, OplUpdatePolicy, OplUpdateStatus, ReportRequest, ReviewRequest, RoleExecutionCatalog, SessionRequest, SetupStatus, StopEditRequest, StopEditResult, StopEditState, StopEditStateRequest, TaskAckRequest, TaskAckValue, TaskConsumeRequest, TaskConsumeValue, TaskFlushValue, TaskLookupRequest, TaskReceipt, TaskReceiveRequest, TaskReceiveValue, TaskRecord, TaskRegistration, TaskRegistrationValue, TaskResumeRequest, TaskResumeValue, WakeSettings, WakeStatus } from '@one-person-lab/dsh-opl/types'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface TypertRemoteNamespace$6f706c4175746f526576696577 {
@@ -80,6 +80,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     discover: (request: { group: string; }) => Promise<RemoteResult<ModelDraft[]>>
     edit: (request: GatewayModelEdit) => Promise<RemoteResult<GatewayModelSettings>>
     read: () => Promise<RemoteResult<GatewayModelSettings>>
+  }
+  interface TypertRemoteNamespace$6f706c526f6c65457865637574696f6e {
+    catalog: () => Promise<RemoteResult<RoleExecutionCatalog>>
+    save: (request: { bindings: Record<string, string>; }) => Promise<RemoteResult<RoleExecutionCatalog>>
   }
   interface TypertRemoteNamespace$6f706c5365747570 {
     finish: (choice: Exclude<LoginChoice, 'undecided'>) => Promise<RemoteResult<null>>
@@ -176,6 +180,8 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'oplGatewayModels/discover': (request: { group: string; }) => Promise<RemoteResult<ModelDraft[]>>
     'oplGatewayModels/edit': (request: GatewayModelEdit) => Promise<RemoteResult<GatewayModelSettings>>
     'oplGatewayModels/read': () => Promise<RemoteResult<GatewayModelSettings>>
+    'oplRoleExecution/catalog': () => Promise<RemoteResult<RoleExecutionCatalog>>
+    'oplRoleExecution/save': (request: { bindings: Record<string, string>; }) => Promise<RemoteResult<RoleExecutionCatalog>>
     'oplSetup/finish': (choice: Exclude<LoginChoice, 'undecided'>) => Promise<RemoteResult<null>>
     'oplSetup/official-cancel': () => Promise<RemoteResult<null>>
     'oplSetup/official-key': (key: string) => Promise<RemoteResult<null>>
@@ -208,6 +214,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'oplExecution': TypertRemoteNamespace$6f706c457865637574696f6e
     'oplGatewayAccount': TypertRemoteNamespace$6f706c476174657761794163636f756e74
     'oplGatewayModels': TypertRemoteNamespace$6f706c476174657761794d6f64656c73
+    'oplRoleExecution': TypertRemoteNamespace$6f706c526f6c65457865637574696f6e
     'oplSetup': TypertRemoteNamespace$6f706c5365747570
     'oplUpdates': TypertRemoteNamespace$6f706c55706461746573
     'taskFeedback': TypertRemoteNamespace$7461736b466565646261636b
@@ -278,6 +285,8 @@ export declare const TYPERT_REMOTE: TypertRemoteInfo<{
   readonly 'oplGatewayModels/discover': TypertRemoteMethod<{ readonly 'request': { group: string; } }, ModelDraft[]>
   readonly 'oplGatewayModels/edit': TypertRemoteMethod<{ readonly 'request': GatewayModelEdit }, GatewayModelSettings>
   readonly 'oplGatewayModels/read': TypertRemoteMethod<{  }, GatewayModelSettings>
+  readonly 'oplRoleExecution/catalog': TypertRemoteMethod<{  }, RoleExecutionCatalog>
+  readonly 'oplRoleExecution/save': TypertRemoteMethod<{ readonly 'request': { bindings: Record<string, string>; } }, RoleExecutionCatalog>
   readonly 'oplSetup/finish': TypertRemoteMethod<{ readonly 'choice': Exclude<LoginChoice, 'undecided'> }, null>
   readonly 'oplSetup/official-cancel': TypertRemoteMethod<{  }, null>
   readonly 'oplSetup/official-key': TypertRemoteMethod<{ readonly 'key': string }, null>

@@ -1,4 +1,6 @@
+import { featureSettings } from '../../shared/host/feature-settings.ts'
 import { LlmError } from '../../shared/llm-error.ts'
+import type {} from '../contracts/official-collaboration.ts'
 import type { MiniMaxAccountLoginRequest } from '../contracts/minimax-account.ts'
 import { MiniMaxAccount } from './minimax-account.ts'
 import { ProgressWatchdog, type ProgressWatchdogLimits } from './progress-watchdog.ts'
@@ -331,6 +333,11 @@ interface SelectionChangeState {
 
 export { grokConfiguration } from './adapters/grok.ts'
 export { nativeHarnessMatches, defaultHarness } from './adapters/index.ts'
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    oplHarness: HarnessService
+  }
+}
 export class HarnessService {
   private minimaxLoginAttempt:
     { region: MiniMaxAccountLoginRequest['region']; cancelled: boolean } | undefined
@@ -397,10 +404,10 @@ export class HarnessService {
   /** Persist validated limits and apply them to subsequent turns. */
   async saveExecutionLimits(value: unknown): Promise<ProgressWatchdogLimits> {
     const limits = executionLimitsSchema(value as never) as ProgressWatchdogLimits
-    const descriptor = this.ctx.settings.describe().find((item) => item.ns === 'opl-suite')
+    const descriptor = featureSettings(this.ctx, 'opl-execution')
     if (!descriptor) throw Error('执行设置不可用')
     await this.ctx.settings.mutate(
-      'opl-suite',
+      descriptor.ns,
       [{ op: 'set', path: ['executionLimits'], value: limits }],
       descriptor.revision,
     )
@@ -1488,6 +1495,24 @@ export class HarnessService {
           if (request.namespace !== 'harness')
             throw Error('Capability does not allow this namespace')
           const caller: HarnessOrigin = { kind: 'harness', sessionId: record.id }
+          if (request.method === 'official-tools' || request.method === 'official-call') {
+            const official = this.ctx.get('oplOfficialCollaboration')
+            if (!official || !record.nativeSessionId) {
+              if (request.method === 'official-tools') return { enabled: false, tools: [] }
+              throw Error('官方协作接入未启用或会话未关联')
+            }
+            const signal = request.signal ?? new AbortController().signal
+            return request.method === 'official-tools'
+              ? { enabled: true, tools: await official.tools(record.nativeSessionId, signal) }
+              : official.call(record.nativeSessionId, required(p.name, 'tool'), p.arguments, signal)
+          }
+          if (
+            ['list', 'delegate', 'tasks', 'report', 'review', 'result', 'cancel'].includes(
+              request.method,
+            ) &&
+            !this.ctx.get('oplOfficialCollaboration')
+          )
+            throw Error('OPL 跨引擎协作已停用')
           if (request.method === 'list') return await this.combinations()
           if (request.method === 'delegate') return this.delegateFrom(caller, p, request.signal)
           if (request.method === 'tasks') return this.tasksFor(caller)
@@ -1745,7 +1770,8 @@ export class HarnessService {
         (record.origin.kind === 'dsh' ? record.origin.sessionId : undefined)
       const pending = (this.titleUpdates.get(record.id) ?? Promise.resolve())
         .then(async () => {
-          if (target) await this.native('rename', { sessionId: target, title })
+          if (target && !this.isOfficialMember(target))
+            await this.native('rename', { sessionId: target, title })
           await this.save(record)
         })
         .catch(() => {
@@ -2120,7 +2146,7 @@ export class HarnessService {
     }
     if (!record.turns.length && !record.titleFromHarness) {
       record.title = (displayPrompt ?? text).trim().slice(0, 80)
-      if (record.nativeSessionId)
+      if (record.nativeSessionId && !this.isOfficialMember(record.nativeSessionId))
         await this.native('rename', { sessionId: record.nativeSessionId, title: record.title })
     }
     record.turns.push(turn)
@@ -2155,6 +2181,9 @@ export class HarnessService {
   }
   private native(method: string, request: object) {
     return invokeHostRemote(this.ctx, { namespace: 'session', method, args: { request } })
+  }
+  private isOfficialMember(sessionId: string): boolean {
+    return this.ctx.sessions.get(asSessionId<SessionId>(sessionId))?.header.origin === 'subagent'
   }
   /** Admit delegated work through the real official Agent so its UI owns streaming and approvals. */
   private async runConversation(record: HarnessSession, active: Active, turn: HarnessTurn) {
@@ -4074,8 +4103,13 @@ export class HarnessService {
         await this.native('cancel', { sessionId: record.acpSessionId })
       else {
         active.acp?.cancel(record.acpSessionId)
-        if (record.nativeSessionId)
-          await this.native('cancel', { sessionId: record.nativeSessionId })
+        if (record.nativeSessionId) {
+          if (this.isOfficialMember(record.nativeSessionId))
+            this.ctx.agents
+              .get(asSessionId<SessionId>(record.nativeSessionId))
+              ?.cancel({ kind: 'user' })
+          else await this.native('cancel', { sessionId: record.nativeSessionId })
+        }
       }
       const timer = setTimeout(() => {
         void active.acp?.dispose()
@@ -4087,10 +4121,9 @@ export class HarnessService {
   }
   cooperationSettings() {
     const value = (
-      this.ctx
-        .get('settings')
-        ?.describe({ redactSecrets: true })
-        .find((s) => s.ns === 'opl-suite')?.value as any
+      featureSettings(this.ctx, 'opl-collaboration')?.value as
+        | { cooperation?: { autoReview?: boolean; maxRevisions?: number; externalCodex?: boolean } }
+        | undefined
     )?.cooperation
     return {
       autoReview: value?.autoReview !== false,
@@ -4108,9 +4141,9 @@ export class HarnessService {
       p.maxRevisions > 5
     )
       throw Error('协作设置无效')
-    const descriptor = this.ctx.settings.describe().find((s) => s.ns === 'opl-suite')!
+    const descriptor = featureSettings(this.ctx, 'opl-collaboration')!
     await this.ctx.settings.mutate(
-      'opl-suite',
+      descriptor.ns,
       [
         {
           op: 'set',
@@ -5345,6 +5378,27 @@ export class HarnessService {
       return { kind: 'external', sessionId: session.id }
     })
   }
+  /** Bind a new official role without changing deployment defaults or an existing conversation. */
+  async bindRoleCombination(agent: Agent, combination: string): Promise<void> {
+    await this.ready
+    if (this.selections[agent.id]) return
+    if (agent.session.snapshotEvents().some((event) => event.type === 'turn/start')) return
+    const catalog = await this.executionCatalog()
+    const definition = catalog.combinations.find((item) => item.id === combination && item.enabled)
+    if (!definition) throw Error('角色执行组合不存在或已停用')
+    if (!['dsh', 'codex', 'claude'].includes(definition.harnessRef))
+      throw Error('角色团队当前支持 DSH、Codex 和 Claude Code')
+    const model = catalog.models.find(
+      (item) => modelRefKey(item.ref) === modelRefKey(definition.modelRef),
+    )
+    if (!model?.available) throw Error(model?.reason ?? '角色使用的模型尚未就绪')
+    // The official child already carries its parent's permission seed. A role
+    // may narrow it; selecting a combination never grants a wider permission.
+    if (definition.permissionPolicy === 'read-only' && !definition.generated)
+      this.ctx.permissionPresets.set(agent.session, 'read-only')
+    agent.model.select(await this.normalizeConversationSelection(definition.modelRef, definition))
+    await this.bindSelection(agent.id, definition.id)
+  }
   /** Bridge external official Harness output through the official conversation stream. */
   async *conversationStream(
     options: GenerateOptions,
@@ -5428,7 +5482,9 @@ export class HarnessService {
           record.nativeSessionId === options.sessionId && record.combination === definition.id,
       )
     const user = options.messages.findLast(
-      (message) => message.role === 'user' && message.source?.kind === 'user',
+      (message) =>
+        message.role === 'user' &&
+        ['user', 'agent-message', 'subagent-settled'].includes(message.source?.kind ?? ''),
     )
     if (!user) throw harnessInputError('conversation-current', 'blank', { currentTextLength: 0 })
     const currentTextLength = currentHarnessInputText(user.content, 'conversation-current').length
@@ -5530,6 +5586,19 @@ export class HarnessService {
         )
     const record = this.records.get(started.id)!
     await this.finalizing.get(record.id)
+    const official = this.ctx.get('oplOfficialCollaboration')
+    if (
+      !record.acpSessionId &&
+      record.officialInstructions === undefined &&
+      official &&
+      ['codex', 'claude'].includes(record.harnessRef)
+    ) {
+      record.officialInstructions = await official.instructions(
+        session.id,
+        options.signal ?? new AbortController().signal,
+      )
+      await this.save(record)
+    }
     await this.connect(record)
     // Managed turns retain their submitted setting. The native picker value is
     // not an external CLI capability and must not be copied into a new

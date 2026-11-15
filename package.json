@@ -112,7 +112,9 @@
     ".": "./src/suite/host.ts",
     "./types": "./src/contracts/types.ts",
     "./icon": "./src/setup/client/opl-app-logo.png",
-    "./locale/*.json": "./src/suite/locale/*.json"
+    "./locale/*.json": "./src/suite/locale/*.json",
+    "./execution": "./src/suite/execution-plugin.ts",
+    "./collaboration": "./src/suite/collaboration-plugin.ts"
   },
   "workspaces": [
     "vendor/dsh-superagent"

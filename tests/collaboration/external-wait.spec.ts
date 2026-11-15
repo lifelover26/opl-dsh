@@ -3,10 +3,9 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { TypertGateway } from '@deepseek-ai/dsh-api-gateway'
 import type { HarnessService } from '../../src/execution/host/harness.ts'
 const mocks = vi.hoisted(() => ({
-  start: vi.fn(),
+  provide: vi.fn(),
   wait: vi.fn(async () => ({ turn: 1, outcome: { kind: 'completed' } })),
 }))
-vi.mock('../../src/shared/host/control-bridge.ts', () => ({ startControlBridge: mocks.start }))
 vi.mock('../../src/execution/host/session-wait.ts', () => ({ waitForSession: mocks.wait }))
 import { installExternalCodex } from '../../src/collaboration/host/external-codex.ts'
 import { testPeerConnection } from '../test-peer.ts'
@@ -17,10 +16,11 @@ it('accepts both official helper and legacy control CLI wait arguments without f
     connection: testPeerConnection,
     typertGateway: gateway,
     effect: (action: () => unknown) => action(),
+    provide: (_name: string, value: unknown) => mocks.provide(value),
   }
   const harness = { cooperationSettings: () => ({ externalCodex: true }) }
   installExternalCodex(ctx as unknown as Context, harness as unknown as HarnessService)
-  const bridge = mocks.start.mock.calls.at(-1)![0] as Pick<TypertGateway, 'invoke'>
+  const bridge = mocks.provide.mock.calls.at(-1)![0] as Pick<TypertGateway, 'invoke'>
   for (const args of [{ sessionId: 's1', turn: 1 }, { request: { sessionId: 's1', turn: 1 } }]) {
     expect(await bridge.invoke({ namespace: 'session', method: 'wait', args })).toEqual({
       turn: 1,
@@ -49,15 +49,39 @@ it('carries the official Peer through control bridge calls and subscriptions', a
     typertGateway: gateway,
     get: (name: string) => (name === 'connection' ? { createPeer } : undefined),
     effect: (action: () => unknown) => action(),
+    provide: (_name: string, value: unknown) => mocks.provide(value),
   }
   const harness = { cooperationSettings: () => ({ externalCodex: true }) }
   installExternalCodex(ctx as unknown as Context, harness as unknown as HarnessService)
-  const bridge = mocks.start.mock.calls.at(-1)![0] as Pick<TypertGateway, 'invoke' | 'stream'>
+  const bridge = mocks.provide.mock.calls.at(-1)![0] as Pick<TypertGateway, 'invoke' | 'stream'>
   const read = { namespace: 'session', method: 'list', args: {} }
   const follow = { namespace: 'workspace', method: 'follow', args: {} }
   await bridge.invoke(read)
   await bridge.stream(follow)
-  expect(gateway.invoke).toHaveBeenCalledWith({ ...read, peer })
-  expect(gateway.stream).toHaveBeenCalledWith({ ...follow, peer })
+  expect(gateway.invoke).toHaveBeenCalledWith(
+    expect.objectContaining({ ...read, peer, signal: expect.any(AbortSignal) }),
+  )
+  expect(gateway.stream).toHaveBeenCalledWith(
+    expect.objectContaining({ ...follow, peer, signal: expect.any(AbortSignal) }),
+  )
   expect(createPeer).toHaveBeenCalledOnce()
+})
+
+it('revokes a retained external control port when the collaboration plugin unloads', async () => {
+  const disposers: (() => void)[] = []
+  const ctx = {
+    provide: (_name: string, value: unknown) => mocks.provide(value),
+    effect: (action: () => () => void) => {
+      disposers.push(action())
+    },
+  }
+  installExternalCodex(
+    ctx as unknown as Context,
+    { cooperationSettings: () => ({ externalCodex: true }) } as HarnessService,
+  )
+  const bridge = mocks.provide.mock.calls.at(-1)![0] as Pick<TypertGateway, 'invoke' | 'stream'>
+  disposers.forEach((dispose) => dispose())
+  await expect(
+    bridge.invoke({ namespace: 'session', method: 'wait', args: { sessionId: 's1' } }),
+  ).rejects.toThrow()
 })

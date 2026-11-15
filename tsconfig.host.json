@@ -9,15 +9,15 @@
     "allowImportingTsExtensions": true,
     "noImplicitOverride": true,
     "exactOptionalPropertyTypes": true,
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
   "include": [
     "src/suite/host.ts",
     "src/*/host/**/*.ts",
     "src/*/contracts/**/*.ts",
     "src/contracts/**/*.ts",
-    "src/shared/models.ts"
+    "src/shared/models.ts",
+    "src/suite/execution-plugin.ts",
+    "src/suite/collaboration-plugin.ts"
   ]
 }
