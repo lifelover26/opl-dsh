@@ -440,7 +440,7 @@ describe('official MiniMax Code ACP combination', () => {
     expect(await readFile(store.filename(saved.id), 'utf8')).toBe(bytes)
   })
 
-  it('serializes full-access writers in the same project and releases the queue after cancellation', async () => {
+  it('releases an explicitly overlapping writer after cancellation', async () => {
     const { service, root, start, prompts } = await setup()
     const first = await start(M3_COMBINATION)
     const second = await service.start({
@@ -450,8 +450,18 @@ describe('official MiniMax Code ACP combination', () => {
       origin: { kind: 'codex', sessionId: 'parent' },
       sandbox: 'full-access',
     })
-    await service.prompt({ sessionId: first.id, operationId: 'wait', text: 'wait' })
-    await service.prompt({ sessionId: second.id, operationId: 'queued', text: 'after' })
+    await service.prompt({
+      sessionId: first.id,
+      operationId: 'wait',
+      text: 'wait',
+      writeScope: ['src/shared'],
+    })
+    await service.prompt({
+      sessionId: second.id,
+      operationId: 'queued',
+      text: 'after',
+      writeScope: ['src/shared/a.ts'],
+    })
     expect((await service.snapshot({ sessionId: second.id })).state).toBe('queued')
     await service.cancel({ sessionId: first.id })
     await service.wait({ sessionId: second.id }, AbortSignal.timeout(15000))

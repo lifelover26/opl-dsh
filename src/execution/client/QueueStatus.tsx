@@ -24,8 +24,8 @@ export function QueueStatus({ sessionId, call }: { sessionId: string; call: Exec
     }
   }, [sessionId, call])
   return queued ? (
-    <span role="status" title="同目录写任务按顺序执行；当前请求尚未发送给模型。">
-      等待同目录任务结束
+    <span role="status" title="仅等待与当前任务显式声明为重叠的写入范围。">
+      等待重叠写入结束
     </span>
   ) : null
 }

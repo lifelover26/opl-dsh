@@ -49,13 +49,18 @@ export function writeScopesOverlap(left: readonly string[], right: readonly stri
   )
 }
 
-/** Legacy/undeclared writers own their entire project; explicit scopes also lock shared external outputs. */
+/**
+ * Only two explicitly declared, overlapping scopes contend.
+ *
+ * An omitted scope means "not declared", not ownership of the whole cwd. Treating every
+ * unscoped writer in one project as exclusive turns normal parallel sessions into an
+ * implicit queue and has no official DSH counterpart. Explicit scopes may still protect a
+ * shared output; isolated Git work uses the official worktree owner instead.
+ */
 export function writerConflicts(
   left: { cwd: string; writeScope?: readonly string[] | undefined },
   right: { cwd: string; writeScope?: readonly string[] | undefined },
 ): boolean {
-  return writeScopesOverlap(
-    left.writeScope ?? [canonical(resolve(left.cwd))],
-    right.writeScope ?? [canonical(resolve(right.cwd))],
-  )
+  if (!left.writeScope || !right.writeScope) return false
+  return writeScopesOverlap(left.writeScope, right.writeScope)
 }

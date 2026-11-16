@@ -2541,7 +2541,12 @@ describe('shared collaboration owner', () => {
   it('queues writers and cancels queued descendants without executing them', async () => {
     const { root, service } = await setup(),
       parent = await start(service, root, 'parent')
-    await service.prompt({ sessionId: parent.id, text: 'wait', operationId: 'hold' })
+    await service.prompt({
+      sessionId: parent.id,
+      text: 'wait',
+      operationId: 'hold',
+      writeScope: ['src/shared'],
+    })
     const child = await service.delegateFrom(
       { kind: 'harness', sessionId: parent.id },
       {
@@ -2550,6 +2555,7 @@ describe('shared collaboration owner', () => {
         taskId: 'child',
         operationId: 'one',
         wait: false,
+        writeScope: ['src/shared/a.ts'],
       },
     )
     expect(child.state).toBe('queued')
@@ -2644,7 +2650,7 @@ describe('durable collaboration delivery', () => {
     expect((await wait(service, reader.id)).state).toBe('completed')
     await service.cancel({ sessionId: writer.id })
   })
-  it('runs declared disjoint writers concurrently while overlapping and undeclared writers wait', async () => {
+  it('runs same-cwd writers unless both explicitly declare an overlapping scope', async () => {
     const { root, service } = await setup()
     const a = await start(service, root, 'scoped-a'),
       b = await start(service, root, 'scoped-b')
@@ -2677,18 +2683,22 @@ describe('durable collaboration delivery', () => {
     })
     await service.prompt({ sessionId: legacy.id, text: 'legacy', operationId: 'one' })
     expect((await service.snapshot({ sessionId: overlap.id })).state).toBe('queued')
-    expect((await service.snapshot({ sessionId: legacy.id })).state).toBe('queued')
+    await vi.waitFor(async () => {
+      const lines = (await readFile(join(root, 'calls.txt'), 'utf8')).trim().split('\n')
+      expect(lines).toEqual(['wait', 'wait', 'legacy'])
+    })
+    expect((await wait(service, legacy.id)).state).toBe('completed')
     await service.prompt(request)
     await expect(service.prompt({ ...request, writeScope: ['src/different'] })).rejects.toThrow(
       'operation',
     )
     await service.cancel({ sessionId: a.id })
     expect((await wait(service, overlap.id)).state).toBe('completed')
-    expect((await service.snapshot({ sessionId: legacy.id })).state).toBe('queued')
+    expect((await service.snapshot({ sessionId: legacy.id })).state).toBe('completed')
     await service.cancel({ sessionId: b.id })
     expect((await wait(service, legacy.id)).state).toBe('completed')
     const lines = (await readFile(join(root, 'calls.txt'), 'utf8')).trim().split('\n')
-    expect(lines).toEqual(['wait', 'wait', 'overlap', 'legacy'])
+    expect(lines).toEqual(['wait', 'wait', 'legacy', 'overlap'])
   })
   it('persists operation ownership and restores cancellation without replay', async () => {
     const { root, service, ctx, options } = await setup()
@@ -3009,10 +3019,20 @@ describe('external execution progress deadlines', () => {
   it('does not start a deadline while queued behind another execution', async () => {
     const { service, root } = await setup()
     const holder = await start(service, root, 'deadline-holder')
-    await service.prompt({ sessionId: holder.id, text: 'wait', operationId: 'hold' })
+    await service.prompt({
+      sessionId: holder.id,
+      text: 'wait',
+      operationId: 'hold',
+      writeScope: ['src/shared'],
+    })
     const queued = await start(service, root, 'deadline-queued')
     service.configureProgressLimits({ firstProgressMs: 100, idleProgressMs: 100 })
-    await service.prompt({ sessionId: queued.id, text: 'result', operationId: 'queued-result' })
+    await service.prompt({
+      sessionId: queued.id,
+      text: 'result',
+      operationId: 'queued-result',
+      writeScope: ['src/shared/a.ts'],
+    })
     expect((await service.snapshot({ sessionId: queued.id })).state).toBe('queued')
     await service.cancel({ sessionId: holder.id })
     expect((await wait(service, queued.id)).state).toBe('completed')

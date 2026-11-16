@@ -105,7 +105,9 @@ DSH Agent 发起的新 DSH 内部子任务只走官方工具与生命周期。`l
 
 执行状态与验收状态分开；完成轮次进入 pending 验收，父对话基于实际产物选择 accepted 或 changes_requested。后续修改沿用子会话和 taskId，使用新 operationId。原 operation 重试幂等，变更内容被拒绝。回传以持久 ID 和官方 prompt requestId 去重，只有用户显式重试创建新的交付尝试。重启不会自动重新执行未完成的轮次。
 
-项目写队列覆盖 OPL 托管会话；同步委派时父对话处于 waiting_child，子任务可执行，异步任务在写占用解除后执行。只读任务可以并发。原生 DSH 父对话繁忙时异步写子任务等待，独立原生会话和外部编辑器不在此队列控制范围。官方 Team 共享 cwd，write scope 仅作警告；官方 Forge/worktree 不负责 OPL 交付验收、自动合并或释放写占用，因此尚不能替代这条队列。
+OPL 不按相同 cwd 自动串行化会话，也不实现项目写队列。普通 write 的冲突由 Git 和具体文件工具暴露；需要隔离的写任务由官方 worktree 从已提交基线创建独立目录与分支，在各自 checkout 中执行。`writeScope` 只在双方都显式声明且范围重叠时计算互斥，省略不表示独占项目。同步委派的 `waiting_child` 表示父子生命周期，不是写锁；只读任务始终可以并发。
+
+worktree 中的写入完成并经过仓库要求的检查后，以该 checkout 的提交作为可审阅结果，再由 Git 或官方 Forge 合入。官方 Forge 的合并针对固定 `headSha`，并要求用户或既有自动化合同确认；OPL 不接管 worktree、PR、评审或合并状态，也不绕过验收自动合并。详细边界见[并行写入与工作树](parallel-writes.md)。
 
 主界面使用官方会话列表、消息流和输入框。OPL 路径中的组合关联、外部会话映射、任务轮次、交付与验收由 `HarnessService` 持久化；官方 Subagent/Team 的对象继续由官方拥有，不合并成新的 OPL Bot 存储。官方 Team 完成表示其任务状态，不代表父对话已经核验产物并接受 OPL 交付。
 

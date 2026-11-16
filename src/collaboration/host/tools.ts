@@ -64,7 +64,7 @@ export function installCollaborationTools(ctx: Context, harness: HarnessService)
               type: 'array',
               items: { type: 'string' },
               description:
-                '本轮独占写入的精确文件或目录。不相交范围可并行；省略则独占项目。范围只用于调度，不是沙箱，构建与安装使用项目根目录。',
+                '可选。本轮显式独占的精确文件或目录，只在双方都声明且范围重叠时参与互斥；省略不锁定项目。Git 写任务优先使用独立 worktree，范围不是沙箱。',
             },
           },
           output,

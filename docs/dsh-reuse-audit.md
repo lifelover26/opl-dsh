@@ -18,7 +18,7 @@ OPL 先定义用户需要完成的任务，再选择能力负责人。官方已�
 | 模型与 Harness 组合          | 官方模型注册表、模型选择投影、provider 配置；外部 CLI 的执行能力                                                                             | OPL 组合只保存精确模型与 Harness 引用、权限及默认选择。官方目前没有可替代全部执行组合的统一绑定与连续会话合同，因此保留组合目录和输入栏选择。                                        |
 | 工具自动审批                 | 官方 `dsh-experimental-auto-review` 的原生 `auto` 预设、pre-execute gate、权限与插件生命周期                                                 | 原生 gate、策略和预设已交给官方插件。OPL 仅保留 purpose 路由、预算、原始请求/响应记录和 ZCode 外部审批桥；关闭 OPL reviewer 后，官方继续用当前会话模型审批。                         |
 | 原生 token 与上下文占用      | 官方 token meter、context pressure/breakdown、`TurnUsagePanel`                                                                               | 使用官方统计。OPL 仅保留外部 CLI 实际 usage 的解析与展示，以及排除编辑替换历史后的 turns/steps 计数。                                                                                |
-| 目标、脚本与项目工作区       | 官方 Goal、Workflow、Workspace、Forge/worktree                                                                                               | Goal 管同会话目标与预算，Workflow 管前台 agent/pipeline/parallel，Forge 管本地 worktree 入口。跨 Harness 持久任务、交付验收与写队列仍由 OPL 管理，不能把这些官方能力描述成完整替代。 |
+| 目标、脚本与项目工作区       | 官方 Goal、Workflow、Workspace、Worktree、Forge                                                                                              | Goal 管同会话目标与预算，Workflow 管前台 agent/pipeline/parallel，Worktree 管隔离分支与目录，Forge 管变更请求与合并。OPL 保留跨 Harness 持久任务和交付验收，但不拥有项目写队列；并发写入遵循[并行写入与工作树](parallel-writes.md)。 |
 | Gateway 账号与模型协议       | Gateway 账户 API、官方 DeepSeek 与 pi-ai adapter                                                                                             | OPL 维护登录、六组权限与精确路由；协议转换交官方 adapter，组合不复制连接配置。                                                                                                       |
 | 免费模型                     | 原版 Our Free Model 的账户、模型、路由、转发与更新                                                                                           | 原样保留第三方插件；OPL 读取公开 owner API，维护已验证组合，不复制账号或路由状态。                                                                                                   |
 | 编辑与重发                   | 官方会话分支/日志接口、外部 CLI 的原生分叉能力                                                                                               | OPL 保留已完成历史的停止后编辑与外部 CLI history 适配；官方队列编辑仅针对待处理消息，尚不能替代。                                                                                    |
@@ -29,7 +29,7 @@ OPL 先定义用户需要完成的任务，再选择能力负责人。官方已�
 
 ## 近期新增能力的实际范围
 
-官方 Team 目前只接收可继续的本地 spawn/fork provider。它不把一次性 Codex、Claude 或 ACP provider 变成可持续 teammate，也不为每次 `spawn_teammate` 提供任意模型/Harness 选择。团队共享工作目录；write scope 是协作提示，不能代替文件锁、隔离 worktree 或 OPL 跨 Harness 写队列。
+官方 Team 目前只接收可继续的本地 spawn/fork provider。它不把一次性 Codex、Claude 或 ACP provider 变成可持续 teammate，也不为每次 `spawn_teammate` 提供任意模型/Harness 选择。团队共享工作目录；需要并行修改时使用官方 worktree，不能把 OPL 扩展成按共享 cwd 串行的项目写队列。
 
 OPL 跨引擎团队使用官方 local spawn 的成员会话承载身份与生命周期，在 llm/stream 扩展点转接 Codex/Claude。外部 CLI 经每会话 MCP capability 调用官方 tools.resolve 与 tools.execute；不绕过官方权限，也不复制消息、任务板或成员目录。已在 macOS 的未修改官方桌面中验证 Codex、Claude、DSH 三方通信、任务完成、取消与冷恢复；双平台安装资格与发布状态另行记录。官方提供完整外部连续成员合同后，可直接替换这些适配点。
 

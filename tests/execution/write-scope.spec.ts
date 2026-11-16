@@ -14,7 +14,7 @@ const fixture = async () => {
   return root
 }
 describe('operation write ownership', () => {
-  it('locks directory descendants but allows sibling filenames', async () => {
+  it('contends only when both operations declare overlapping scopes', async () => {
     const cwd = await fixture()
     const scope = (paths?: string[]) => resolveWriteScope(cwd, paths)
     const a = { cwd, writeScope: await scope(['src/client']) }
@@ -23,8 +23,8 @@ describe('operation write ownership', () => {
     expect(writerConflicts(a, { cwd, writeScope: await scope(['src/client-else/a.ts']) })).toBe(
       false,
     )
-    expect(writerConflicts(a, { cwd })).toBe(true)
-    expect(writerConflicts({ cwd }, { cwd, writeScope: await scope(['.']) })).toBe(true)
+    expect(writerConflicts(a, { cwd })).toBe(false)
+    expect(writerConflicts({ cwd }, { cwd, writeScope: await scope(['.']) })).toBe(false)
   })
   it('canonicalizes missing descendants through real symlink ancestors', async () => {
     const cwd = await fixture()
@@ -57,15 +57,15 @@ describe('operation write ownership', () => {
     expect(await resolveWriteScope(cwd, undefined)).toBeUndefined()
   })
 
-  it('undeclared writers own the canonical project through a symlink alias', async () => {
+  it('does not infer project ownership from an undeclared cwd or symlink alias', async () => {
     const root = await fixture()
     const cwd = join(root, 'project')
     const alias = join(root, 'alias')
     await mkdir(cwd)
     await symlink(cwd, alias, process.platform === 'win32' ? 'junction' : 'dir')
     const scoped = { cwd, writeScope: await resolveWriteScope(cwd, ['src/future.ts']) }
-    expect(writerConflicts(scoped, { cwd: alias })).toBe(true)
-    expect(writerConflicts({ cwd: alias }, scoped)).toBe(true)
-    expect(writerConflicts({ cwd }, { cwd: alias })).toBe(true)
+    expect(writerConflicts(scoped, { cwd: alias })).toBe(false)
+    expect(writerConflicts({ cwd: alias }, scoped)).toBe(false)
+    expect(writerConflicts({ cwd }, { cwd: alias })).toBe(false)
   })
 })
