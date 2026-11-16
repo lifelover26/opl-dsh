@@ -260,31 +260,37 @@ describe('feishu source', () => {
   })
   it('recovers the topics of a chat while they had a message in the last two weeks, and forgets quieter ones', async () => {
     const h = host()
-    const day = 24 * 3600_000
-    const start = Date.parse('2026-09-01T00:00:00.000Z')
-    h.store.set('feishu-history-threads:oc_team', { omt_old: new Date(start).toISOString() })
-    let round = 0
-    const scans: string[] = []
-    vi.spyOn(h.commands, 'withSignal').mockReturnValue(h.commands)
-    vi.spyOn(h.commands, 'lark').mockImplementation(async args => {
-      const params = JSON.parse(args[args.indexOf('--params') + 1]!) as { container_id_type: string; container_id: string }
-      scans.push(params.container_id)
-      // Each day's chat scan yields one new thread; thread scans return no further messages.
-      return { has_more: false, items: params.container_id_type === 'chat' ? [{ message_id: `om_${round}`, chat_id: 'oc_team',
-        create_time: String(start + round * day), thread_id: `omt_${round}`,
-        sender: { id: 'ou_bob', sender_type: 'user' }, body: { content: '{"text":"hi"}' } }] : [] }
-    })
-    for (round = 0; round < 30; round++) {
-      scans.length = 0
-      const since = new Date(start + round * day - 60_000).toISOString()
-      await backfillChat(h, 'oc_team', false, since, new Date(start + round * day + 60_000).toISOString(), new AbortController().signal)
-      if (round === 0) expect(scans).toContain('omt_old')
+    // One calendar simulation needs the real Store, not a disk flush for every day and Trigger.
+    h.store.db.exec('BEGIN')
+    try {
+      const day = 24 * 3600_000
+      const start = Date.parse('2026-09-01T00:00:00.000Z')
+      h.store.set('feishu-history-threads:oc_team', { omt_old: new Date(start).toISOString() })
+      let round = 0
+      const scans: string[] = []
+      vi.spyOn(h.commands, 'withSignal').mockReturnValue(h.commands)
+      vi.spyOn(h.commands, 'lark').mockImplementation(async args => {
+        const params = JSON.parse(args[args.indexOf('--params') + 1]!) as { container_id_type: string; container_id: string }
+        scans.push(params.container_id)
+        // Each day's chat scan yields one new thread; thread scans return no further messages.
+        return { has_more: false, items: params.container_id_type === 'chat' ? [{ message_id: `om_${round}`, chat_id: 'oc_team',
+          create_time: String(start + round * day), thread_id: `omt_${round}`,
+          sender: { id: 'ou_bob', sender_type: 'user' }, body: { content: '{"text":"hi"}' } }] : [] }
+      })
+      for (round = 0; round < 30; round++) {
+        scans.length = 0
+        const since = new Date(start + round * day - 60_000).toISOString()
+        await backfillChat(h, 'oc_team', false, since, new Date(start + round * day + 60_000).toISOString(), new AbortController().signal)
+        if (round === 0) expect(scans).toContain('omt_old')
+      }
+      // The chat, and the topics with a message in the last 14 days.
+      expect(scans).toHaveLength(1 + 14)
+      expect(Object.keys(h.store.get<Record<string, string>>('feishu-history-threads:oc_team')!)).toHaveLength(14)
+      expect(h.store.get<Record<string, string>>('feishu-history-threads:oc_team')!.omt_29).toBe(new Date(start + 29 * day).toISOString())
+    } finally {
+      h.store.db.exec('ROLLBACK')
+      h.store.close()
     }
-    // The chat, and the topics with a message in the last 14 days.
-    expect(scans).toHaveLength(1 + 14)
-    expect(Object.keys(h.store.get<Record<string, string>>('feishu-history-threads:oc_team')!)).toHaveLength(14)
-    expect(h.store.get<Record<string, string>>('feishu-history-threads:oc_team')!.omt_29).toBe(new Date(start + 29 * day).toISOString())
-    h.store.close()
   })
   it('skips and counts a history message it cannot read, and takes in the others', async () => {
     const h = host()
