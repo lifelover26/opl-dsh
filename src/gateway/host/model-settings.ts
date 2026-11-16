@@ -8,7 +8,11 @@ import type { SettingsDescriptor, SettingsPathOp } from '@deepseek-ai/dsh-settin
 import { GATEWAY_GROUPS } from '../contracts/groups.ts'
 import { DEFAULT_MODELS, toAdapterConfig } from './config.ts'
 import type { ModelDraft, GatewayModelSettings } from '../contracts/models.ts'
-import { isRetiredModel } from '../../shared/models.ts'
+import {
+  displayModelName,
+  GATEWAY_ANTIGRAVITY_GEMINI_MODELS,
+  isRetiredModel,
+} from '../../shared/models.ts'
 import { withGatewayModelInputDefaults } from './model-capabilities.ts'
 import {
   gatewayDiscoveryBaseURL,
@@ -16,12 +20,19 @@ import {
   isDefaultGatewayBaseURL,
 } from './protocol.ts'
 import {
+  clearGatewayCatalogStatus,
   diagnoseGatewayModelFailure,
   gatewayCatalogStatus,
   gatewayModelDiagnostic,
   GatewayModelDiscoveryError,
+  isTransientGatewayDiscoveryDiagnostic,
   setGatewayCatalogStatus,
 } from './model-diagnostics.ts'
+
+const MAX_DISCOVERY_ATTEMPTS = 3
+const DISCOVERY_TOTAL_BUDGET_MS = 20_000
+const DISCOVERY_ATTEMPT_TIMEOUT_MS = 10_000
+const DISCOVERY_RETRY_DELAYS_MS = [150, 350] as const
 const record = (value: unknown): Record<string, any> =>
   value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {}
 
@@ -159,7 +170,13 @@ function providerSettings(
   }
 }
 
-/** Add newly bundled Gemini models only to the canonical OPL Gateway catalog. */
+const LEGACY_CANONICAL_GEMINI_SETS: readonly (readonly string[])[] = [
+  ['gemini-3.1-pro', 'gemini-3.8-flash'],
+  ['gemini-4-argon', 'gemini-3.8-flash'],
+  ['gemini-4-argon', 'gemini-3.8-flash', 'gemini-3.1-pro'],
+]
+
+/** Replace an unchanged legacy bundled Gemini catalog with the current default pair. */
 function addGeminiBundleModels(
   profile: Record<string, any>,
   models: readonly ModelDraft[],
@@ -172,17 +189,15 @@ function addGeminiBundleModels(
   )
     return [...models]
   const ids = new Set(models.map((model) => model.id))
-  // Existing Gemini routes shipped with these two models. Only that known
-  // canonical catalog receives the new model during upgrade; a user-defined
-  // or partially configured catalog remains untouched.
-  if (
-    models.length !== 2 ||
-    !ids.has('gemini-3.1-pro') ||
-    !ids.has('gemini-3.8-flash') ||
-    ids.has('gemini-4-argon')
+  if (ids.size !== models.length) return [...models]
+  const matchesLegacy = LEGACY_CANONICAL_GEMINI_SETS.some(
+    (set) => set.length === ids.size && set.every((id) => ids.has(id)),
   )
-    return [...models]
-  return [...models, { id: 'gemini-4-argon', name: 'Gemini 4 Argon' }]
+  if (!matchesLegacy) return [...models]
+  return GATEWAY_ANTIGRAVITY_GEMINI_MODELS.map((id) => ({
+    id,
+    name: displayModelName({ provider: 'opl-gateway', model: `gemini::${id}` }, id),
+  }))
 }
 
 /** Add the OPL-owned reviewer without replacing any existing chat provider. */
@@ -421,6 +436,8 @@ export async function editGatewayModels(
       })
     await mutateModelSettings(ctx, 'llm-pi-ai', ops, args.revision, group.id)
   }
+  if (gatewayCatalogStatus(ctx, group.id).state === 'error')
+    clearGatewayCatalogStatus(ctx, group.id)
   return gatewayModelSettings(ctx)
 }
 /** List candidates using the configured endpoint and credential reference, without saving models. */
@@ -475,17 +492,44 @@ export async function discoverGatewayModels(ctx: Context, input: unknown): Promi
       fail('service_unavailable')
     }
     if (!key) fail('missing_credentials')
-    signal = AbortSignal.timeout(15000)
-    const models = await llm.discoverModels(
-      'llm-pi-ai',
-      {
-        ...(group.id === 'deepseek' ? {} : { provider: group.provider }),
-        baseURL,
-        api: 'openai-completions',
-        apiKey: key,
-      },
-      signal,
-    )
+    const deadline = Date.now() + DISCOVERY_TOTAL_BUDGET_MS
+    let models!: readonly {
+      id: string
+      name?: string
+      contextWindow?: number
+      maxTokens?: number
+    }[]
+    for (let attempt = 0; attempt < MAX_DISCOVERY_ATTEMPTS; attempt++) {
+      const remaining = deadline - Date.now()
+      signal = AbortSignal.timeout(Math.max(1, Math.min(DISCOVERY_ATTEMPT_TIMEOUT_MS, remaining)))
+      try {
+        models = await llm.discoverModels(
+          'llm-pi-ai',
+          {
+            ...(group.id === 'deepseek' ? {} : { provider: group.provider }),
+            baseURL,
+            api: 'openai-completions',
+            apiKey: key,
+          },
+          signal,
+        )
+        break
+      } catch (error) {
+        const diagnostic = diagnoseGatewayModelFailure(error, signal)
+        const delayMs = DISCOVERY_RETRY_DELAYS_MS[attempt] ?? 350
+        const timeLeft = deadline - Date.now()
+        if (
+          attempt + 1 < MAX_DISCOVERY_ATTEMPTS &&
+          isTransientGatewayDiscoveryDiagnostic(diagnostic) &&
+          timeLeft > delayMs + 2_000
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs))
+          continue
+        }
+        setGatewayCatalogStatus(ctx, group.id, { state: 'error', diagnostic })
+        throw new GatewayModelDiscoveryError(group.id, group.name, diagnostic)
+      }
+    }
     const configured: ModelDraft[] =
       profile.models ?? (group.id === 'deepseek' ? DEFAULT_MODELS : [])
     const offered = new Set(models.map((model) => model.id))
@@ -537,8 +581,11 @@ export async function syncGatewayModels(ctx: Context): Promise<void> {
         savedModels !== undefined &&
         hashes[group.id] !== catalogFingerprint(savedModels) &&
         !copied.has(group.id)
-      )
+      ) {
+        if (gatewayCatalogStatus(ctx, group.id).state === 'error')
+          clearGatewayCatalogStatus(ctx, group.id)
         continue
+      }
       let candidates = await discoverGatewayModels(ctx, { group: group.id })
       // Do not make the default DeepSeek Flash route depend on the optional
       // OpenAI-protocol group. A user can still explicitly add this channel

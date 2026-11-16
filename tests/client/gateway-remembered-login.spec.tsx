@@ -114,3 +114,90 @@ it('shows a disabled remember control while keyring state is pending', async () 
   await act(async () => finish({ supported: true }))
   expect(props(view.input('checkbox')).disabled).toBe(false)
 })
+
+it('keeps group activation switches non-wrapping and deduplicates shared proxy hints in account diagnostics', async () => {
+  const { readFileSync } = await import('node:fs')
+  const cssSource = readFileSync(
+    new URL('../../src/shared/client/SettingsSection.module.css', import.meta.url),
+    'utf8',
+  )
+  expect(cssSource).toMatch(/\.switchControl\s*\{[^}]*white-space:\s*nowrap/s)
+  expect(cssSource).toMatch(/\.switchControl\s*\{[^}]*flex-shrink:\s*0/s)
+  expect(cssSource).toMatch(/\.modelRow\s*>\s*:first-child\s*\{[^}]*min-width:\s*0/s)
+
+  const networkMessage =
+    '无法连接目录服务，请检查网络和推理地址。原生 DSH 的代理可在其主目录 .env 中配置 HTTPS_PROXY/HTTP_PROXY，修改后需重启；执行引擎代理仅影响 CLI 子进程。'
+  const dom = createTestDom()
+  const container = dom.container()
+  const root = createRoot(container as unknown as HTMLElement)
+  roots.push(root)
+  const status = {
+    phase: 'connected' as const,
+    source: 'session' as const,
+    endpoint: 'https://gateway.medopl.com/v1',
+    keyReady: true,
+    account: {
+      displayName: 'Test',
+      email: 'person@example.test',
+      status: 'active',
+      balanceAmount: 10,
+      balanceCurrency: 'USD',
+      todayTokens: 1,
+      totalTokens: 2,
+      todayCost: 0.1,
+      totalCost: 0.2,
+      usageCurrency: 'USD',
+      keyName: 'key',
+    },
+    groups: [
+      {
+        id: 'deepseek' as const,
+        name: 'DeepSeek',
+        enabled: true,
+        authorized: true,
+        rateMultiplier: 1,
+        state: 'ready' as const,
+        catalog: {
+          state: 'error' as const,
+          diagnostic: { code: 'network' as const, message: networkMessage },
+        },
+      },
+      {
+        id: 'kiro' as const,
+        name: 'Kiro',
+        enabled: true,
+        authorized: true,
+        rateMultiplier: 1,
+        state: 'ready' as const,
+        catalog: {
+          state: 'error' as const,
+          diagnostic: { code: 'network' as const, message: networkMessage },
+        },
+      },
+    ],
+  }
+  await act(async () =>
+    root.render(
+      <OplGatewaySection
+        status={vi.fn(async () => status)}
+        refresh={vi.fn(async () => status)}
+        signOut={vi.fn(async () => status)}
+        signIn={vi.fn(async () => ({ status, createdKey: false }))}
+        setGroupActive={vi.fn(async () => status)}
+        t={((key: keyof typeof zh) => zh[key]) as never}
+      />,
+    ),
+  )
+  const switches = walk(container as unknown as Node).filter(
+    (n) => n.nodeName === 'INPUT' && props(n).role === 'switch',
+  )
+  expect(switches).toHaveLength(2)
+  for (const toggle of switches) {
+    const label = (toggle as unknown as { parentNode: Node }).parentNode
+    const className = label.getAttribute('class') ?? String(props(label).className ?? '')
+    expect(className).toContain('switchControl')
+  }
+  const text = (container as unknown as { textContent: string }).textContent
+  expect(text).toContain('无法连接目录服务，请检查网络和推理地址。')
+  expect(text.split('HTTPS_PROXY/HTTP_PROXY')).toHaveLength(2)
+})

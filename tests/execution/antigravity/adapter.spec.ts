@@ -22,9 +22,9 @@ vi.mock('../../../src/execution/host/adapters/native-bash.ts', () => ({
 function record(overrides: Partial<HarnessSession> = {}): HarnessSession {
   return {
     id: 'gemini-owned-session',
-    combination: 'gateway/antigravity/argon',
+    combination: 'gateway/antigravity/carbon',
     harnessRef: 'antigravity',
-    modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
+    modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' },
     reasoningEffort: 'high',
     cwd: 'C:/workspace with spaces',
     acpSessionId: 'vendor-session',
@@ -44,7 +44,9 @@ function options(model: string, thinking: string, offeredThinking = ['low', 'med
       id: 'model',
       type: 'select',
       currentValue: model,
-      options: ['gemini-3.1-pro', 'gemini-3.8-flash', 'gemini-4-argon'].map((value) => ({ value })),
+      options: ['gemini-3.1-pro', 'gemini-4-carbon', 'gemini-4-hydrogen'].map((value) => ({
+        value,
+      })),
     },
     {
       id: 'thought_level',
@@ -58,7 +60,7 @@ function options(model: string, thinking: string, offeredThinking = ['low', 'med
 function snapshot(configOptions: unknown = options('gemini-3.1-pro', 'low', ['low', 'high'])) {
   return {
     agent: {
-      agentInfo: { name: 'Antigravity', version: '1.5.3' },
+      agentInfo: { name: 'Antigravity', version: '1.5.9' },
       agentCapabilities: { promptCapabilities: { image: true } },
     },
     session: { sessionId: 'vendor-session', models: { currentModelId: 'gemini-3.1-pro-low' } },
@@ -100,22 +102,24 @@ describe('Antigravity model and thinking pinning', () => {
   })
 
   it('matches only native Gemini models in the OPL Gemini group', () => {
-    for (const model of ['gemini-3.8-flash', 'gemini-4-argon']) {
+    for (const model of ['gemini-4-carbon', 'gemini-4-hydrogen']) {
       const ref = { provider: 'opl-gateway', model: `gemini::${model}` }
       expect(antigravityAdapter.matches(ref)).toBe(true)
       expect(antigravityWireModel(ref)).toBe(model)
     }
     for (const ref of [
-      { provider: 'our-free-model', model: 'gemini::gemini-4-argon' },
-      { provider: 'opl-gateway', model: 'gemini-4-argon' },
-      { provider: 'opl-gateway', model: 'codex::gemini-4-argon' },
+      { provider: 'our-free-model', model: 'gemini::gemini-4-carbon' },
+      { provider: 'opl-gateway', model: 'gemini-4-carbon' },
+      { provider: 'opl-gateway', model: 'codex::gemini-4-carbon' },
       { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' },
-      { provider: 'opl-gateway', model: 'gemini::gemini-4-argon-high' },
+      { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
+      { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' },
+      { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon-high' },
     ])
       expect(antigravityAdapter.matches(ref)).toBe(false)
   })
 
-  it.each(['gemini-3.8-flash', 'gemini-4-argon'])(
+  it.each(['gemini-4-carbon', 'gemini-4-hydrogen'])(
     'replaces the new/load default, then reads the new thinking advertisement for %s',
     async (model) => {
       const request = vi
@@ -141,11 +145,47 @@ describe('Antigravity model and thinking pinning', () => {
     },
   )
 
+  it('pins xhigh for Gemini 4 Hydrogen while rejecting xhigh for Gemini 4 Carbon', async () => {
+    const hydrogenLevels = ['low', 'medium', 'high', 'xhigh']
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ configOptions: options('gemini-4-hydrogen', 'low', hydrogenLevels) })
+      .mockResolvedValueOnce({
+        configOptions: options('gemini-4-hydrogen', 'xhigh', hydrogenLevels),
+      })
+    const hydrogen = record({
+      modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-4-hydrogen' },
+      reasoningEffort: 'xhigh',
+    })
+    const configured = await antigravityAdapter.configureSession!({ request }, hydrogen, snapshot())
+    expect(request.mock.calls[1]?.[1]).toMatchObject({ configId: 'thought_level', value: 'xhigh' })
+    expect(configured).toEqual({
+      configOptions: options('gemini-4-hydrogen', 'xhigh', hydrogenLevels),
+      modelId: 'gemini-4-hydrogen',
+    })
+    expect(() =>
+      antigravityAdapter.verifySession!(
+        hydrogen,
+        snapshot(options('gemini-4-hydrogen', 'xhigh', hydrogenLevels)),
+      ),
+    ).not.toThrow()
+
+    const rejectedRequest = vi.fn()
+    await expect(
+      antigravityAdapter.configureSession!(
+        { request: rejectedRequest },
+        record({ reasoningEffort: 'xhigh' }),
+        snapshot(),
+      ),
+    ).rejects.toThrow(/只支持 low、medium、high/)
+    expect(rejectedRequest).not.toHaveBeenCalled()
+  })
+
   it('pins the explicit high default when no effort was selected', async () => {
     const request = vi
       .fn()
-      .mockResolvedValueOnce({ configOptions: options('gemini-4-argon', 'low') })
-      .mockResolvedValueOnce({ configOptions: options('gemini-4-argon', 'high') })
+      .mockResolvedValueOnce({ configOptions: options('gemini-4-carbon', 'low') })
+      .mockResolvedValueOnce({ configOptions: options('gemini-4-carbon', 'high') })
     const selected = record()
     delete selected.reasoningEffort
     await antigravityAdapter.configureSession!({ request }, selected, snapshot())
@@ -153,7 +193,7 @@ describe('Antigravity model and thinking pinning', () => {
   })
 
   it.each(['max', 'xhigh', '', 'HIGH'])(
-    'refuses unsupported effort %j without writing config',
+    'refuses unsupported effort %j on gemini-4-carbon without writing config',
     async (effort) => {
       const request = vi.fn()
       await expect(
@@ -177,26 +217,26 @@ describe('Antigravity model and thinking pinning', () => {
     )
     await expect(
       antigravityAdapter.configureSession!({ request }, record(), current),
-    ).rejects.toThrow(/agy 1.5.3.*未广告要求的 model=gemini-4-argon/)
+    ).rejects.toThrow(/agy 1\.5\.9.*未广告要求的 model=gemini-4-carbon/)
     expect(request).not.toHaveBeenCalled()
   })
 
   it('refuses the model setter returning a different model', async () => {
-    const request = vi.fn(async () => ({ configOptions: options('gemini-3.8-flash', 'low') }))
+    const request = vi.fn(async () => ({ configOptions: options('gemini-4-hydrogen', 'low') }))
     await expect(
       antigravityAdapter.configureSession!({ request }, record(), snapshot()),
-    ).rejects.toThrow(/未确认所选的 model=gemini-4-argon/)
+    ).rejects.toThrow(/未确认所选的 model=gemini-4-carbon/)
     expect(request).toHaveBeenCalledTimes(1)
   })
 
   it('rejects model drift introduced by the thinking setter', async () => {
     const request = vi
       .fn()
-      .mockResolvedValueOnce({ configOptions: options('gemini-4-argon', 'low') })
-      .mockResolvedValueOnce({ configOptions: options('gemini-3.8-flash', 'high') })
+      .mockResolvedValueOnce({ configOptions: options('gemini-4-carbon', 'low') })
+      .mockResolvedValueOnce({ configOptions: options('gemini-4-hydrogen', 'high') })
     await expect(
       antigravityAdapter.configureSession!({ request }, record(), snapshot()),
-    ).rejects.toThrow(/未确认所选的 model=gemini-4-argon/)
+    ).rejects.toThrow(/未确认所选的 model=gemini-4-carbon/)
   })
 
   it('does not expose vendor error text if applying a config fails', async () => {
@@ -205,29 +245,31 @@ describe('Antigravity model and thinking pinning', () => {
     })
     await expect(
       antigravityAdapter.configureSession!({ request }, record(), snapshot()),
-    ).rejects.toThrow('Antigravity（agy 1.5.3）拒绝应用 model=gemini-4-argon，已停止，未发送任务。')
+    ).rejects.toThrow(
+      'Antigravity（agy 1.5.9）拒绝应用 model=gemini-4-carbon，已停止，未发送任务。',
+    )
   })
 
   it('rejects model and effort drift before a prompt', () => {
     expect(() =>
-      antigravityAdapter.verifySession!(record(), snapshot(options('gemini-4-argon', 'high'))),
+      antigravityAdapter.verifySession!(record(), snapshot(options('gemini-4-carbon', 'high'))),
     ).not.toThrow()
     expect(() =>
-      antigravityAdapter.verifySession!(record(), snapshot(options('gemini-3.8-flash', 'high'))),
-    ).toThrow(/model=gemini-4-argon/)
+      antigravityAdapter.verifySession!(record(), snapshot(options('gemini-4-hydrogen', 'high'))),
+    ).toThrow(/model=gemini-4-carbon/)
     expect(() =>
-      antigravityAdapter.verifySession!(record(), snapshot(options('gemini-4-argon', 'low'))),
+      antigravityAdapter.verifySession!(record(), snapshot(options('gemini-4-carbon', 'low'))),
     ).toThrow(/thought_level=high/)
   })
 
   it('rejects ambiguous or malformed advertisements', () => {
-    const [model] = options('gemini-4-argon', 'high')
+    const [model] = options('gemini-4-carbon', 'high')
     for (const input of [
       undefined,
       [model, model],
       [{ ...model, type: 'text' }],
       [{ ...model, currentValue: 'missing' }],
-      [{ ...model, options: [{ value: 'gemini-4-argon' }, { value: 'gemini-4-argon' }] }],
+      [{ ...model, options: [{ value: 'gemini-4-carbon' }, { value: 'gemini-4-carbon' }] }],
       [{ ...model, options: [null] }],
     ])
       expect(antigravityConfigOption(input, 'model')).toBeUndefined()
@@ -239,7 +281,7 @@ describe('Antigravity launch and result handling', () => {
     selected = record(),
     resolve = vi.fn(async () => ({
       baseURL: 'https://gateway.example.test',
-      model: 'gemini-4-argon',
+      model: 'gemini-4-carbon',
       apiKey: 'owned-key',
       protocol: 'gemini-native',
       imageInput: true,

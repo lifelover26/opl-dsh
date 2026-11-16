@@ -1,14 +1,63 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { gatewayModelChoices } from '../shared/model-choices.ts'
+import { summarizeDiscoveryErrors } from './discovery-errors.ts'
 import { displayModelName, gatewayChoiceKey } from '../../shared/models.ts'
 import type { GatewayModelSettings, ModelDraft } from '../contracts/models.ts'
 import css from '../../shared/client/SettingsSection.module.css'
 import type { GatewayCall as Call } from '../../shared/client/remote-call.ts'
+
+const DISCOVERY_CONCURRENCY = 2
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return []
+  const results = new Array<R>(items.length)
+  let next = 0
+  const run = async () => {
+    while (next < items.length) {
+      const index = next++
+      results[index] = await worker(items[index]!)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run))
+  return results
+}
+
+function ErrorSummary({
+  summary,
+  role,
+}: {
+  summary: ReturnType<typeof summarizeDiscoveryErrors>
+  role: 'alert' | 'status'
+}) {
+  if (!summary.items.length) return null
+  return (
+    <div role={role} className={`${css.error} ${css.errorList}`}>
+      {summary.items.map((item, index) => (
+        <p key={`${index}:${item}`}>{item}</p>
+      ))}
+      {summary.hints.map((hint) => (
+        <p key={hint} className={css.muted}>
+          {hint}
+        </p>
+      ))}
+      {summary.suffix && <p>{summary.suffix}</p>}
+    </div>
+  )
+}
+
 /** Compact projection over native settings. Credentials stay on the account page. */
 export function GatewayModels({ call }: { call: Call }) {
   const [data, setData] = useState<GatewayModelSettings>()
   const [error, setError] = useState(''),
+    [discoveryFailure, setDiscoveryFailure] = useState<{
+      groups: Set<string>
+      summary: ReturnType<typeof summarizeDiscoveryErrors>
+    } | null>(null),
     [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [candidates, setCandidates] = useState<{ group: string; model: ModelDraft }[]>()
@@ -30,6 +79,7 @@ export function GatewayModels({ call }: { call: Call }) {
   const act = async (fn: () => Promise<void>) => {
     setBusy(true)
     setError('')
+    setDiscoveryFailure(null)
     try {
       await fn()
     } catch (e) {
@@ -60,6 +110,29 @@ export function GatewayModels({ call }: { call: Call }) {
   ]
   const baseLabel = (model: ModelDraft) =>
     displayModelName({ provider: 'catalog', model: model.id }, model.name)
+  const persistentDiagnostics = data
+    ? summarizeDiscoveryErrors(
+        data.groups
+          .filter(
+            (group) =>
+              group.enabled !== false &&
+              group.catalog?.diagnostic &&
+              !discoveryFailure?.groups.has(group.id),
+          )
+          .map((group) => `${group.name}：${group.catalog!.diagnostic!.message}`),
+      )
+    : undefined
+  const activeHintSet = new Set(discoveryFailure?.summary.hints ?? [])
+  const filteredPersistentDiagnostics = persistentDiagnostics
+    ? {
+        ...persistentDiagnostics,
+        hints: persistentDiagnostics.hints.filter((hint) => !activeHintSet.has(hint)),
+      }
+    : undefined
+  const selectedGroupEntry = data?.groups.find((group) => group.id === selectedGroup)
+  const selectedGroupDiscoveryFailed =
+    discoveryFailure?.groups.has(selectedGroup) === true ||
+    selectedGroupEntry?.catalog?.state === 'error'
   return (
     <div
       className={css.detailsBody}
@@ -72,6 +145,7 @@ export function GatewayModels({ call }: { call: Call }) {
           {error}
         </p>
       )}
+      {discoveryFailure && <ErrorSummary summary={discoveryFailure.summary} role="alert" />}
       {!data && !error && (
         <p role="status" className={css.muted}>
           正在加载模型…
@@ -90,54 +164,95 @@ export function GatewayModels({ call }: { call: Call }) {
                 void act(async () => {
                   const available: { group: string; model: ModelDraft }[] = []
                   const failures: string[] = []
-                  const results = await Promise.all(
-                    data.groups
-                      .filter((g) => g.ready)
-                      .map(async (group) => {
-                        try {
-                          const fetched = await call('discover', { group: group.id })
-                          return {
-                            group,
-                            models: gatewayModelChoices(fetched, group.models),
-                            failure: undefined,
-                          }
-                        } catch (error) {
-                          return {
-                            group,
-                            models: group.models,
-                            failure:
-                              error instanceof Error
-                                ? error.message.slice(0, 320)
-                                : `${group.name}：目录获取失败。`,
-                          }
+                  const failedGroups = new Set<string>()
+                  const readyGroups = data.groups.filter((g) => g.ready)
+                  const results = await mapWithConcurrency(
+                    readyGroups,
+                    DISCOVERY_CONCURRENCY,
+                    async (group) => {
+                      try {
+                        const fetched = await call('discover', { group: group.id })
+                        return {
+                          group,
+                          models: gatewayModelChoices(fetched, group.models),
+                          failure: undefined,
                         }
-                      }),
+                      } catch (error) {
+                        return {
+                          group,
+                          models: group.models,
+                          failure:
+                            error instanceof Error
+                              ? error.message.trim()
+                              : `${group.name}：目录获取失败。`,
+                        }
+                      }
+                    },
                   )
                   for (const result of results) {
                     available.push(
                       ...result.models.map((model) => ({ group: result.group.id, model })),
                     )
-                    if (result.failure) failures.push(result.failure)
+                    if (result.failure) {
+                      failures.push(result.failure)
+                      failedGroups.add(result.group.id)
+                    }
+                  }
+                  const latest = await call('read').catch(() => undefined)
+                  if (latest) {
+                    setData((current) =>
+                      !editing || !current
+                        ? latest
+                        : {
+                            groups: current.groups.map((existing) => {
+                              const next = latest.groups.find((item) => item.id === existing.id)
+                              return next
+                                ? {
+                                    ...next,
+                                    models: existing.models,
+                                    api: existing.api,
+                                  }
+                                : existing
+                            }),
+                          },
+                    )
+                  } else {
+                    setData(
+                      (current) =>
+                        current && {
+                          groups: current.groups.map((existing) => {
+                            const matched = results.find((item) => item.group.id === existing.id)
+                            if (!matched || matched.failure) return existing
+                            return {
+                              ...existing,
+                              catalog: matched.models.length
+                                ? { state: 'ready', count: matched.models.length }
+                                : { state: 'empty', count: 0 },
+                            }
+                          }),
+                        },
+                    )
                   }
                   setCandidates(available)
-                  setSelectedGroup(data.groups.find((g) => g.ready)?.id ?? '')
+                  setSelectedGroup(readyGroups[0]?.id ?? '')
                   setSelected(
                     new Set(data.groups.flatMap((g) => g.models.map((m) => ref(g.id, m.id)))),
                   )
-                  if (failures.length) setError(failures.join('；') + ' 保留已配置模型。')
+                  if (failures.length) {
+                    setDiscoveryFailure({
+                      groups: failedGroups,
+                      summary: summarizeDiscoveryErrors(failures, '已保留当前已配置模型。'),
+                    })
+                  }
                 })
               }
             >
               {busy ? '正在获取…' : '选择模型'}
             </Button>
           </div>
-          {data.groups
-            .filter((group) => group.enabled !== false && group.catalog?.diagnostic)
-            .map((group) => (
-              <p key={group.id} role="status" className={css.error}>
-                {group.name}：{group.catalog!.diagnostic!.message}
-              </p>
-            ))}
+          {filteredPersistentDiagnostics && (
+            <ErrorSummary summary={filteredPersistentDiagnostics} role="status" />
+          )}
           <div className={css.modelRows}>
             {grouped([...models.values()]).map(([id, channels]) => (
               <div className={css.modelRow} key={id}>
@@ -186,6 +301,9 @@ export function GatewayModels({ call }: { call: Call }) {
               <p className={css.muted}>
                 勾选此分组中需要使用的模型。分组权限与密钥在 OPL Gateway 中管理。
               </p>
+              {selectedGroupDiscoveryFailed && (
+                <p className={css.muted}>此分组目录获取失败，当前仅列出已保留的已配置模型。</p>
+              )}
               <div className={css.modelRows}>
                 {candidates
                   .filter((item) => item.group === selectedGroup)
@@ -275,13 +393,16 @@ export function GatewayModels({ call }: { call: Call }) {
                         disabled={busy || !group.ready}
                         onClick={() =>
                           void act(async () => {
-                            const candidates = await call('discover', { group: group.id })
+                            const fetched = await call('discover', { group: group.id })
                             const ids = new Set(group.models.map((model) => model.id))
                             change(group.id, {
                               models: [
                                 ...group.models,
-                                ...candidates.filter((model) => !ids.has(model.id)),
+                                ...fetched.filter((model) => !ids.has(model.id)),
                               ],
+                              catalog: fetched.length
+                                ? { state: 'ready', count: fetched.length }
+                                : { state: 'empty', count: 0 },
                             })
                           })
                         }

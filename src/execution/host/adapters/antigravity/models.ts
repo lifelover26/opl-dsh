@@ -1,12 +1,20 @@
 /** Exact OPL Gemini identities and the official Antigravity ACP selection fields. */
+import { GATEWAY_ANTIGRAVITY_GEMINI_MODELS } from '../../../../shared/models.ts'
 import type { ModelRef } from '../../../contracts/catalog.ts'
 
 /** Execution engine used for the Gateway's native Gemini endpoint. */
 export const ANTIGRAVITY_HARNESS = 'antigravity'
 /** Gateway models whose native Gemini routes this adapter supports. */
-export const ANTIGRAVITY_GATEWAY_MODELS: readonly string[] = ['gemini-3.8-flash', 'gemini-4-argon']
-/** Thinking levels verified on both supported models in Antigravity 1.5.3. */
-export const ANTIGRAVITY_THINKING_LEVELS = ['low', 'medium', 'high'] as const
+export const ANTIGRAVITY_GATEWAY_MODELS: readonly string[] = GATEWAY_ANTIGRAVITY_GEMINI_MODELS
+/** Thinking levels verified across the supported models in Antigravity 1.5.9. */
+export const ANTIGRAVITY_THINKING_LEVELS = ['low', 'medium', 'high', 'xhigh'] as const
+const MODEL_THINKING_LEVELS: Record<
+  string,
+  readonly (typeof ANTIGRAVITY_THINKING_LEVELS)[number][]
+> = {
+  'gemini-4-carbon': ['low', 'medium', 'high'],
+  'gemini-4-hydrogen': ['low', 'medium', 'high', 'xhigh'],
+}
 /** Default applied explicitly when the combination expresses no thinking choice. */
 export const ANTIGRAVITY_DEFAULT_THINKING = 'high'
 /** Official ACP config-option identity for the wire model. */
@@ -63,10 +71,18 @@ export function antigravityConfigOption(
   return { currentValue: option.currentValue, values }
 }
 
+/** Supported thinking tiers for a specific Antigravity model ID. */
+export function antigravityThinkingLevelsFor(
+  model?: string,
+): readonly (typeof ANTIGRAVITY_THINKING_LEVELS)[number][] {
+  return (model && MODEL_THINKING_LEVELS[model]) || ['low', 'medium', 'high']
+}
+
 /** Resolve a choice this adapter can pin; an explicit unsupported effort is never dropped. */
 export function antigravityThinking(
   requested: string | undefined,
+  model?: string,
 ): (typeof ANTIGRAVITY_THINKING_LEVELS)[number] | undefined {
   if (requested === undefined) return ANTIGRAVITY_DEFAULT_THINKING
-  return ANTIGRAVITY_THINKING_LEVELS.find((level) => level === requested)
+  return antigravityThinkingLevelsFor(model).find((level) => level === requested)
 }

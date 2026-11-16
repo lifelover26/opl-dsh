@@ -34,14 +34,14 @@ describe('shared Harness acceptance steps', () => {
         authenticate: async (acp) => {
           await acp.request('authenticate', { methodId: 'gemini-api-key' })
         },
-        configureSession: async () => ({ modelId: 'gemini-4-argon', configOptions: [] }),
+        configureSession: async () => ({ modelId: 'gemini-4-carbon', configOptions: [] }),
         verifySession: vi.fn(),
       }
       const runner = new HarnessAcceptance(
         { request },
         adapter,
         { cwd: '/owned' } as HarnessSession,
-        'gemini-4-argon',
+        'gemini-4-carbon',
       )
       await expect(runner.open(operation === 'load' ? 'native-one' : undefined)).resolves.toBe(
         'native-one',

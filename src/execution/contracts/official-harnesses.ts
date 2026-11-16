@@ -1,3 +1,4 @@
+import { GATEWAY_ANTIGRAVITY_GEMINI_MODELS } from '../../shared/models.ts'
 import type { ModelRef } from './catalog.ts'
 
 /**
@@ -45,10 +46,10 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
   },
   {
     id: 'antigravity',
-    officialModels: [
-      { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' },
-      { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
-    ],
+    officialModels: GATEWAY_ANTIGRAVITY_GEMINI_MODELS.map((id) => ({
+      provider: 'opl-gateway',
+      model: `gemini::${id}`,
+    })),
   },
   {
     id: 'minimax-code',

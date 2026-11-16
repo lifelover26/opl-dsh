@@ -15,6 +15,7 @@ import {
   type GeminiProxyFailure,
 } from './gemini-proxy.ts'
 import { prepareAntigravityShell } from './shell.ts'
+import { antigravityThinkingLevelsFor } from './models.ts'
 import { antigravityContextUsage, normalizeAntigravityUsage } from './usage.ts'
 
 type RpcId = string | number
@@ -344,7 +345,9 @@ export async function runAntigravityBridge(options: AntigravityBridgeOptions = {
       if (
         (params.configId === 'model' && params.value !== route.model) ||
         (params.configId === 'thought_level' &&
-          !['low', 'medium', 'high'].includes(String(params.value)))
+          !antigravityThinkingLevelsFor(route.model).some(
+            (level) => level === String(params.value),
+          ))
       ) {
         reject('Antigravity model or thought level is outside the selected combination')
         return

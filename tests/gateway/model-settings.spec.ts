@@ -504,6 +504,8 @@ describe('protocol prefixes and bundle-owned migration', () => {
 
   it.each([
     ['codex', 'opl-gateway-openai', 'openai-responses', 'gpt-6.1-terra'],
+    ['gemini', 'opl-gateway-gemini', 'openai-completions', 'gemini-4-carbon'],
+    ['gemini', 'opl-gateway-gemini', 'openai-completions', 'gemini-4-hydrogen'],
     ['gemini', 'opl-gateway-gemini', 'openai-completions', 'gemini-4-argon'],
     ['gemini', 'opl-gateway-gemini', 'openai-completions', 'gemini-3.8-flash'],
   ])(
@@ -518,31 +520,40 @@ describe('protocol prefixes and bundle-owned migration', () => {
     },
   )
 
-  it('adds Gemini 4 Argon when upgrading the canonical Gemini catalog', async () => {
-    const f = fixture()
-    const profile = {
-      displayName: 'OPL Gateway · Gemini',
-      api: 'openai-completions',
-      baseURL: 'https://gateway.medopl.com/v1',
-      apiKeyEnv: 'OPL_GATEWAY_GEMINI_API_KEY',
-      models: [
-        { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
-        { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
-      ],
-    }
-    f.state['llm-pi-ai'].providers['opl-gateway-gemini'] = profile
-    f.users['llm-pi-ai'].providers = {
-      'opl-gateway-gemini': structuredClone(profile),
-    }
-    await migrateGatewayProtocolDefaults(f.ctx)
-    expect(f.state['llm-pi-ai'].providers['opl-gateway-gemini'].models).toEqual([
-      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro', input: ['text', 'image'] },
-      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', input: ['text', 'image'] },
-      { id: 'gemini-4-argon', name: 'Gemini 4 Argon', input: ['text', 'image'] },
-    ])
-  })
+  it.each([
+    [
+      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+    ],
+    [
+      { id: 'gemini-4-argon', name: 'Gemini 4 Argon' },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+      { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
+    ],
+  ])(
+    'upgrades an untouched legacy canonical Gemini catalog to Carbon and Hydrogen: %j',
+    async (...legacyModels) => {
+      const f = fixture()
+      const profile = {
+        displayName: 'OPL Gateway · Gemini',
+        api: 'openai-completions',
+        baseURL: 'https://gateway.medopl.com/v1',
+        apiKeyEnv: 'OPL_GATEWAY_GEMINI_API_KEY',
+        models: legacyModels,
+      }
+      f.state['llm-pi-ai'].providers['opl-gateway-gemini'] = profile
+      f.users['llm-pi-ai'].providers = {
+        'opl-gateway-gemini': structuredClone(profile),
+      }
+      await migrateGatewayProtocolDefaults(f.ctx)
+      expect(f.state['llm-pi-ai'].providers['opl-gateway-gemini'].models).toEqual([
+        { id: 'gemini-4-carbon', name: 'Gemini 4 Carbon', input: ['text', 'image'] },
+        { id: 'gemini-4-hydrogen', name: 'Gemini 4 Hydrogen', input: ['text', 'image'] },
+      ])
+    },
+  )
 
-  it('does not add Gemini 4 Argon to a custom Gemini catalog', async () => {
+  it('does not replace a custom Gemini catalog', async () => {
     const f = fixture()
     const profile = {
       displayName: 'Custom Gemini',
@@ -559,7 +570,7 @@ describe('protocol prefixes and bundle-owned migration', () => {
     expect(f.state['llm-pi-ai'].providers['opl-gateway-gemini'].models).toEqual(profile.models)
   })
 
-  it('does not add Gemini 4 Argon when a canonical catalog also contains a custom model', async () => {
+  it('does not replace the Gemini catalog when it contains a custom model', async () => {
     const f = fixture()
     const profile = {
       displayName: 'OPL Gateway · Gemini',
@@ -796,5 +807,50 @@ describe('per-group catalog observations', () => {
     expect(await discoverGatewayModels(f.ctx, { group: 'codex' })).toEqual(profile.models)
     await migrateGatewayProtocolDefaults(f.ctx)
     expect(f.settings.mutate).not.toHaveBeenCalled()
+  })
+
+  it('retries transient network failures in model discovery and clears stale error status after manual save or skipped sync', async () => {
+    const f = fixture()
+    f.discover
+      .mockRejectedValueOnce(
+        new LlmError('socket reset', 'DISCOVERY_FAILED', { cause: new TypeError('fetch failed') }),
+      )
+      .mockResolvedValueOnce([{ id: 'gpt-6-astra' }])
+    expect(await discoverGatewayModels(f.ctx, { group: 'codex' })).toEqual([
+      { id: 'gpt-6-astra', input: ['text', 'image'] },
+    ])
+    expect(f.discover).toHaveBeenCalledTimes(2)
+
+    f.discover.mockRejectedValue(
+      new LlmError('still offline', 'DISCOVERY_FAILED', { cause: new TypeError('fetch failed') }),
+    )
+    await expect(discoverGatewayModels(f.ctx, { group: 'codex' })).rejects.toMatchObject({
+      diagnostic: { code: 'network' },
+    })
+    expect(
+      (await gatewayModelSettings(f.ctx)).groups.find((g) => g.id === 'codex')?.catalog?.state,
+    ).toBe('error')
+
+    await editGatewayModels(f.ctx, {
+      group: 'codex',
+      revision: f.revisions['llm-pi-ai']!,
+      api: 'openai-responses',
+      models: [{ id: 'gpt-6-astra' }],
+    })
+    expect(
+      (await gatewayModelSettings(f.ctx)).groups.find((g) => g.id === 'codex')?.catalog,
+    ).toEqual({
+      state: 'unverified',
+    })
+
+    await expect(discoverGatewayModels(f.ctx, { group: 'codex' })).rejects.toMatchObject({
+      diagnostic: { code: 'network' },
+    })
+    await syncGatewayModels(f.ctx)
+    expect(
+      (await gatewayModelSettings(f.ctx)).groups.find((g) => g.id === 'codex')?.catalog,
+    ).toEqual({
+      state: 'unverified',
+    })
   })
 })

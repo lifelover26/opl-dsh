@@ -21,6 +21,24 @@ describe('safe model-listing diagnostics', () => {
     ],
     [
       new LlmError('private URL', 'DISCOVERY_FAILED', {
+        cause: Object.assign(Error('private pipe'), { code: 'EPIPE' }),
+      }),
+      'network',
+    ],
+    [
+      new LlmError('private URL', 'DISCOVERY_FAILED', {
+        cause: Object.assign(Error('private socket'), { code: 'UND_ERR_CLOSED' }),
+      }),
+      'network',
+    ],
+    [
+      new LlmError('private URL', 'DISCOVERY_FAILED', {
+        cause: Object.assign(Error('private body'), { code: 'UND_ERR_BODY_TIMEOUT' }),
+      }),
+      'timeout',
+    ],
+    [
+      new LlmError('private URL', 'DISCOVERY_FAILED', {
         cause: Object.assign(Error('private host'), { code: 'ETIMEDOUT' }),
       }),
       'timeout',

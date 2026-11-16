@@ -1,6 +1,7 @@
 /** Host-only Gateway access: executors never inspect account storage or provider settings. */
 import type { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
+import { GATEWAY_ANTIGRAVITY_GEMINI_MODELS } from '../../shared/models.ts'
 import { GATEWAY_GROUPS } from '../contracts/groups.ts'
 import { gatewayGroupEnabled } from './group-settings.ts'
 import { gatewayInferenceBaseURL, OPL_GATEWAY_GEMINI_NATIVE_BASE_URL } from './protocol.ts'
@@ -9,6 +10,8 @@ import type { ModelDraft } from '../contracts/models.ts'
 
 export { gatewayModelSettings } from './model-settings.ts'
 export { internalGatewayProvider } from '../contracts/groups.ts'
+
+const NATIVE_GEMINI_MODELS = new Set(GATEWAY_ANTIGRAVITY_GEMINI_MODELS.map((id) => `gemini::${id}`))
 
 /**
  * Resolve the Gateway's native Gemini endpoint using its existing group credential.
@@ -19,10 +22,7 @@ export async function resolveGatewayGeminiExecution(
   ctx: Context,
   ref: { provider: string; model: string },
 ): Promise<Awaited<ReturnType<typeof resolveGatewayExecution>>> {
-  if (
-    ref.provider !== 'opl-gateway' ||
-    !['gemini::gemini-3.8-flash', 'gemini::gemini-4-argon'].includes(ref.model)
-  )
+  if (ref.provider !== 'opl-gateway' || !NATIVE_GEMINI_MODELS.has(ref.model))
     throw Error('此模型尚未适配 Gemini 原生接口')
   const route = await resolveGatewayExecution(ctx, ref)
   if (

@@ -377,18 +377,39 @@ it('migrates a saved Nemotron OpenCode pairing to Kilo', async () => {
   )
 })
 
-it('removes a saved Gateway Gemini 3.1 OpenCode pairing after route retirement', async () => {
+it('removes retired Gateway Gemini pairings after route retirement', async () => {
   const catalog = defaultExecutionCatalog()
-  const retired = {
-    id: 'legacy-gemini-31-opencode',
-    name: 'Gemini 3.1 Pro + OpenCode',
-    modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' },
-    harnessRef: 'opencode',
-    permissionPolicy: 'workspace' as const,
-    isDefault: false,
-    enabled: true,
-  }
-  catalog.combinations.push(retired)
+  const retired = [
+    {
+      id: 'legacy-gemini-31-opencode',
+      name: 'Gemini 3.1 Pro + OpenCode',
+      modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' },
+      harnessRef: 'opencode',
+      permissionPolicy: 'workspace' as const,
+      isDefault: false,
+      enabled: true,
+    },
+    {
+      id: 'legacy-gemini-argon-opencode',
+      name: 'Gemini 4 Argon + OpenCode',
+      modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
+      harnessRef: 'opencode',
+      permissionPolicy: 'full-access' as const,
+      isDefault: false,
+      enabled: true,
+    },
+    {
+      id: 'auto:["opl-gateway","gemini::gemini-4-argon"]',
+      name: 'Gemini 4 Argon + Antigravity CLI',
+      modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
+      harnessRef: 'antigravity',
+      permissionPolicy: 'read-only' as const,
+      isDefault: true,
+      enabled: true,
+      generated: true,
+    },
+  ]
+  catalog.combinations.push(...retired)
   const store = {
     get: async () => catalog,
     cleanLegacyCombinations: async (
@@ -408,8 +429,10 @@ it('removes a saved Gateway Gemini 3.1 OpenCode pairing after route retirement',
     },
   }
   const resolved = await new ExecutionModelResolver(ctx as never, store as never).resolve()
-  expect(resolved.combinations).not.toContainEqual(expect.objectContaining({ id: retired.id }))
-  expect(catalog.combinations).not.toContainEqual(expect.objectContaining({ id: retired.id }))
+  for (const item of retired) {
+    expect(resolved.combinations).not.toContainEqual(expect.objectContaining({ id: item.id }))
+    expect(catalog.combinations).not.toContainEqual(expect.objectContaining({ id: item.id }))
+  }
 })
 
 const QUALIFICATION_AUTO = 'auto:["our-free-model","opl-qualification-free"]'

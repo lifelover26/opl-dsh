@@ -4,6 +4,10 @@ import {
   gatewayGroupEnabled,
   setGatewayGroupEnabled,
 } from '../../src/gateway/host/group-settings.ts'
+import {
+  gatewayCatalogStatus,
+  setGatewayCatalogStatus,
+} from '../../src/gateway/host/model-diagnostics.ts'
 import { displayModelName, selectableModels } from '../../src/execution/contracts/catalog.ts'
 import { defaultHarness, nativeHarnessMatches } from '../../src/execution/host/harness.ts'
 describe('account activation and explicit paid channels', () => {
@@ -28,6 +32,12 @@ describe('account activation and explicit paid channels', () => {
       4,
     )
     expect(account.refresh).toHaveBeenCalledOnce()
+    setGatewayCatalogStatus(ctx, 'kiro', {
+      state: 'error',
+      diagnostic: { code: 'network', message: '无法连接目录服务' },
+    })
+    await setGatewayGroupEnabled(ctx, 'kiro', false)
+    expect(gatewayCatalogStatus(ctx, 'kiro')).toEqual({ state: 'unverified' })
     await expect(setGatewayGroupEnabled(ctx, 'invalid', true)).rejects.toThrow()
   })
   it('keeps both Claude channels selectable with distinct labels and native harness defaults', () => {

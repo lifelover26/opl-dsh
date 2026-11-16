@@ -2063,6 +2063,8 @@ describe('native conversation combinations', () => {
     vi.stubEnv('HOME', join(tmpdir(), 'opl-gemini-opencode-absent-cli'))
     vi.stubEnv('PATH', '')
     const { service } = await nativeSetup([
+      { id: 'gemini::gemini-4-carbon', name: 'Gemini 4 Carbon' },
+      { id: 'gemini::gemini-4-hydrogen', name: 'Gemini 4 Hydrogen' },
       { id: 'gemini::gemini-4-argon', name: 'Gemini 4 Argon' },
       { id: 'gemini::gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
       { id: 'gemini::gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
@@ -2072,9 +2074,13 @@ describe('native conversation combinations', () => {
     expect(
       catalog.combinations.filter((item) => item.modelRef.model.startsWith('gemini::')),
     ).toMatchObject([
-      { modelRef: { model: 'gemini::gemini-4-argon' }, harnessRef: 'antigravity', isDefault: true },
       {
-        modelRef: { model: 'gemini::gemini-3.8-flash' },
+        modelRef: { model: 'gemini::gemini-4-carbon' },
+        harnessRef: 'antigravity',
+        isDefault: true,
+      },
+      {
+        modelRef: { model: 'gemini::gemini-4-hydrogen' },
         harnessRef: 'antigravity',
         isDefault: true,
       },
@@ -2084,7 +2090,7 @@ describe('native conversation combinations', () => {
         ?.filter((item) => item.modelRef.model.startsWith('gemini::'))
         .map((item) => item.harnessRef),
     ).toEqual(['opencode', 'opencode'])
-    for (const model of ['gemini-4-argon', 'gemini-3.8-flash'])
+    for (const model of ['gemini-4-carbon', 'gemini-4-hydrogen'])
       expect(catalog.supportedPairings).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -2095,6 +2101,8 @@ describe('native conversation combinations', () => {
       )
     expect(catalog.models.map((item) => item.ref.model)).toEqual(
       expect.arrayContaining([
+        'gemini::gemini-4-carbon',
+        'gemini::gemini-4-hydrogen',
         'gemini::gemini-4-argon',
         'gemini::gemini-3.8-flash',
         'gemini::gemini-3.1-pro',
@@ -2113,8 +2121,8 @@ describe('native conversation combinations', () => {
             providers: {
               'opl-gateway-gemini': {
                 models: [
-                  { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
-                  { id: 'gemini-4-argon', name: 'Gemini 4 Argon' },
+                  { id: 'gemini-4-carbon', name: 'Gemini 4 Carbon' },
+                  { id: 'gemini-4-hydrogen', name: 'Gemini 4 Hydrogen' },
                 ],
               },
             },
@@ -2130,7 +2138,7 @@ describe('native conversation combinations', () => {
       return undefined
     }) as typeof ctx.get
     const catalog = await service.executionCatalog()
-    for (const model of ['gemini::gemini-3.8-flash', 'gemini::gemini-4-argon']) {
+    for (const model of ['gemini::gemini-4-carbon', 'gemini::gemini-4-hydrogen']) {
       expect(catalog.models).toContainEqual(
         expect.objectContaining({
           ref: { provider: 'opl-gateway', model },
@@ -2149,10 +2157,10 @@ describe('native conversation combinations', () => {
   })
   it('retains a user-selected OpenCode default for a newly supported Antigravity model', async () => {
     const { service } = await nativeSetup([
-      { id: 'gemini::gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+      { id: 'gemini::gemini-4-carbon', name: 'Gemini 4 Carbon' },
     ])
     const catalog = await service.executionCatalog()
-    const modelRef = { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' }
+    const modelRef = { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' }
     await service.saveExecutionCatalog({
       ...catalog,
       combinations: [
@@ -2177,10 +2185,10 @@ describe('native conversation combinations', () => {
   })
   it('adds the official Antigravity default beside an OpenCode alternative', async () => {
     const { service } = await nativeSetup([
-      { id: 'gemini::gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+      { id: 'gemini::gemini-4-carbon', name: 'Gemini 4 Carbon' },
     ])
     const catalog = await service.executionCatalog()
-    const modelRef = { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' }
+    const modelRef = { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' }
     await service.saveExecutionCatalog({
       ...catalog,
       combinations: [
@@ -2202,7 +2210,7 @@ describe('native conversation combinations', () => {
     expect(updated.combinations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: 'auto:["opl-gateway","gemini::gemini-3.8-flash"]',
+          id: 'auto:["opl-gateway","gemini::gemini-4-carbon"]',
           harnessRef: 'antigravity',
           isDefault: true,
           enabled: true,

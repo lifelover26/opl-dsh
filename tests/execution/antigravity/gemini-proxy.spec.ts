@@ -8,7 +8,7 @@ import {
   type GeminiProxyFailure,
 } from '../../../src/execution/host/adapters/antigravity/gemini-proxy.ts'
 
-const model = 'gemini-3.8-flash'
+const model = 'gemini-4-carbon'
 const frame = (value: unknown) => `data: ${JSON.stringify(value)}\n\n`
 const complete = {
   candidates: [{ content: { parts: [{ text: '中文' }] }, finishReason: 'STOP' }],

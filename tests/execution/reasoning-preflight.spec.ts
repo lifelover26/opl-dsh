@@ -21,9 +21,9 @@ let model = 'gemini-3.1-pro'
 let thinking = 'low'
 const options = () => [
   { id: 'model', type: 'select', currentValue: model,
-    options: ['gemini-3.1-pro', 'gemini-3.8-flash'].map(value => ({value})) },
+    options: ['gemini-3.1-pro', 'gemini-4-carbon', 'gemini-4-hydrogen'].map(value => ({value})) },
   { id: 'thought_level', type: 'select', currentValue: thinking,
-    options: ['low', 'medium', 'high'].map(value => ({value})) },
+    options: (model === 'gemini-4-hydrogen' ? ['low', 'medium', 'high', 'xhigh'] : ['low', 'medium', 'high']).map(value => ({value})) },
 ]
 createInterface({ input: process.stdin }).on('line', line => {
   const message = JSON.parse(line)
@@ -83,7 +83,7 @@ async function withAuthenticatedFixture(
         ...record(),
         cwd: root,
         harnessRef: 'antigravity',
-        modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' },
+        modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' },
         sandbox: 'full-access',
       },
       launch: {
@@ -229,6 +229,17 @@ describe('external reasoning preflight', () => {
         status: 'known',
         efforts: ['low', 'medium', 'high'].map((id) => ({ id, name: id })),
         currentEffort: 'medium',
+      })
+    })
+  }, 20000)
+  it('reads xhigh from Gemini 4 Hydrogen advertisements', async () => {
+    await withAuthenticatedFixture(async ({ session, launch }) => {
+      session.modelRef = { provider: 'opl-gateway', model: 'gemini::gemini-4-hydrogen' }
+      session.reasoningEffort = 'xhigh'
+      expect(await probeHarnessReasoning(antigravityAdapter, session, launch)).toEqual({
+        status: 'known',
+        efforts: ['low', 'medium', 'high', 'xhigh'].map((id) => ({ id, name: id })),
+        currentEffort: 'xhigh',
       })
     })
   }, 20000)

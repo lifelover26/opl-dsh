@@ -33,7 +33,7 @@ const server = createServer((request, response) => {
   void (async () => {
     let data = ''
     for await (const chunk of request) data += chunk.toString('utf8')
-    if (!request.url.includes('/models/gemini-3.8-flash:')) {
+    if (!request.url.includes('/models/gemini-4-carbon:')) {
       requests.push({ path: request.url, deniedAuxiliary: true })
       response.writeHead(403, { 'content-type': 'application/json' })
       response.end(
@@ -66,7 +66,7 @@ const server = createServer((request, response) => {
         : { text: 'PROBE_OK' }
     response.writeHead(200, { 'content-type': 'text/event-stream' })
     response.end(
-      `data: ${JSON.stringify({ candidates: [{ content: { role: 'model', parts: [part] }, finishReason: 'STOP' }], modelVersion: 'gemini-3.8-flash', usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 1, totalTokenCount: 11 } })}\n\n`,
+      `data: ${JSON.stringify({ candidates: [{ content: { role: 'model', parts: [part] }, finishReason: 'STOP' }], modelVersion: 'gemini-4-carbon', usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 1, totalTokenCount: 11 } })}\n\n`,
     )
   })().catch((error) => {
     requests.push({ path: request.url, failure: error.message })
@@ -153,7 +153,7 @@ try {
   await rpc('session/set_config_option', {
     sessionId: session.sessionId,
     configId: 'model',
-    value: 'gemini-3.8-flash',
+    value: 'gemini-4-carbon',
   })
   await binding.invalidateInvocation()
   result = await rpc('session/prompt', {

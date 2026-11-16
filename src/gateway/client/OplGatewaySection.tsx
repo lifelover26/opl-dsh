@@ -15,6 +15,7 @@ import type {
   GatewayRememberedLogin,
 } from '../contracts/account.ts'
 import { notifyAccountChanged } from './account-changes.ts'
+import { splitProxyHint, summarizeDiscoveryErrors } from './discovery-errors.ts'
 import settingsCss from '../../shared/client/SettingsSection.module.css'
 import loginCss from './LoginForm.module.css'
 import setupCss from '../../setup/client/SetupScreen.module.css'
@@ -418,57 +419,82 @@ export function OplGatewaySection(
                   {state.modelSyncError.message}
                 </p>
               )}
-              <div className={css.modelRows}>
-                {state.groups?.map((group) => (
-                  <div key={group.id} className={css.modelRow}>
-                    <div>
-                      <strong>{group.name}</strong>
-                      <p className={css.muted}>
-                        {group.authorized === false || group.state === 'unauthorized'
-                          ? '账号未开放'
-                          : group.authorized === true
-                            ? '账号可用'
-                            : '权限待刷新'}
-                        {group.rateMultiplier !== undefined
-                          ? ` · 分组倍率 ${group.rateMultiplier}×`
-                          : ''}
-                        {group.enabled !== false && group.state === 'ready' ? ' · 凭据已同步' : ''}
-                      </p>
-                      {group.error && group.state === 'error' && (
-                        <p className={css.error}>{group.error}</p>
-                      )}
-                      {group.enabled !== false && group.catalog?.diagnostic && (
-                        <p className={css.error}>{group.catalog.diagnostic.message}</p>
-                      )}
+              {(() => {
+                const syncHint = state.modelSyncError
+                  ? splitProxyHint(state.modelSyncError.message).hint
+                  : undefined
+                const groupHints = summarizeDiscoveryErrors(
+                  (state.groups ?? [])
+                    .filter((group) => group.enabled !== false && group.catalog?.diagnostic)
+                    .map((group) => group.catalog!.diagnostic!.message),
+                ).hints.filter((hint) => hint !== syncHint)
+                return (
+                  <>
+                    <div className={css.modelRows}>
+                      {state.groups?.map((group) => (
+                        <div key={group.id} className={css.modelRow}>
+                          <div>
+                            <strong>{group.name}</strong>
+                            <p className={css.muted}>
+                              {group.authorized === false || group.state === 'unauthorized'
+                                ? '账号未开放'
+                                : group.authorized === true
+                                  ? '账号可用'
+                                  : '权限待刷新'}
+                              {group.rateMultiplier !== undefined
+                                ? ` · 分组倍率 ${group.rateMultiplier}×`
+                                : ''}
+                              {group.enabled !== false && group.state === 'ready'
+                                ? ' · 凭据已同步'
+                                : ''}
+                            </p>
+                            {group.error && group.state === 'error' && (
+                              <p className={css.error}>{group.error}</p>
+                            )}
+                            {group.enabled !== false && group.catalog?.diagnostic && (
+                              <p className={css.error}>
+                                {splitProxyHint(group.catalog.diagnostic.message).core}
+                              </p>
+                            )}
+                          </div>
+                          <label className={css.switchControl}>
+                            <input
+                              type="checkbox"
+                              role="switch"
+                              aria-label={`在此 DSH 激活 ${group.name}`}
+                              checked={group.enabled !== false}
+                              disabled={
+                                busy !== 'idle' ||
+                                group.authorized === false ||
+                                group.state === 'unauthorized' ||
+                                !props.setGroupActive
+                              }
+                              onChange={(event) => {
+                                const enabled = event.target.checked
+                                setBusy('loading')
+                                setError(null)
+                                void props
+                                  .setGroupActive?.(group.id, enabled)
+                                  .then(setState)
+                                  .catch((e) =>
+                                    setError(e instanceof Error ? e.message : '分组设置失败'),
+                                  )
+                                  .finally(() => setBusy('idle'))
+                              }}
+                            />
+                            {group.enabled !== false ? '已激活' : '未激活'}
+                          </label>
+                        </div>
+                      ))}
                     </div>
-                    <label className={css.row}>
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        aria-label={`在此 DSH 激活 ${group.name}`}
-                        checked={group.enabled !== false}
-                        disabled={
-                          busy !== 'idle' ||
-                          group.authorized === false ||
-                          group.state === 'unauthorized' ||
-                          !props.setGroupActive
-                        }
-                        onChange={(event) => {
-                          const enabled = event.target.checked
-                          setBusy('loading')
-                          setError(null)
-                          void props
-                            .setGroupActive?.(group.id, enabled)
-                            .then(setState)
-                            .catch((e) => setError(e instanceof Error ? e.message : '分组设置失败'))
-                            .finally(() => setBusy('idle'))
-                        }}
-                      />
-                      {group.enabled !== false ? '已激活' : '未激活'}
-                    </label>
-                  </div>
-                ))}
-              </div>
+                    {groupHints.map((hint) => (
+                      <p key={hint} className={css.muted}>
+                        {hint}
+                      </p>
+                    ))}
+                  </>
+                )
+              })()}
               {state.source === 'session' && (
                 <Button
                   variant="outline"

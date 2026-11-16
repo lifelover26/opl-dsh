@@ -34,26 +34,43 @@ describe('Gateway route metadata for external engines', () => {
   it('uses the Gemini group credential and its declared native endpoint independently of Chat', async () => {
     const resolve = vi.fn(async () => ({ value: 'native-fixture-key' }))
     const ctx = { get: () => undefined, credentials: { resolve } } as unknown as Context
-    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' }
+    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' }
     expect(await resolveGatewayGeminiExecution(ctx, ref)).toMatchObject({
       baseURL: 'https://gateway.medopl.com',
       api: 'gemini-native',
-      model: 'gemini-4-argon',
+      model: 'gemini-4-carbon',
       credential: 'OPL_GATEWAY_GEMINI_API_KEY',
       apiKey: 'native-fixture-key',
     })
-    expect(resolve).toHaveBeenCalledExactlyOnceWith('OPL_GATEWAY_GEMINI_API_KEY')
+    expect(
+      await resolveGatewayGeminiExecution(ctx, {
+        provider: 'opl-gateway',
+        model: 'gemini::gemini-4-hydrogen',
+      }),
+    ).toMatchObject({
+      baseURL: 'https://gateway.medopl.com',
+      api: 'gemini-native',
+      model: 'gemini-4-hydrogen',
+    })
+    expect(resolve).toHaveBeenCalledTimes(2)
+    expect(resolve).toHaveBeenCalledWith('OPL_GATEWAY_GEMINI_API_KEY')
     expect((await resolveGatewayExecution(ctx, ref)).api).toBe('openai-completions')
   })
 
   it('refuses unknown native routes and custom Chat addresses without rewriting them', async () => {
     const f = fixture()
-    await expect(
-      resolveGatewayGeminiExecution(f.ctx, {
-        provider: 'opl-gateway',
-        model: 'gemini::gemini-3.1-pro',
-      }),
-    ).rejects.toThrow('尚未适配')
+    for (const retired of [
+      'gemini::gemini-3.1-pro',
+      'gemini::gemini-4-argon',
+      'gemini::gemini-3.8-flash',
+    ]) {
+      await expect(
+        resolveGatewayGeminiExecution(f.ctx, {
+          provider: 'opl-gateway',
+          model: retired,
+        }),
+      ).rejects.toThrow('尚未适配')
+    }
     const ctx = {
       get: (name: string) =>
         name === 'settings'
@@ -78,7 +95,7 @@ describe('Gateway route metadata for external engines', () => {
     await expect(
       resolveGatewayGeminiExecution(ctx, {
         provider: 'opl-gateway',
-        model: 'gemini::gemini-4-argon',
+        model: 'gemini::gemini-4-carbon',
       }),
     ).rejects.toThrow('自定义 Gemini 地址')
   })

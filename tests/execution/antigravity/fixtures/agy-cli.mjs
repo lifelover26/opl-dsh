@@ -89,10 +89,10 @@ createInterface({ input: process.stdin }).on('line', (line) => {
       )
     if (text === 'aux') await (await post('gemini-3.1-flash-lite-preview')).text()
     try {
-      const response = await post('gemini-3.8-flash')
+      const response = await post('gemini-4-carbon')
       await response.text()
       if (!response.ok) {
-        for (let i = 0; i < 10; i++) await post('gemini-3.8-flash')
+        for (let i = 0; i < 10; i++) await post('gemini-4-carbon')
         return
       }
       emit('CURRENT_ANSWER')

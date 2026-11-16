@@ -330,6 +330,11 @@ select.input {
   font-size: 12px;
   line-height: 18px;
 }
+.errorList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .loginCard .form {
   max-width: 420px;
 }
@@ -367,6 +372,27 @@ select.input {
   gap: 12px;
   padding: 8px 0;
   font-size: 14px;
+}
+.modelRow > :first-child {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.modelRow > :last-child:not(:first-child) {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.switchControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.switchControl input {
+  flex-shrink: 0;
+  margin: 0;
 }
 .modelRow + .modelRow {
   border-top: 0.5px solid var(--dsw-alias-border-l2);

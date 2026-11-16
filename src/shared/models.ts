@@ -35,6 +35,9 @@ export function isRetiredModel(ref: ModelRef): boolean {
   return false
 }
 
+/** Gateway Gemini models natively paired with the official Antigravity CLI (and OpenCode fallback). */
+export const GATEWAY_ANTIGRAVITY_GEMINI_MODELS = ['gemini-4-carbon', 'gemini-4-hydrogen'] as const
+
 /** Stable product names for IDs whose upstream display text changed. */
 export function displayModelName(ref: ModelRef, name?: string): string {
   const id = ref.model.includes('::') ? ref.model.slice(ref.model.lastIndexOf('::') + 2) : ref.model
@@ -84,7 +87,13 @@ export function displayModelName(ref: ModelRef, name?: string): string {
     return ref.model.startsWith('codex::')
       ? 'DeepSeek-V4.1-Flash · OpenAI 协议'
       : 'DeepSeek-V4.1-Flash'
-  if (ref.provider === 'opl-gateway' && ref.model.startsWith('gemini::')) {
+  if (
+    ref.provider === 'catalog' ||
+    ref.provider === 'opl-gateway-gemini' ||
+    (ref.provider === 'opl-gateway' && ref.model.startsWith('gemini::'))
+  ) {
+    if (id === 'gemini-4-carbon') return 'Gemini 4 Carbon'
+    if (id === 'gemini-4-hydrogen') return 'Gemini 4 Hydrogen'
     if (id === 'gemini-4-argon') return 'Gemini 4 Argon'
     if (id === 'gemini-3.8-flash') return 'Gemini 3.8 Flash'
     if (id === 'gemini-3.1-pro') return 'Gemini 3.1 Pro'

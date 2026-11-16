@@ -34,7 +34,7 @@ async function bridge(shim: boolean = false) {
       OPL_AGY_ARGS: JSON.stringify(shim ? [] : [treeCli]),
       OPL_AGY_ROUTE: JSON.stringify({
         baseURL: 'http://127.0.0.1:1',
-        model: 'gemini-3.8-flash',
+        model: 'gemini-4-carbon',
         apiKey: 'fixture-only',
         protocol: 'gemini-native',
       }),

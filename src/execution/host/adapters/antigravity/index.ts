@@ -7,6 +7,7 @@ export {
   ANTIGRAVITY_DEFAULT_THINKING,
   antigravityWireModel,
   antigravityThinking,
+  antigravityThinkingLevelsFor,
   isAntigravityGatewayModel,
 } from './models.ts'
 export { normalizeAntigravityUsage, antigravityContextUsage } from './usage.ts'

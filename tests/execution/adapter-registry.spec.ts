@@ -25,20 +25,27 @@ describe('official Harness adapter registry', () => {
     expect(adapterFor('antigravity', gpt)).toBeUndefined()
     expect(defaultHarness(gpt)).toBe('codex')
     expect(defaultHarness(claude)).toBe('claude')
-    const gatewayGemini = { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' }
+    const gatewayGemini = { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' }
     expect(adapterFor('opencode', gatewayGemini)?.id).toBe('opencode')
     expect(defaultHarness(gatewayGemini)).toBe('antigravity')
     expect(adapterFor('antigravity', gatewayGemini)?.id).toBe('antigravity')
-    expect(defaultHarness({ provider: 'opl-gateway', model: 'gemini::gemini-4-argon' })).toBe(
+    expect(defaultHarness({ provider: 'opl-gateway', model: 'gemini::gemini-4-hydrogen' })).toBe(
       'antigravity',
     )
-    expect(
-      adapterFor('opencode', { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' }),
-    ).toBeUndefined()
-    expect(defaultHarness({ provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' })).toBe('dsh')
-    expect(
-      adapterFor('opencode', { provider: 'opl-gateway', model: 'gemini::gemini-3.7-flash' }),
-    ).toBeUndefined()
+    for (const retired of [
+      'gemini-4-argon',
+      'gemini-3.8-flash',
+      'gemini-3.1-pro',
+      'gemini-3.7-flash',
+    ]) {
+      expect(
+        adapterFor('opencode', { provider: 'opl-gateway', model: `gemini::${retired}` }),
+      ).toBeUndefined()
+      expect(
+        adapterFor('antigravity', { provider: 'opl-gateway', model: `gemini::${retired}` }),
+      ).toBeUndefined()
+      expect(defaultHarness({ provider: 'opl-gateway', model: `gemini::${retired}` })).toBe('dsh')
+    }
     expect(defaultHarness({ provider: 'custom', model: 'gpt-current' })).toBe('dsh')
   })
   it('treats generic runners as having no official model pairing', () => {

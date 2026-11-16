@@ -18,6 +18,7 @@ import {
   ANTIGRAVITY_THINKING_OPTION,
   antigravityConfigOption,
   antigravityThinking,
+  antigravityThinkingLevelsFor,
   antigravityWireModel,
   isAntigravityGatewayModel,
 } from './models.ts'
@@ -37,11 +38,11 @@ function failure(message: string, snapshot: AcpSessionSnapshot): Error {
 
 function expected(record: HarnessSession): { model: string; thinking: string } {
   const model = antigravityWireModel(record.modelRef)
-  const thinking = antigravityThinking(record.reasoningEffort)
   if (!model) throw new HarnessConfigurationError('此模型尚未适配 Antigravity，未发送任务。')
+  const thinking = antigravityThinking(record.reasoningEffort, model)
   if (!thinking)
     throw new HarnessConfigurationError(
-      '当前 Antigravity Gemini 组合只支持 low、medium、high 推理档位，未发送任务。',
+      `当前 Antigravity Gemini 组合只支持 ${antigravityThinkingLevelsFor(model).join('、')} 推理档位，未发送任务。`,
     )
   return { model, thinking }
 }

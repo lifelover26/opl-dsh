@@ -773,10 +773,10 @@ describe('每个外部 Harness 独立的代理设置', () => {
   })
 
   it('Gemini 的官方与自定义组合不再重复显示默认后缀', async () => {
-    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' }
+    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' }
     const data = {
       ...catalog(),
-      models: [{ ...catalog().models[0], ref, name: 'Gemini 4 Argon', source: 'OPL Gateway' }],
+      models: [{ ...catalog().models[0], ref, name: 'Gemini 4 Carbon', source: 'OPL Gateway' }],
       harnesses: [
         ...catalog().harnesses,
         { id: 'antigravity', name: 'Antigravity CLI', kind: 'acp', command: 'agy' },
@@ -785,7 +785,7 @@ describe('每个外部 Harness 独立的代理设置', () => {
       combinations: [
         {
           id: 'gemini/official',
-          name: 'Gemini 4 Argon + Antigravity CLI',
+          name: 'Gemini 4 Carbon + Antigravity CLI',
           modelRef: ref,
           harnessRef: 'antigravity',
           permissionPolicy: 'full-access' as const,
@@ -794,7 +794,7 @@ describe('每个外部 Harness 独立的代理设置', () => {
         },
         {
           id: 'gemini/custom',
-          name: 'Gemini 4 Argon + OpenCode',
+          name: 'Gemini 4 Carbon + OpenCode',
           modelRef: ref,
           harnessRef: 'opencode',
           permissionPolicy: 'full-access' as const,

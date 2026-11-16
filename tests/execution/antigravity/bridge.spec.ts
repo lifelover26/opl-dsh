@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { expect, it } from 'vitest'
 import { runAntigravityBridge } from '../../../src/execution/host/adapters/antigravity/bridge.ts'
 
-const model = 'gemini-3.8-flash'
+const model = 'gemini-4-carbon'
 const frame = (value: unknown) => `data: ${JSON.stringify(value)}\n\n`
 const success = frame({
   candidates: [{ content: { parts: [{ text: 'CURRENT_ANSWER' }] }, finishReason: 'STOP' }],
@@ -21,7 +21,7 @@ const success = frame({
 })
 type ObjectValue = Record<string, any> // The fixture represents untrusted ACP JSON for assertions.
 
-async function start(server: Server) {
+async function start(server: Server, selectedModel = model) {
   const root = await mkdtemp(join(tmpdir(), 'opl-agy-bridge-'))
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = server.address()
@@ -54,7 +54,7 @@ async function start(server: Server) {
       ]),
       OPL_AGY_ROUTE: JSON.stringify({
         baseURL: `http://127.0.0.1:${address.port}`,
-        model,
+        model: selectedModel,
         apiKey: 'source-secret',
         protocol: 'gemini-native',
         contextWindow: 1000,
@@ -174,6 +174,15 @@ it('keeps real credentials outside the CLI, filters load replay, and normalizes 
         })
       ).error.code,
     ).toBe(-32602)
+    expect(
+      (
+        await f.request('session/set_config_option', {
+          sessionId: 'owned-session',
+          configId: 'thought_level',
+          value: 'xhigh',
+        })
+      ).error.code,
+    ).toBe(-32602)
     const result = await f.request('session/prompt', prompt('aux'))
     expect(result.error).toBeUndefined()
     expect(result.result.stopReason).toBe('end_turn')
@@ -289,6 +298,25 @@ it('cancels a stalled upstream request and never treats the resulting error body
     expect((await result).result.stopReason).toBe('cancelled')
     await disconnected
     expect(f.messages.filter((message) => message.method === 'session/update')).toEqual([])
+  } finally {
+    await f.close()
+  }
+}, 15_000)
+
+it('allows xhigh thought_level only when the selected model is gemini-4-hydrogen', async () => {
+  const server = createServer((_req, res) => res.end())
+  const f = await start(server, 'gemini-4-hydrogen')
+  try {
+    await session(f)
+    expect(
+      (
+        await f.request('session/set_config_option', {
+          sessionId: 'owned-session',
+          configId: 'thought_level',
+          value: 'xhigh',
+        })
+      ).error,
+    ).toBeUndefined()
   } finally {
     await f.close()
   }

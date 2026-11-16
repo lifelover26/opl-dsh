@@ -13,7 +13,7 @@ import type { HarnessSession } from '../../../src/execution/contracts/sessions.t
 
 const route: ExternalModelRoute = {
   baseURL: 'https://gateway.example.test/v1',
-  model: 'gemini-4-argon',
+  model: 'gemini-4-carbon',
   apiKey: 'secret-must-not-leak-to-errors',
   protocol: 'chat',
 }
@@ -21,31 +21,32 @@ const route: ExternalModelRoute = {
 describe('OpenCode OPL Gateway Gemini pairing', () => {
   it('matches only the two supported Gateway Gemini model references', () => {
     const supported: ModelRef[] = [
-      { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
-      { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' },
+      { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' },
+      { provider: 'opl-gateway', model: 'gemini::gemini-4-hydrogen' },
     ]
     for (const ref of supported) {
       expect(isOpenCodeGatewayGeminiModel(ref)).toBe(true)
       expect(adapterFor(OPENCODE_HARNESS, ref)?.id).toBe(OPENCODE_HARNESS)
       expect(defaultHarness(ref)).toBe('antigravity')
     }
-    expect(
-      isOpenCodeGatewayGeminiModel({ provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' }),
-    ).toBe(false)
-    expect(
-      adapterFor(OPENCODE_HARNESS, { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' }),
-    ).toBeUndefined()
-    expect(
-      isOpenCodeGatewayGeminiModel({ provider: 'opl-gateway', model: 'gemini::gemini-3.7-flash' }),
-    ).toBe(false)
-    expect(
-      adapterFor(OPENCODE_HARNESS, { provider: 'opl-gateway', model: 'gemini::gemini-3.7-flash' }),
-    ).toBeUndefined()
+    for (const retired of [
+      'gemini-4-argon',
+      'gemini-3.8-flash',
+      'gemini-3.1-pro',
+      'gemini-3.7-flash',
+    ]) {
+      expect(
+        isOpenCodeGatewayGeminiModel({ provider: 'opl-gateway', model: `gemini::${retired}` }),
+      ).toBe(false)
+      expect(
+        adapterFor(OPENCODE_HARNESS, { provider: 'opl-gateway', model: `gemini::${retired}` }),
+      ).toBeUndefined()
+    }
   })
 
   it('strips the Gateway group prefix only at the OpenCode wire boundary', () => {
-    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' }
-    expect(openCodeWireModel(ref)).toBe('gemini-4-argon')
+    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' }
+    expect(openCodeWireModel(ref)).toBe('gemini-4-carbon')
     const config = buildOpenCodeRouteConfig(route, openCodeWireModel(ref)!)
     const parsed = JSON.parse(config.content) as {
       provider: Record<
@@ -53,11 +54,11 @@ describe('OpenCode OPL Gateway Gemini pairing', () => {
         { options: { baseURL: string; apiKey: string }; models: Record<string, unknown> }
       >
     }
-    expect(config.modelValue).toBe(openCodeModelValue('gemini-4-argon'))
+    expect(config.modelValue).toBe(openCodeModelValue('gemini-4-carbon'))
     expect(parsed.provider.oplopencode.options.baseURL).toBe(route.baseURL)
     expect(parsed.provider.oplopencode.options.apiKey).toBe(route.apiKey)
     expect(parsed.provider.oplopencode.models).toEqual({
-      'gemini-4-argon': { name: 'gemini-4-argon' },
+      'gemini-4-carbon': { name: 'gemini-4-carbon' },
     })
   })
 
@@ -71,14 +72,14 @@ describe('OpenCode OPL Gateway Gemini pairing', () => {
     const resolve = vi.fn(async () => route)
     const launch = await adapterFor(OPENCODE_HARNESS, {
       provider: 'opl-gateway',
-      model: 'gemini::gemini-4-argon',
+      model: 'gemini::gemini-4-carbon',
     })!.prepare!(
       {} as never,
       {
         id: 'gemini-opencode',
-        combination: 'opencode/gemini::gemini-4-argon',
+        combination: 'opencode/gemini::gemini-4-carbon',
         harnessRef: OPENCODE_HARNESS,
-        modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
+        modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' },
         cwd: process.cwd(),
         acpSessionId: '',
         origin: { kind: 'harness', sessionId: 'gemini-opencode' },
@@ -98,14 +99,14 @@ describe('OpenCode OPL Gateway Gemini pairing', () => {
     )
     expect(resolve).toHaveBeenCalledWith(
       OPENCODE_HARNESS,
-      { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
+      { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' },
       'chat',
     )
     const content = JSON.parse(launch.env.OPENCODE_CONFIG_CONTENT!) as {
       provider: { oplopencode: { models: Record<string, unknown> } }
     }
     expect(content.provider.oplopencode.models).toEqual({
-      'gemini-4-argon': { name: 'gemini-4-argon' },
+      'gemini-4-carbon': { name: 'gemini-4-carbon' },
     })
   })
 })

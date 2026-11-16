@@ -37,6 +37,8 @@ function connection(group: GatewayGroupId) {
   }
 }
 
+const ANTIGRAVITY_GEMINI_IDS = new Set(['gemini-4-carbon', 'gemini-4-hydrogen'])
+
 function catalogModel(entry: (typeof GATEWAY_MODEL_INPUT_DEFAULTS)[number]) {
   const providers = {
     codex: openaiProvider(),
@@ -49,7 +51,15 @@ function catalogModel(entry: (typeof GATEWAY_MODEL_INPUT_DEFAULTS)[number]) {
     entry.group === 'gemini' && entry.id === 'gemini-3.1-pro'
       ? opencodeProvider()
       : providers[entry.group]
-  return provider.getModels().find((model) => model.id === entry.id)
+  const found = provider.getModels().find((model) => model.id === entry.id)
+  if (found) return found
+  // gemini-4-carbon and gemini-4-hydrogen post-date the pinned 0.2.2-rc.3 pi-ai snapshot;
+  // derive only the OpenAI Completions transport template from the family catalog entry.
+  if (entry.group === 'gemini' && ANTIGRAVITY_GEMINI_IDS.has(entry.id)) {
+    const template = provider.getModels().find((model) => model.id === 'gemini-4-argon')!
+    return { ...template, id: entry.id, name: entry.id, input: ['text', 'image'] as const }
+  }
+  return undefined
 }
 
 describe('exact Gateway input defaults', () => {
@@ -86,7 +96,7 @@ describe('exact Gateway input defaults', () => {
   )
 
   it('only fills the approved route/model pairs, preserving unknown and other-family IDs', () => {
-    expect(GATEWAY_MODEL_INPUT_DEFAULTS).toHaveLength(11)
+    expect(GATEWAY_MODEL_INPUT_DEFAULTS).toHaveLength(13)
     const models = [
       { id: 'gpt-6.1-terra-unlisted' },
       { id: 'gpt-future' },

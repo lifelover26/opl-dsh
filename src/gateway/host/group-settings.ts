@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-settings'
 import { GATEWAY_GROUPS, type GatewayGroupId } from '../contracts/groups.ts'
+import { clearGatewayCatalogStatus } from './model-diagnostics.ts'
 /** Local activation is separate from upstream authorization and stored credentials. */
 export function gatewayGroupEnabled(ctx: Context, id: GatewayGroupId): boolean {
   const value = ctx
@@ -26,5 +27,6 @@ export async function setGatewayGroupEnabled(ctx: Context, id: unknown, enabled:
     [{ op: 'set', path: ['gatewayGroups', id as string], value: enabled }],
     settings.revision,
   )
+  if (!enabled) clearGatewayCatalogStatus(ctx, id as GatewayGroupId)
   return ctx.oplGatewayAccount.refresh()
 }

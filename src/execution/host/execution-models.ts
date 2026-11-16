@@ -39,6 +39,7 @@ import { ofmModelReadiness, type OfmModelReadiness } from './ofm-source/readines
 import { BAMBOO_STARTLUX_MODEL } from './adapters/bamboo.ts'
 import { JEV_DECISION_MODEL, JEV_TYPESAFE_MODEL } from './adapters/jev.ts'
 import { adapterFor } from './adapters/index.ts'
+import { isOpenCodeGatewayGeminiModel } from './adapters/opencode/index.ts'
 export class ExecutionModelResolver {
   constructor(
     private readonly ctx: Context,
@@ -68,13 +69,13 @@ export class ExecutionModelResolver {
       item.modelRef.provider === OFM_PROVIDER &&
       item.modelRef.model === 'nvidia/nemotron-3-super-120b-a12b:free' &&
       item.harnessRef === 'opencode'
-    // Gemini 3.1 Pro was removed from the Gateway OpenCode adapter. Remove the
-    // old persisted pairing so an install cannot keep advertising a route that
-    // the current adapter deliberately refuses.
+    // Retired Gateway Gemini models removed from the OpenCode adapter must not
+    // keep advertising an outdated route that the current adapter refuses.
     const retiredOpenCodeGeminiRoute = (item: CombinationDefinition) =>
       item.modelRef.provider === 'opl-gateway' &&
-      item.modelRef.model === 'gemini::gemini-3.1-pro' &&
-      item.harnessRef === 'opencode'
+      item.modelRef.model.startsWith('gemini::') &&
+      item.harnessRef === 'opencode' &&
+      !isOpenCodeGatewayGeminiModel(item.modelRef)
     const staleAutomatic = (item: CombinationDefinition) =>
       item.id.startsWith('auto:') &&
       !userEdited(item) &&

@@ -30,9 +30,24 @@ export function setGatewayCatalogStatus(
   groups.set(group, status)
 }
 
-/** Remove observations when switching accounts or signing out. */
-export function clearGatewayCatalogStatus(ctx: Context): void {
-  observations.delete(ctx.root ?? ctx)
+/** Remove observations when switching accounts, signing out, or resetting one group. */
+export function clearGatewayCatalogStatus(ctx: Context, group?: GatewayGroupId): void {
+  const owner = ctx.root ?? ctx
+  if (group === undefined) {
+    observations.delete(owner)
+    return
+  }
+  observations.get(owner)?.delete(group)
+}
+
+/** Whether a model-listing diagnostic represents a transient transport or upstream glitch. */
+export function isTransientGatewayDiscoveryDiagnostic(diagnostic: GatewayModelDiagnostic): boolean {
+  if (diagnostic.code === 'network' || diagnostic.code === 'timeout') return true
+  return (
+    diagnostic.code === 'http' &&
+    (diagnostic.status === 429 ||
+      (diagnostic.status !== undefined && diagnostic.status >= 502 && diagnostic.status <= 504))
+  )
 }
 
 /** Remote failures expose only a fixed diagnostic, never the upstream error or its causes. */
@@ -97,6 +112,7 @@ export function diagnoseGatewayModelFailure(
         'ESOCKETTIMEDOUT',
         'UND_ERR_CONNECT_TIMEOUT',
         'UND_ERR_HEADERS_TIMEOUT',
+        'UND_ERR_BODY_TIMEOUT',
       ].includes(code) ||
       failure.name === 'TimeoutError'
     )
@@ -126,7 +142,9 @@ export function diagnoseGatewayModelFailure(
         'EAI_AGAIN',
         'ENETUNREACH',
         'EHOSTUNREACH',
+        'EPIPE',
         'UND_ERR_SOCKET',
+        'UND_ERR_CLOSED',
       ].includes(code) ||
       failure.name === 'TypeError'
     )

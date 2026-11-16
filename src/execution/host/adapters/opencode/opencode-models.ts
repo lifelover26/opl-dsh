@@ -33,6 +33,7 @@
  * same Chat Completions surface, so the adapter pins the official `opencode/big-pickle`
  * wire value instead of refusing it. The id and attribution stay OFM's.
  */
+import { GATEWAY_ANTIGRAVITY_GEMINI_MODELS } from '../../../../shared/models.ts'
 import type { ModelRef } from '../../../contracts/catalog.ts'
 
 /** Harness id; the adapter's `id`, and the key a source registers `supports` against. */
@@ -42,10 +43,7 @@ export const OPENCODE_OFM_PROVIDER = 'our-free-model'
 /** OPL Gateway provider used by the Gemini combinations below. */
 export const OPENCODE_GATEWAY_PROVIDER = 'opl-gateway'
 /** Gateway model ids this OpenCode route intentionally exposes. */
-export const OPENCODE_GATEWAY_GEMINI_MODELS: readonly string[] = [
-  'gemini-4-argon',
-  'gemini-3.8-flash',
-]
+export const OPENCODE_GATEWAY_GEMINI_MODELS: readonly string[] = GATEWAY_ANTIGRAVITY_GEMINI_MODELS
 /**
  * Wire method that selects the model in this CLI.
  *

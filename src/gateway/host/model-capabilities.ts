@@ -14,6 +14,8 @@ export const GATEWAY_MODEL_INPUT_DEFAULTS = [
   { group: 'aws', id: 'claude-opus-5-5', input: ['text', 'image'] },
   { group: 'kiro', id: 'claude-opus-5-5', input: ['text', 'image'] },
   { group: 'grok', id: 'grok-4.7', input: ['text', 'image'] },
+  { group: 'gemini', id: 'gemini-4-carbon', input: ['text', 'image'] },
+  { group: 'gemini', id: 'gemini-4-hydrogen', input: ['text', 'image'] },
   { group: 'gemini', id: 'gemini-4-argon', input: ['text', 'image'] },
   { group: 'gemini', id: 'gemini-3.8-flash', input: ['text', 'image'] },
   { group: 'gemini', id: 'gemini-3.1-pro', input: ['text', 'image'] },

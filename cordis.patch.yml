@@ -110,14 +110,11 @@
         baseURL: https://gateway.medopl.com/v1
         apiKeyEnv: OPL_GATEWAY_GEMINI_API_KEY
         models:
-          - id: gemini-4-argon
-            name: Gemini 4 Argon
+          - id: gemini-4-carbon
+            name: Gemini 4 Carbon
             input: [text, image]
-          - id: gemini-3.8-flash
-            name: Gemini 3.8 Flash
-            input: [text, image]
-          - id: gemini-3.1-pro
-            name: Gemini 3.1 Pro
+          - id: gemini-4-hydrogen
+            name: Gemini 4 Hydrogen
             input: [text, image]
 - id: ui-settings-general
   config:
