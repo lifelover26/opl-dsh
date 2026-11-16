@@ -708,17 +708,23 @@ export async function verifyDesktopClient(
           const ids=['dsh','codex','claude','grok-build','antigravity','opencode'];
           const visible=ids.filter(id=>document.querySelector('[data-opl-harness-row="'+id+'"]')?.getClientRects().length);
           const group=document.querySelector('[data-opl-harness-group="more"]');
+          const specialized=Array.from(group.querySelectorAll('[data-opl-harness-row]'));
           return {
             visible,
             groupOpen:group.open,
             groupText:group.querySelector(':scope > summary')?.textContent?.trim(),
-            hiddenSpecialized:Array.from(group.querySelectorAll('[data-opl-harness-row]')).filter(row=>row.getClientRects().length).length,
+            groupHeight:group.getBoundingClientRect().height,
+            unreachableSpecialized:specialized.filter(row=>!row.closest('details:not([open])')).length,
           };
         })()`,
       )
       if (result.harnessDirectory.visible.length !== 6)
         throw new Error('常用执行引擎未按目录顺序直接显示')
-      if (result.harnessDirectory.groupOpen || result.harnessDirectory.hiddenSpecialized)
+      if (
+        result.harnessDirectory.groupOpen ||
+        result.harnessDirectory.groupHeight > 64 ||
+        result.harnessDirectory.unreachableSpecialized
+      )
         throw new Error('小众执行引擎默认展开或进入首屏')
       await waitFor(
         `(() => {const row=document.querySelector('[data-opl-proxy-row="minimax-code"]'); const builtin=document.querySelector('[data-opl-proxy-row="dsh"]'); return Boolean(row && row.querySelectorAll('input[type=radio]').length===3 && builtin && Array.from(builtin.querySelectorAll('input[type=radio]')).every(x=>x.disabled))})()`,
