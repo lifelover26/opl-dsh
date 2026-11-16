@@ -93,6 +93,22 @@
             input: [text, image]
             compat: { forceAdaptiveThinking: true }
             reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh, max: max }
+      opl-gateway-claude:
+        displayName: OPL Gateway · Claude
+        api: anthropic-messages
+        baseURL: https://gateway.medopl.com
+        apiKeyEnv: OPL_GATEWAY_CLAUDE_API_KEY
+        models:
+          - id: claude-opus-5-5
+            name: Claude Opus 5.5
+            input: [text, image]
+            compat: { forceAdaptiveThinking: true }
+            reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh, max: max }
+          - id: claude-fable-5-2
+            name: Claude Fable 5.2
+            input: [text, image]
+            compat: { forceAdaptiveThinking: true }
+            reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh, max: max }
       opl-gateway-grok:
         displayName: OPL Gateway · Grok
         api: openai-responses

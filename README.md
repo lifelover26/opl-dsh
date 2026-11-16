@@ -64,7 +64,7 @@ brew install --cask gaofeng21cn/opl-dsh/opl-dsh
 | ----------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
 | OPL DeepSeek V4.1 Flash       | DSH                                    | 对应 Gateway 分组可用                                               |
 | OPL GPT                       | Codex CLI                              | 分组与 CLI 已就绪                                                   |
-| OPL Claude Opus 5.5           | Claude Code                            | AWS、Kiro 渠道独立选择                                              |
+| OPL Claude Opus 5.5、Fable 5.2 | Claude Code                            | Claude、AWS、Kiro 渠道独立选择                                      |
 | OPL Grok 4.7                  | Grok Build                             | 分组与 CLI 已就绪                                                   |
 | OPL Gemini 4 Carbon、4 Hydrogen | Antigravity CLI（默认）；OpenCode 备选 | 使用 Gateway Gemini 分组凭据，无需 Google 登录；支持图片与 Git Bash |
 | MiniMax M3.1-Flash、M3        | mcode                                  | 官方账号；仅支持明确授权的完全访问                                  |

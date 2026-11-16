@@ -28,5 +28,7 @@ export async function setGatewayGroupEnabled(ctx: Context, id: unknown, enabled:
     settings.revision,
   )
   if (!enabled) clearGatewayCatalogStatus(ctx, id as GatewayGroupId)
-  return ctx.oplGatewayAccount.refresh()
+  const account = ctx.get('oplGatewayAccount')
+  if (!account) throw Error('网关账号服务尚未就绪')
+  return account.refresh()
 }

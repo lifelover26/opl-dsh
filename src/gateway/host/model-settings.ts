@@ -266,7 +266,7 @@ async function migrateProtocolDefaults(ctx: Context): Promise<void> {
     const adaptiveModels = profile.models.map((entry: ModelDraft) => {
       if (
         group.api !== 'anthropic-messages' ||
-        entry.id !== 'claude-opus-5-5' ||
+        !['claude-opus-5-5', 'claude-fable-5-2'].includes(entry.id) ||
         record(entry.compat).forceAdaptiveThinking !== undefined
       )
         return entry

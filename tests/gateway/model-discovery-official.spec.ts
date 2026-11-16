@@ -137,11 +137,11 @@ async function fixture() {
 }
 
 describe('automatic Gateway discovery through official services', { timeout: 15_000 }, () => {
-  it('fetches all six directories from an uninjected caller and persists their models and hashes', async () => {
+  it('fetches every directory from an uninjected caller and persists their models and hashes', async () => {
     const f = await fixture()
     expect(() => f.caller.settings).toThrow('without inject')
     await syncGatewayModels(f.caller)
-    expect(f.fetch).toHaveBeenCalledTimes(6)
+    expect(f.fetch).toHaveBeenCalledTimes(GATEWAY_GROUPS.length)
     const persisted = await f.persisted()
     const snapshot = await gatewayModelSettings(f.caller)
     for (const group of GATEWAY_GROUPS) {
@@ -167,7 +167,7 @@ describe('automatic Gateway discovery through official services', { timeout: 15_
     f.fetch.mockImplementation(async () => Response.json({ data: [] }))
     const before = f.entries.map((entry) => structuredClone(entry.options.config))
     await syncGatewayModels(f.caller)
-    expect(f.fetch).toHaveBeenCalledTimes(6)
+    expect(f.fetch).toHaveBeenCalledTimes(GATEWAY_GROUPS.length)
     for (const group of GATEWAY_GROUPS)
       expect(gatewayCatalogStatus(f.caller, group.id)).toEqual({ state: 'empty', count: 0 })
     expect(f.entries.map((entry) => entry.options.config)).toEqual(before)
@@ -191,7 +191,7 @@ describe('automatic Gateway discovery through official services', { timeout: 15_
     f.saved['llm-pi-ai'] = { providers: { 'opl-gateway-openai': structuredClone(profile) } }
     const before = structuredClone(profile)
     await syncGatewayModels(f.caller)
-    expect(f.fetch).toHaveBeenCalledTimes(5)
+    expect(f.fetch).toHaveBeenCalledTimes(GATEWAY_GROUPS.length - 1)
     expect(
       (native.options.config.providers as Record<string, Values>)['opl-gateway-openai'],
     ).toEqual(before)
@@ -248,7 +248,7 @@ describe('automatic Gateway discovery through official services', { timeout: 15_
     await native.fiber.update(native.options.config, true)
     await migrateGatewayProtocolDefaults(f.caller)
     await syncGatewayModels(f.caller)
-    expect(f.fetch).toHaveBeenCalledTimes(6)
+    expect(f.fetch).toHaveBeenCalledTimes(GATEWAY_GROUPS.length)
     const persisted = await f.persisted()
     for (const group of GATEWAY_GROUPS) {
       expect(gatewayCatalogStatus(f.caller, group.id)).toEqual({ state: 'ready', count: 1 })
@@ -336,7 +336,7 @@ describe('automatic Gateway discovery through official services', { timeout: 15_
         : ordinary(...args)
     })
     await syncGatewayModels(f.caller)
-    expect(f.fetch).toHaveBeenCalledTimes(6)
+    expect(f.fetch).toHaveBeenCalledTimes(GATEWAY_GROUPS.length)
     expect(gatewayCatalogStatus(f.caller, 'aws')).toMatchObject({
       state: 'error',
       diagnostic: { code: 'authentication', status: 403 },

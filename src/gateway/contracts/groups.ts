@@ -55,6 +55,15 @@ export const GATEWAY_GROUPS = [
     provider: 'opl-gateway-aws',
     api: 'anthropic-messages',
   },
+  {
+    id: 'claude',
+    name: 'Claude',
+    aliases: [],
+    keyLabel: 'Claude',
+    credential: 'OPL_GATEWAY_CLAUDE_API_KEY',
+    provider: 'opl-gateway-claude',
+    api: 'anthropic-messages',
+  },
 ] as const
 export type GatewayGroupId = (typeof GATEWAY_GROUPS)[number]['id']
 export type GatewayGroupName = (typeof GATEWAY_GROUPS)[number]['name']

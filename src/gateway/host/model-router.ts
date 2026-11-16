@@ -21,16 +21,19 @@ function withReasoning(model: LlmResolvedModelInfo): LlmResolvedModelInfo {
     ? ['low', 'medium', 'high', 'xhigh', 'max']
     : model.id === 'claude-opus-5-5'
       ? ['low', 'medium', 'high', 'xhigh', 'max']
-      : model.id === 'grok-4.7'
-        ? ['low', 'medium', 'high', 'xhigh']
-        : undefined
+      : model.id === 'claude-fable-5-2'
+        ? ['low', 'medium', 'high', 'xhigh', 'max']
+        : model.id === 'grok-4.7'
+          ? ['low', 'medium', 'high', 'xhigh']
+          : undefined
   if (!efforts) {
     const effort = modelDefaultEffort(model.id, model.reasoning)
     return effort === undefined || !model.reasoning
       ? model
       : { ...model, reasoning: { ...model.reasoning, defaultEffort: ReasoningEffortId(effort) } }
   }
-  const defaultEffort = model.id === 'grok-4.7' ? 'high' : 'medium'
+  const defaultEffort =
+    model.id === 'grok-4.7' || model.id === 'claude-fable-5-2' ? 'high' : 'medium'
   return {
     ...model,
     reasoning: {

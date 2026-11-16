@@ -14,7 +14,7 @@ export const claudeAdapter: HarnessAdapter = {
     reasoning: 'model-declared',
     autoReview: 'official',
   },
-  matches: (ref) => ref.provider === 'opl-gateway' && /^(aws|kiro)::claude-/.test(ref.model),
+  matches: (ref) => ref.provider === 'opl-gateway' && /^(aws|kiro|claude)::claude-/.test(ref.model),
   available: (_ctx, options) => nativeAvailable('Claude Code', 'claude', options),
   prepare: (ctx, record, options) =>
     prepareNative(ctx, record, options, (home, base, key) => ({

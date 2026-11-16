@@ -42,6 +42,7 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
     officialModels: [
       { provider: 'opl-gateway', model: 'aws::claude-*' },
       { provider: 'opl-gateway', model: 'kiro::claude-*' },
+      { provider: 'opl-gateway', model: 'claude::claude-*' },
     ],
   },
   {

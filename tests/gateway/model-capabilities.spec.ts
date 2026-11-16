@@ -44,6 +44,7 @@ function catalogModel(entry: (typeof GATEWAY_MODEL_INPUT_DEFAULTS)[number]) {
     codex: openaiProvider(),
     aws: anthropicProvider(),
     kiro: anthropicProvider(),
+    claude: anthropicProvider(),
     grok: xaiProvider(),
     gemini: googleProvider(),
   }
@@ -96,7 +97,7 @@ describe('exact Gateway input defaults', () => {
   )
 
   it('only fills the approved route/model pairs, preserving unknown and other-family IDs', () => {
-    expect(GATEWAY_MODEL_INPUT_DEFAULTS).toHaveLength(13)
+    expect(GATEWAY_MODEL_INPUT_DEFAULTS).toHaveLength(15)
     const models = [
       { id: 'gpt-6.1-terra-unlisted' },
       { id: 'gpt-future' },

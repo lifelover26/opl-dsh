@@ -107,8 +107,14 @@ export function displayModelName(ref: ModelRef, name?: string): string {
     if (id === 'MiniMax-M3') return 'MiniMax-M3'
   }
   const route = ref.provider === 'opl-gateway' ? ref.model.split('::')[0] : ''
-  const suffix = route === 'aws' ? 'AWS' : route === 'kiro' ? 'Kiro' : ''
-  const label = id === 'claude-opus-5-5' ? 'Claude Opus 5.5' : name?.trim() || id
+  const suffix =
+    route === 'aws' ? 'AWS' : route === 'kiro' ? 'Kiro' : route === 'claude' ? 'Claude' : ''
+  const label =
+    id === 'claude-opus-5-5'
+      ? 'Claude Opus 5.5'
+      : id === 'claude-fable-5-2'
+        ? 'Claude Fable 5.2'
+        : name?.trim() || id
   return suffix && !label.endsWith(' · ' + suffix) ? label + ' · ' + suffix : label
 }
 

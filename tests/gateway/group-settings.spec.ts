@@ -18,9 +18,9 @@ describe('account activation and explicit paid channels', () => {
     }
     const account = { refresh: vi.fn(async () => ({ groups: [] })) }
     const ctx = {
-      get: (key: string) => (key === 'settings' ? settings : undefined),
+      get: (key: string) =>
+        key === 'settings' ? settings : key === 'oplGatewayAccount' ? account : undefined,
       settings,
-      oplGatewayAccount: account,
     } as unknown as Context
     expect(gatewayGroupEnabled(ctx, 'codex')).toBe(true)
     expect(gatewayGroupEnabled(ctx, 'kiro')).toBe(false)
@@ -40,19 +40,36 @@ describe('account activation and explicit paid channels', () => {
     expect(gatewayCatalogStatus(ctx, 'kiro')).toEqual({ state: 'unverified' })
     await expect(setGatewayGroupEnabled(ctx, 'invalid', true)).rejects.toThrow()
   })
-  it('keeps both Claude channels selectable with distinct labels and native harness defaults', () => {
-    const models = ['aws', 'kiro'].map((group) => ({
+  it('reports a missing account service without hiding the saved group change', async () => {
+    const settings = {
+      describe: () => [{ ns: 'opl-suite', revision: 7, value: { gatewayGroups: { aws: true } } }],
+      mutate: vi.fn(async () => {}),
+    }
+    const ctx = {
+      get: (key: string) => (key === 'settings' ? settings : undefined),
+      settings,
+    } as unknown as Context
+    await expect(setGatewayGroupEnabled(ctx, 'aws', false)).rejects.toThrow('网关账号服务尚未就绪')
+    expect(settings.mutate).toHaveBeenCalledWith(
+      'opl-suite',
+      [{ op: 'set', path: ['gatewayGroups', 'aws'], value: false }],
+      7,
+    )
+  })
+  it('keeps every Claude channel selectable with distinct labels and native harness defaults', () => {
+    const models = ['claude', 'aws', 'kiro'].map((group) => ({
       ref: { provider: 'opl-gateway', model: group + '::claude-opus-5-5' },
       name: 'Claude Opus 5.5',
       source: 'OPL Gateway',
       available: true,
     }))
-    expect(selectableModels(models)).toHaveLength(2)
+    expect(selectableModels(models)).toHaveLength(3)
     expect(models.map((m) => displayModelName(m.ref, m.name))).toEqual([
+      'Claude Opus 5.5 · Claude',
       'Claude Opus 5.5 · AWS',
       'Claude Opus 5.5 · Kiro',
     ])
-    expect(models.map((m) => defaultHarness(m.ref))).toEqual(['claude', 'claude'])
+    expect(models.map((m) => defaultHarness(m.ref))).toEqual(['claude', 'claude', 'claude'])
     expect(defaultHarness({ provider: 'opl-gateway', model: 'codex::gpt-6-astra' })).toBe('codex')
     expect(nativeHarnessMatches('codex', models[0]!.ref)).toBe(false)
   })

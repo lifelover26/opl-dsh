@@ -128,6 +128,7 @@ describe('explicit group routing', () => {
     ['gpt-6.1-sol', ['low', 'medium', 'high', 'xhigh', 'max'], 'medium'],
     ['gpt-6-luna', ['low', 'medium', 'high', 'xhigh', 'max'], 'medium'],
     ['claude-opus-5-5', ['low', 'medium', 'high', 'xhigh', 'max'], 'medium'],
+    ['claude-fable-5-2', ['low', 'medium', 'high', 'xhigh', 'max'], 'high'],
     ['grok-4.7', ['low', 'medium', 'high', 'xhigh'], 'high'],
   ] as const)('uses the official Harness efforts for %s', async (id, efforts, defaultEffort) => {
     const adapter = new GatewayModelAdapter(

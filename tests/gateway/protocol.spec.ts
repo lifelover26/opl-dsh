@@ -57,7 +57,7 @@ async function runtime(provider: string, override: Record<string, unknown> = {})
 }
 
 describe('official SDK protocol requests', () => {
-  it.each(['aws', 'kiro'])(
+  it.each(['aws', 'kiro', 'claude'])(
     'sends %s Opus requests once to /v1/messages with declared adaptive effort mappings',
     async (group) => {
       const provider = `opl-gateway-${group}`

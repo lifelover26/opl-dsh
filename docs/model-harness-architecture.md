@@ -23,11 +23,11 @@ OPL DSH 在官方桌面上提供账号自动配置、Harness 管理和组合选�
 
 第三方模型插件同样通过官方 LLM 注册表进入组合目录。Our Free Model 原样安装，保留全部渠道与虚拟模型；OPL 只保存组合引用，不接管它的账号、模型路由或更新。详见[第三方模型插件](model-plugins.md)。
 
-账号页管理 DeepSeek、OpenAI 协议、Grok、Gemini、AWS、Kiro 六种分组的独立凭据。没有某一组的权限不阻止账号登录，也不影响其他已授权组。页面区分未配置、未授权、凭据就绪和同步错误；凭据就绪不等于真实模型调用已经验收。
+账号页管理 DeepSeek、OpenAI 协议、Grok、Gemini、Claude、Kiro、AWS 七种分组的独立凭据。没有某一组的权限不阻止账号登录，也不影响其他已授权组。页面区分未配置、未授权、凭据就绪和同步错误；凭据就绪不等于真实模型调用已经验收。
 
 登录、刷新时按分组尝试获取模型目录。首次导入和未被用户修改的自动目录可以更新；已有用户模型列表保留。模型页也可手动获取候选模型并保存。自动导入失败时保留已有配置。模型目录所有权摘要保存在原生设置中，不另存一份模型表。
 
-目录状态与 Key 状态分开记录；模型页按分组说明缺凭据、认证、网络、超时、设置冲突或服务未就绪，不把全部失败归因于 Key。目录读取使用该组的有效地址、部署前缀与凭据引用，不借用其他分组。AWS/Kiro 的 Anthropic 默认地址不带 `/v1`，由官方 SDK 追加消息路径；旧套件默认地址和 Opus 5.5 缺失的 adaptive 配置会迁移，用户自定义地址、凭据引用和显式兼容设置保持原值。
+目录状态与 Key 状态分开记录；模型页按分组说明缺凭据、认证、网络、超时、设置冲突或服务未就绪，不把全部失败归因于 Key。目录读取使用该组的有效地址、部署前缀与凭据引用，不借用其他分组。Claude/AWS/Kiro 的 Anthropic 默认地址不带 `/v1`，由官方 SDK 追加消息路径；旧套件默认地址和 Claude Opus 5.5、Claude Fable 5.2 缺失的 adaptive 配置会迁移，用户自定义地址、凭据引用和显式兼容设置保持原值。
 
 用户只看到一个 OPL Gateway 来源，账号页控制本机激活分组，模型页获取目录并勾选所需模型。停用分组保留 Key、模型配置和已有对话，但阻止新的调用。新加入的 Kiro 默认未激活；升级保留原分组的激活行为。分组路由显式映射，绝不按模型名字猜测，也不在错误后换组：
 
@@ -37,6 +37,7 @@ OPL DSH 在官方桌面上提供账号自动配置、Harness 管理和组合选�
 | OpenAI 协议 | 官方 pi-ai 协议适配库 / OpenAI Responses   | Codex Key    |
 | Grok        | OpenAI Responses；Grok Build 通过 ACP 执行 | Grok Key     |
 | Gemini      | OpenAI Chat Completions，可在模型页调整    | Gemini Key   |
+| Claude      | Anthropic Messages                         | Claude Key   |
 | Kiro        | 官方 pi-ai 协议适配库 / Anthropic Messages | Kiro Key     |
 | AWS         | Anthropic Messages                         | AWS Key      |
 
@@ -83,7 +84,7 @@ Claude Code 的官方 SDK 思考增量映射到对话中的思考流，正文增
 
 模型配置继续写入 DSH 原生设置。Gateway 账号页只管理账号、用量和分组凭据；模型页中的 OPL Gateway 卡片默认平铺模型，同名模型以必要的渠道标记区分，编辑时才展开各调用路由和协议。Key 同步状态不表示真实调用已验证。
 
-新增组合只列出凭据就绪的模型。同名模型的不同计费渠道可分别选用：DeepSeek Flash 的 DeepSeek/OpenAI 协议，以及 Claude Opus 5.5 的 AWS/Kiro；DeepSeek Flash 的 OpenAI 协议渠道必须由用户主动加入。组合绑定精确渠道，不在失败后静默换组。倍率仅显示 Gateway 实际返回值。已有组合的精确模型引用和权限保持不变，失效组合保留并说明原因，不把不可用模型当作新增选项。对话按钮显示“模型 · Harness”，来源只在展开菜单中分组展示。
+新增组合只列出凭据就绪的模型。同名模型的不同计费渠道可分别选用：DeepSeek Flash 的 DeepSeek/OpenAI 协议，以及 Claude Opus 5.5、Fable 5.2 的 Claude/AWS/Kiro；DeepSeek Flash 的 OpenAI 协议渠道必须由用户主动加入。组合绑定精确渠道，不在失败后静默换组。倍率仅显示 Gateway 实际返回值。已有组合的精确模型引用和权限保持不变，失效组合保留并说明原因，不把不可用模型当作新增选项。对话按钮显示“模型 · Harness”，来源只在展开菜单中分组展示。
 
 设置导航统一按账户与模型来源、执行与组合、协作与行为、应用扩展排列。BambooNode StartLux 与 TypeSafe Jev 注册到官方可配置提供商目录，复用“添加模型提供商”、原生编辑器与删除确认。官方编辑器仍只识别 DeepSeek 与 pi-ai 两种布局，因此兼容层扩展原有 `llm-pi-ai` 的公开 Schema，保留原条目和原版适配器；Jev 的固定模型发现只适配该 namespace 下的精确 provider 查询，其他发现交回官方实现，卸载恢复原方法。个人 Key 通过固定目标存入 Windows Credential Manager。官方设置、插件管理、Agent 预设和原版 OFM 的组件、配置与更新继续由各自维护者拥有；OPL 只统一导航和展示。
 

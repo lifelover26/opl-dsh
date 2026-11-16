@@ -13,6 +13,8 @@ export const GATEWAY_MODEL_INPUT_DEFAULTS = [
   { group: 'codex', id: 'gpt-6.1-terra', input: ['text', 'image'] },
   { group: 'aws', id: 'claude-opus-5-5', input: ['text', 'image'] },
   { group: 'kiro', id: 'claude-opus-5-5', input: ['text', 'image'] },
+  { group: 'claude', id: 'claude-opus-5-5', input: ['text', 'image'] },
+  { group: 'claude', id: 'claude-fable-5-2', input: ['text', 'image'] },
   { group: 'grok', id: 'grok-4.7', input: ['text', 'image'] },
   { group: 'gemini', id: 'gemini-4-carbon', input: ['text', 'image'] },
   { group: 'gemini', id: 'gemini-4-hydrogen', input: ['text', 'image'] },
