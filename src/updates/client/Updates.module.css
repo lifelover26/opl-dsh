@@ -1,13 +1,15 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 8px;
 }
 
 .link {
   align-self: flex-start;
   color: var(--dsw-alias-state-business-primary);
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 22px;
   overflow-wrap: anywhere;
 }
 
@@ -17,10 +19,11 @@
   justify-content: center;
   gap: 4px;
   min-width: 28px;
-  min-height: 28px;
+  min-height: 32px;
   border-radius: var(--dsw-radius-md);
   color: var(--dsw-alias-state-business-primary);
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 22px;
   white-space: nowrap;
   text-decoration: none;
 }

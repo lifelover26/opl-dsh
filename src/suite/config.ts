@@ -5,9 +5,11 @@ import type { Volatile } from '@deepseek-ai/cordis'
 import type { LoginChoice } from '../setup/contracts.ts'
 export type { LoginChoice } from '../setup/contracts.ts'
 export interface Config {
-  /** Check stable OPL releases without downloading or installing them automatically. */
+  /** Check stable OPL releases automatically according to the selected update policy. */
   updateAutomatic: Volatile<boolean>
   updatePolicy: Volatile<import('../updates/contracts.ts').OplUpdatePolicy>
+  /** Distinguish a current explicit policy from the legacy reminder default. */
+  updatePolicyChosen: Volatile<boolean>
   /** Whether the activity pill counts retained conversation steps or every historical step. */
   conversationStats: Volatile<'current' | 'history'>
   /** Keep the desktop window and taskbar title fixed instead of following the active Session. */
@@ -22,12 +24,13 @@ export const Config = z.object({
   updateAutomatic: z.boolean().default(true).volatile(),
   updatePolicy: z
     .object({
-      mode: z.union(['notify', 'on-launch', 'idle']).default('notify'),
+      mode: z.union(['notify', 'on-launch', 'idle']).default('on-launch'),
       idleMinutes: z.number().step(1).min(1).max(120).default(5),
       countdownSeconds: z.number().step(1).min(15).max(300).default(30),
     })
     .default({})
     .volatile(),
+  updatePolicyChosen: z.boolean().default(false).volatile(),
   conversationStats: z.union(['current', 'history']).default('current').volatile(),
   fixedWindowTitle: z.boolean().default(true).volatile(),
   gatewayGroups: z.dict(z.boolean()).default({}).volatile(),

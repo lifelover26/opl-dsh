@@ -27,7 +27,8 @@
   background: var(--dsw-alias-interactive-bg-hover);
 }
 .trigger:focus-visible {
-  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline: 2px solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
 }
 .trigger:disabled {
   color: var(--dsw-alias-label-dimmed);
@@ -190,7 +191,8 @@
 }
 /* Thinking on/off reads as a switch rather than as one more level in a ladder. */
 .switch {
-  background: var(--dsh-alias-interactive-bg-hover, var(--dsw-alias-interactive-bg-hover));
+  background: var(--dsw-alias-bg-module-platform);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: 999px;
   flex: 0 0 26px;
   width: 26px;
@@ -200,7 +202,8 @@
   align-items: center;
 }
 .switch[data-on='true'] {
-  background: var(--dsh-alias-state-business-primary, var(--dsw-alias-state-business-primary));
+  background: var(--dsw-alias-state-business-primary);
+  border-color: var(--dsw-alias-state-business-primary);
 }
 .switchThumb {
   background: var(--dsw-alias-label-primary);

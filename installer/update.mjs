@@ -541,7 +541,12 @@ export async function cancelPreparedUpdate(root) {
 }
 
 async function profilesStopped(current) {
-  const profiles = join(current.profileHome, 'profiles')
+  for (const home of [current.profileHome, join(current.suiteRoot, 'superagent', 'home')])
+    await homeProfilesStopped(home)
+}
+
+async function homeProfilesStopped(home) {
+  const profiles = join(home, 'profiles')
   let names
   try {
     await directory(profiles)
@@ -613,7 +618,11 @@ async function confirmInstalled(root, application, expected, original) {
 }
 
 /** Apply only a prepared plan, offline, before any profile starts; preserve failures for retry. */
-export async function refreshEnhancements(root, application, { transaction } = {}) {
+export async function refreshEnhancements(
+  root,
+  application,
+  { transaction, expectedPendingSha256, trigger = 'prepared-launcher' } = {},
+) {
   let unlock
   let rollback
   try {
@@ -622,6 +631,7 @@ export async function refreshEnhancements(root, application, { transaction } = {
     unlock = await lockUpdate(root, { transaction, allowLaunch: true })
     const pendingBytes = await readOptional(join(root, pendingName), maxPendingSize)
     if (pendingBytes === null) return
+    if (expectedPendingSha256 && digest(pendingBytes) !== expectedPendingSha256) return
     if (!transaction) {
       const previous = await readUpdateTransaction(root)
       if (
@@ -720,14 +730,14 @@ export async function refreshEnhancements(root, application, { transaction } = {
     await unlink(join(root, pendingName))
     await atomicJson(join(root, 'enhancement-update.json'), {
       checkedAt: new Date().toISOString(),
-      trigger: 'prepared-launcher',
+      trigger,
       state: 'updated',
       version: plan.version,
     })
   } catch {
     await atomicJson(join(root, 'enhancement-update.json'), {
       checkedAt: new Date().toISOString(),
-      trigger: 'prepared-launcher',
+      trigger,
       state: 'deferred',
       ...(rollback ? { rollback } : {}),
       message: '本次增强更新未完成，已保留更新计划和原安装包。',

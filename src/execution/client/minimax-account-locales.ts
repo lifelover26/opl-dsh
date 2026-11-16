@@ -55,6 +55,9 @@ export const minimaxAccountZh = {
   loginDisabledUnknown: '正在读取官方登录状态',
   logoutHint: '使用官方 mcode 退出当前地区的账号；不会影响其他地区。',
   cancelHint: '只停止本次官方登录进程，不会退出已保存的账号。',
+  install: '安装 mcode',
+  installing: '正在安装…',
+  installFailed: '安装未完成，请前往执行引擎页面查看详情',
 }
 export type MiniMaxAccountLocaleKey = keyof typeof minimaxAccountZh
 export const minimaxAccountEn: Record<MiniMaxAccountLocaleKey, string> = {
@@ -118,5 +121,8 @@ export const minimaxAccountEn: Record<MiniMaxAccountLocaleKey, string> = {
   logoutHint:
     'Sign out the account for this region through the official mcode CLI; other regions are unaffected.',
   cancelHint: 'Stops only this official sign-in process; it does not sign out the saved account.',
+  install: 'Install mcode',
+  installing: 'Installing…',
+  installFailed: 'Installation did not complete; check the execution engine page for details',
 }
 export const MINIMAX_ACCOUNT_NAMESPACE = 'settings.minimaxAccount'

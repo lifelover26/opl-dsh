@@ -927,3 +927,71 @@ it('chief: login completion does not strand a concurrent refresh spinner', async
   expect(disabled(control(view.container, 'data-opl-refresh'))).toBe(false)
   expect(disabled(control(view.container, 'data-opl-logout'))).toBe(false)
 })
+
+it('install: shows install button when mcode is not installed, then re-reads status on success', async () => {
+  vi.useFakeTimers()
+  let pollCount = 0
+  const statusAfterInstall = deferred<MiniMaxAccountStatus>()
+  const installationsRunning = {
+    id: 'minimax-code',
+    name: 'MiniMax Code',
+    installed: false,
+    runnable: false,
+    instructions: '',
+    website: '',
+    maintenance: { state: 'running' as const, message: '…', startedAt: new Date().toISOString() },
+  }
+  const installationsComplete = {
+    ...installationsRunning,
+    installed: true,
+    maintenance: {
+      state: 'completed' as const,
+      message: 'done',
+      startedAt: new Date().toISOString(),
+    },
+  }
+  const call = (async (method: string, request: unknown) => {
+    if (method === 'minimax-account-status')
+      return statusAfterInstall.promise.constructor === Promise && pollCount === 0
+        ? Promise.resolve(status({ installed: false }))
+        : statusAfterInstall.promise
+    if (method === 'harness-update') return undefined
+    if (method === 'harness-installations') {
+      pollCount++
+      return Promise.resolve(pollCount < 2 ? [installationsRunning] : [installationsComplete])
+    }
+    throw Error(`unexpected RPC: ${String(method)}`)
+  }) as unknown as ExecutionCall
+
+  const view = await mount(call)
+  expect(has(view.container, 'data-opl-install')).toBe(true)
+  expect(text(control(view.container, 'data-opl-install'))).toContain('安装')
+  expect(has(view.container, 'data-opl-login')).toBe(true)
+  expect(disabled(control(view.container, 'data-opl-login'))).toBe(true)
+
+  const installButton = control(view.container, 'data-opl-install')
+  expect(disabled(installButton)).toBe(false)
+
+  // press install
+  await act(async () => {
+    installButton.click()
+  })
+  expect(disabled(control(view.container, 'data-opl-install'))).toBe(true)
+  expect(text(control(view.container, 'data-opl-install'))).toContain('正在安装')
+
+  // first poll tick — still running
+  await act(async () => {
+    vi.advanceTimersByTime(3000)
+  })
+  expect(has(view.container, 'data-opl-install')).toBe(true)
+
+  // second poll tick — completed; triggers re-read
+  await act(async () => {
+    vi.advanceTimersByTime(3000)
+    statusAfterInstall.resolve(status({ installed: true }))
+  })
+
+  expect(has(view.container, 'data-opl-install')).toBe(false)
+  expect(has(view.container, 'data-opl-login')).toBe(true)
+  expect(disabled(control(view.container, 'data-opl-login'))).toBe(false)
+})

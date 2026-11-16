@@ -44,6 +44,8 @@ export function MiniMaxAccountSection({
   const [logoutBusy, setLogoutBusy] = useState(false)
   const [cancelBusy, setCancelBusy] = useState(false)
   const [notice, setNotice] = useState<Notice>()
+  const [installing, setInstalling] = useState(false)
+  const installRef = useRef(false)
 
   const mounted = useRef(true)
   /** Any context change or finished action invalidates older answers. */
@@ -411,6 +413,44 @@ export function MiniMaxAccountSection({
     })
   }
 
+  /**
+   * Install the official mcode CLI via the same maintenance path as the execution engine page.
+   * Polls harness-installations until the background job settles, then re-reads account status.
+   */
+  const installMcode = async () => {
+    if (installRef.current || reading) return
+    installRef.current = true
+    setInstalling(true)
+    setNotice(undefined)
+    try {
+      await call('harness-update', { id: 'minimax-code' })
+      while (mounted.current) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 3000))
+        if (!mounted.current) break
+        const installations = await call('harness-installations')
+        if (!mounted.current) break
+        const maintenance = installations.find((item) => item.id === 'minimax-code')?.maintenance
+        if (!maintenance || maintenance.state !== 'running') {
+          if (maintenance?.state === 'failed') {
+            setNotice({ tone: 'error', text: t('installFailed') })
+          } else {
+            await readStatus(regionRef.current, false, true)
+          }
+          break
+        }
+      }
+    } catch (err) {
+      if (mounted.current)
+        setNotice({
+          tone: 'error',
+          text: err instanceof Error ? err.message.slice(0, 200) : t('installFailed'),
+        })
+    } finally {
+      installRef.current = false
+      if (mounted.current) setInstalling(false)
+    }
+  }
+
   const stateLabel = !status
     ? reading
       ? t('reading')
@@ -550,6 +590,16 @@ export function MiniMaxAccountSection({
             </span>
           )}
         </div>
+        {status?.installed === false && (
+          <Button
+            size="sm"
+            data-opl-install
+            disabled={installing || reading}
+            onClick={() => void installMcode()}
+          >
+            {installing ? t('installing') : t('install')}
+          </Button>
+        )}
         {status?.loginState !== 'signed-in' && !signingOut && (
           <Button
             size="sm"

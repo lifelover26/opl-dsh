@@ -37,11 +37,11 @@ DSH 与 OPL App Stable/Nightly 共用 [Framework 发布说明策略](https://git
 
 ## 自动更新
 
-OPL Host 启动后异步检查 GitHub `releases/latest`，随后每六小时检查一次；用户可在通用设置关闭自动检查或手动检查。发现新版本只显示提示，点击「下次启动时更新」才下载兼容增强包。更新器校验 stable channel、canonical tag、release manifest、GitHub 资产摘要、增强包摘要和逐文件清单，套件启动器在所有 profile 已退出后才安装已准备的包；失败保留安装和更新计划。
+OPL Host 启动后异步检查 GitHub `releases/latest`，随后每六小时检查一次；用户可在通用设置关闭自动检查、手动检查或改为仅提醒。默认策略自动下载兼容增强包。待更新计划出现时，Host 启动一次性后台 watcher，预留官方 Desktop 的 profile 初始化锁并等待 Host、Electron 和该官方应用退出；所有 profile 停止且计划摘要未变后才安装。更新器校验 stable channel、canonical tag、release manifest、GitHub 资产摘要、增强包摘要和逐文件清单；失败保留安装和更新计划。watcher 不常驻，不注册服务或计划任务，也不主动退出应用。
 
 本地验收候选仍可检查新版本，但只有用户显式准备后才替换。延后更新要求原安装、目标包及清单声明 `updateProtocolVersion: 1`，且官方桌面版本完全一致；缺少协议声明或版本不同则使用完整安装包。
 
-增强插件加载后即可检查更新；安装已准备的增强包仍须从套件入口启动。更新器按当前平台从 `official.feeds` 选择官方版本；官方桌面自身继续按 DeepSeek 原生机制更新，OPL 不修改官方签名资源。
+增强插件加载后即可检查更新；安装已准备的增强包由退出后的后台 watcher 完成，兼容维护启动器仍可用于恢复。更新器按当前平台从 `official.feeds` 选择官方版本；官方桌面自身继续按 DeepSeek 原生机制更新，OPL 不修改官方签名资源。
 
 ## 历史清理
 

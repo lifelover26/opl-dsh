@@ -16,9 +16,9 @@ function deferred<T>() {
   })
   return { promise, resolve }
 }
-function fixture() {
+function fixture(initialPending: string | null = null) {
   let automatic = true
-  let pending: string | null = null
+  let pending: string | null = initialPending
   const operations: UpdateOperations = {
     installed: vi.fn(async () => ({
       suiteVersion: '0.2.55',
@@ -33,6 +33,7 @@ function fixture() {
     save: vi.fn(async () => {}),
     discover: vi.fn(async () => offer),
     pending: vi.fn(async () => pending),
+    armPending: vi.fn(async () => {}),
     prepare: vi.fn(async (_signal, expected) => {
       pending = expected
     }),
@@ -101,12 +102,20 @@ describe('Host update discovery and preparation', () => {
     }
   })
 
+  it('arms an already prepared plan when status is first read', async () => {
+    const f = fixture(offer.version)
+    expect(await f.controller.status()).toMatchObject({ pendingVersion: offer.version })
+    expect(f.operations.armPending).toHaveBeenCalledTimes(1)
+    await f.controller.dispose()
+  })
+
   it('prepares the displayed release once, even for a local candidate, and cancels its pending plan', async () => {
     const f = fixture()
     await f.controller.check()
     await Promise.all([f.controller.prepare(), f.controller.prepare()])
     expect(f.operations.prepare).toHaveBeenCalledTimes(1)
     expect(f.operations.prepare).toHaveBeenCalledWith(expect.any(AbortSignal), offer.version)
+    expect(f.operations.armPending).toHaveBeenCalledTimes(1)
     expect((await f.controller.status()).pendingVersion).toBe(offer.version)
     expect((await f.controller.cancel()).pendingVersion).toBeNull()
     await f.controller.dispose()

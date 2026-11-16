@@ -11,8 +11,8 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px 12px;
-  border: 1px solid var(--dsw-alias-border-subtle);
-  border-radius: 8px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm);
 }
 .head {
   display: flex;
@@ -34,7 +34,7 @@
   overflow-wrap: anywhere;
 }
 .error {
-  color: var(--dsw-alias-label-danger, #d93025);
+  color: var(--dsw-alias-state-error-primary);
   font-size: 12px;
   overflow-wrap: anywhere;
 }

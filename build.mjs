@@ -232,6 +232,7 @@ for (const file of [
   'update-errors.mjs',
   'update-errors.d.mts',
   'update-runner.mjs',
+  'post-exit-update.mjs',
   'update-transaction.mjs',
   'desktop-update.mjs',
   'release-manifest.mjs',

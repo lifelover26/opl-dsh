@@ -8,7 +8,7 @@ import { installationPaths } from '../../../installer/installation-paths.mjs'
 import type { Context } from '@deepseek-ai/cordis'
 import type { OplUpdatePolicy, OplUpdateRelease, OplUpdateStatus } from '../contracts.ts'
 import type { InstalledUpdateIdentity, UpdateOperations } from './controller.ts'
-import { defaultUpdatePolicy, updatePolicy } from './idle.ts'
+import { defaultUpdatePolicy, storedUpdatePolicy } from './idle.ts'
 import type {} from './runtime-admission.ts'
 
 interface Installed extends InstalledUpdateIdentity {
@@ -16,6 +16,8 @@ interface Installed extends InstalledUpdateIdentity {
   app: string
   release: string
   suiteSha256: string
+  profileHome: string
+  skillDir: string
 }
 interface Updater {
   checkRelease(
@@ -70,6 +72,7 @@ async function readJson(file: string): Promise<unknown> {
 
 /** The installed release owns its matching installer implementation. */
 export function updateOperations(ctx: Context): UpdateOperations {
+  let armed: string | undefined
   const installation = async (): Promise<Installed> => {
     const profile = dshHomePath()
     return installationPaths(
@@ -110,13 +113,12 @@ export function updateOperations(ctx: Context): UpdateOperations {
     policy: () => {
       const value = ctx.settings
         .describe({ redactSecrets: true })
-        .find((entry) => entry.ns === 'opl-suite')?.value as { updatePolicy?: unknown } | undefined
-      return value?.updatePolicy === undefined
-        ? { ...defaultUpdatePolicy }
-        : updatePolicy(value.updatePolicy)
+        .find((entry) => entry.ns === 'opl-suite')?.value as
+        { updatePolicy?: unknown; updatePolicyChosen?: unknown } | undefined
+      return value === undefined ? { ...defaultUpdatePolicy } : storedUpdatePolicy(value)
     },
     savePolicy: (policy: OplUpdatePolicy) =>
-      ctx.settings.update('opl-suite', { updatePolicy: policy }),
+      ctx.settings.update('opl-suite', { updatePolicy: policy, updatePolicyChosen: true }),
     inspect: async () => {
       if (!(await ctx.oplUpdateRuntime.inspect())) return 'busy'
       const current = await installation()
@@ -186,9 +188,32 @@ export function updateOperations(ctx: Context): UpdateOperations {
     },
     pending: async () => {
       const installed = await installation()
-      return (
-        (await (await updater(installed)).readPreparedUpdate(installed.suiteRoot))?.version ?? null
+      const pending = await (await updater(installed)).readPreparedUpdate(installed.suiteRoot)
+      if (!pending) armed = undefined
+      return pending?.version ?? null
+    },
+    armPending: async () => {
+      const installed = await installation()
+      const pending = await (await updater(installed)).readPreparedUpdate(installed.suiteRoot)
+      if (!pending) return
+      const identity = `${pending.version}:${pending.preparedAt}`
+      if (armed === identity) return
+      const watcher = (await import(
+        pathToFileURL(join(installed.release, 'post-exit-update.mjs')).href
+      )) as {
+        armPostExitUpdate(input: object): Promise<boolean>
+      }
+      if (
+        await watcher.armPostExitUpdate({
+          root: installed.suiteRoot,
+          application: installed.app,
+          profileHome: installed.profileHome,
+          skillDir: installed.skillDir,
+          hostPid: process.pid,
+          desktopPid: process.ppid,
+        })
       )
+        armed = identity
     },
     prepare: async (signal, expectedVersion) => {
       const installed = await installation()

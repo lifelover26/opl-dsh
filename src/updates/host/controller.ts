@@ -25,6 +25,7 @@ export interface UpdateOperations {
   save(status: OplUpdateStatus): Promise<void>
   discover(current: InstalledUpdateIdentity, signal: AbortSignal): Promise<OplUpdateRelease | null>
   pending(): Promise<string | null>
+  armPending?(): Promise<void>
   prepare(signal: AbortSignal, expectedVersion: string): Promise<void>
   cancel(): Promise<void>
   policy?(): OplUpdatePolicy
@@ -284,6 +285,7 @@ export class UpdateController implements OplUpdateApi {
         })
       try {
         this.value.pendingVersion = await this.operations.pending()
+        if (this.value.pendingVersion) await this.operations.armPending?.()
       } catch {
         this.value.error = 'prepare-failed'
         this.value.failure = { stage: 'acquire', reason: 'filesystem' }
@@ -436,6 +438,7 @@ export class UpdateController implements OplUpdateApi {
         await this.operations.prepare(abort.signal, expectedVersion)
         if (!this.closed && !abort.signal.aborted) {
           this.value.pendingVersion = await this.operations.pending()
+          if (this.value.pendingVersion) await this.operations.armPending?.()
           this.value.error = null
           this.value.failure = null
         }

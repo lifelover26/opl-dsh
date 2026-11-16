@@ -12,8 +12,8 @@
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  border: 1px solid var(--opl-border, rgb(0 0 0 / 12%));
-  border-radius: 6px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -21,7 +21,7 @@
   cursor: pointer;
 }
 .trigger[aria-expanded='true'] {
-  background: var(--opl-surface-hover, rgb(0 0 0 / 6%));
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 .iconTrigger {
   display: inline-flex;
@@ -57,10 +57,10 @@
   max-height: 320px;
   padding: 8px;
   overflow: auto;
-  border: 1px solid var(--opl-border, rgb(0 0 0 / 12%));
-  border-radius: 8px;
-  background: var(--opl-surface, #fff);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow: var(--dsw-elevation-prominent);
 }
 .title {
   font-size: 12px;
@@ -76,10 +76,10 @@
 }
 .hint,
 .blocked {
-  color: var(--opl-text-muted, rgb(0 0 0 / 60%));
+  color: var(--dsw-alias-label-tertiary);
 }
 .error {
-  color: var(--opl-danger, #b3261e);
+  color: var(--dsw-alias-state-error-primary);
 }
 .row {
   display: flex;
@@ -88,7 +88,7 @@
   width: 100%;
   padding: 6px 8px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -96,7 +96,7 @@
   cursor: pointer;
 }
 .row:hover:not(:disabled) {
-  background: var(--opl-surface-hover, rgb(0 0 0 / 6%));
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 .row:disabled {
   cursor: not-allowed;
@@ -110,17 +110,17 @@
 }
 .meta {
   font-size: 11px;
-  color: var(--opl-text-muted, rgb(0 0 0 / 60%));
+  color: var(--dsw-alias-label-tertiary);
 }
 .busy {
   font-size: 11px;
-  color: var(--opl-text-muted, rgb(0 0 0 / 60%));
+  color: var(--dsw-alias-label-tertiary);
 }
 /** 首批 Harness 但暂时没有可回退边界，或此刻不可用时的固定状态说明。 */
 .status {
   font-size: 11px;
   line-height: 1.5;
-  color: var(--opl-text-muted, rgb(0 0 0 / 60%));
+  color: var(--dsw-alias-label-tertiary);
 }
 /** 待填原文：输入框里已有草稿时，原文留在这里，可查看、可在清空后填回。 */
 .draft {
@@ -129,8 +129,8 @@
   gap: 4px;
   max-width: 320px;
   padding: 6px 8px;
-  border: 1px solid var(--opl-border, rgb(0 0 0 / 12%));
-  border-radius: 6px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm);
 }
 .draftTitle {
   font-size: 11px;
@@ -148,8 +148,8 @@
 .recovery {
   align-self: flex-start;
   padding: 2px 8px;
-  border: 1px solid var(--opl-border, rgb(0 0 0 / 12%));
-  border-radius: 6px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm);
   background: transparent;
   color: inherit;
   font: inherit;

@@ -9,6 +9,7 @@ import type {
 import {
   defaultUpdatePolicy,
   IdleUpdateCoordinator,
+  storedUpdatePolicy,
   updatePolicy,
 } from '../../src/updates/host/idle.ts'
 import { UpdateController, type UpdateOperations } from '../../src/updates/host/controller.ts'
@@ -95,12 +96,33 @@ async function tick(ms = 0) {
 }
 
 describe('unattended update policy validation', () => {
-  it('keeps reminder defaults and accepts both numeric endpoints', () => {
-    expect(defaultUpdatePolicy).toEqual({ mode: 'notify', idleMinutes: 5, countdownSeconds: 30 })
+  it('uses automatic post-exit updates by default and accepts both numeric endpoints', () => {
+    expect(defaultUpdatePolicy).toEqual({
+      mode: 'on-launch',
+      idleMinutes: 5,
+      countdownSeconds: 30,
+    })
     expect(updatePolicy(policy())).toEqual(policy())
     expect(updatePolicy(policy({ idleMinutes: 120, countdownSeconds: 300 }))).toEqual(
       policy({ idleMinutes: 120, countdownSeconds: 300 }),
     )
+  })
+
+  it('migrates the untouched legacy reminder default but preserves explicit choices', () => {
+    const notify = policy({ mode: 'notify', idleMinutes: 5, countdownSeconds: 30 })
+    expect(storedUpdatePolicy({ updatePolicy: notify })).toEqual(defaultUpdatePolicy)
+    expect(storedUpdatePolicy({ updatePolicy: notify, updatePolicyChosen: false })).toEqual(
+      defaultUpdatePolicy,
+    )
+    expect(storedUpdatePolicy({ updatePolicy: notify, updatePolicyChosen: true })).toEqual(notify)
+    expect(storedUpdatePolicy({ updatePolicy: policy({ mode: 'idle' }) })).toEqual(
+      policy({ mode: 'idle' }),
+    )
+    expect(
+      storedUpdatePolicy({
+        updatePolicy: policy({ mode: 'notify', idleMinutes: 12 }),
+      }),
+    ).toEqual(policy({ mode: 'notify', idleMinutes: 12 }))
   })
 
   it.each([

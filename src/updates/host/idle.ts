@@ -2,9 +2,26 @@
 import type { OplUpdatePolicy, OplUpdateRestart, OplUpdateStatus } from '../contracts.ts'
 
 export const defaultUpdatePolicy: OplUpdatePolicy = {
-  mode: 'notify',
+  mode: 'on-launch',
   idleMinutes: 5,
   countdownSeconds: 30,
+}
+
+/** Treat only the untouched legacy reminder default as the old schema default. */
+export function storedUpdatePolicy(value: {
+  updatePolicy?: unknown
+  updatePolicyChosen?: unknown
+}): OplUpdatePolicy {
+  if (value.updatePolicy === undefined) return { ...defaultUpdatePolicy }
+  const policy = updatePolicy(value.updatePolicy)
+  if (
+    value.updatePolicyChosen !== true &&
+    policy.mode === 'notify' &&
+    policy.idleMinutes === 5 &&
+    policy.countdownSeconds === 30
+  )
+    return { ...defaultUpdatePolicy }
+  return policy
 }
 
 /** Validate preferences received from durable settings or a remote caller. */
