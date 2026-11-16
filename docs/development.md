@@ -116,7 +116,7 @@ npm test
 
 ## 执行器与协作
 
-`execution/host/adapters` 中的 DSH、Grok Build、Codex CLI、Claude Code 各自声明匹配规则和启动方式。外部程序仍保存自己的上下文、工具与原生会话。Codex 使用 app-server，Claude 使用官方 Agent SDK，Grok 使用 ACP。OPL 只转换协议、权限与状态。Harness 注册表同时搜索桌面 PATH、登录 Shell PATH、常见用户目录和官方应用附带 CLI；Codex CLI 与 Claude Code 的安装/更新只走固定官方入口，安装完成后必须重新回读绝对路径和版本。
+`execution/host/adapters` 中的 DSH、Grok Build、Codex CLI、Claude Code 各自声明匹配规则和启动方式。外部程序仍保存自己的上下文、工具与原生会话。Codex 使用 app-server，Claude 使用官方 Agent SDK，Grok 使用 ACP。OPL 只转换协议、权限与状态。Harness 注册表同时搜索桌面 PATH、登录 Shell PATH、常见用户目录和官方应用附带 CLI；Codex CLI 与 Claude Code 的安装/更新只走固定官方入口，安装完成后必须重新回读绝对路径和版本。设置页把 DSH、Codex CLI、Claude Code、Grok Build、Antigravity CLI 与 OpenCode 作为常用引擎直接列出，其余适配器放在“更多执行引擎”折叠目录中；分类只决定信息层级，不改变检测、安装、更新、路径或代理能力。
 
 CLI 维护回读绕过版本缓存，并检查安装器返回的实际安装目录；已配置入口与新安装不一致时报告两者，不自动替换用户入口。维护命令复用该 Harness 的代理设置。Codex app-server 在启动时和每次创建、加载会话时核验同一个 provider，避免线程参数与全局 Responses 客户端使用不同渠道。
 
@@ -124,7 +124,7 @@ CLI 维护回读绕过版本缓存，并检查安装器返回的实际安装目�
 
 组合目录只保存模型引用、Harness 引用、默认/启用状态和权限。`ExecutionModelResolver` 从官方模型注册表和 Gateway 读取投影，不另存模型连接。新增执行器应提供一个适配器及其协议/权限/恢复测试，不在中心服务增加账户或 Provider 配置分支。
 
-DSH 内部新子任务由官方 Subagent/Team 管理。OPL 协作后台只为跨 Harness 任务保留父子映射、明确任务、验收要求、执行状态、交付和回传状态，并兼容已有 OPL 原生任务。执行完成不等于验收通过。OPL 同项目写任务按现有协作规则排队，只读任务可并行；取消父任务传递给后代，子任务不能扩大权限。主界面保持官方 DSH 会话 UI，不渲染第二套外部会话列表；外部 Codex 开关只限制外部桥接，不关闭内部 Codex CLI 组合。
+DSH 内部新子任务由官方 Subagent/Team 管理。OPL 协作后台只为跨 Harness 任务保留父子映射、明确任务、验收要求、执行状态、交付和回传状态，并兼容已有 OPL 原生任务。执行完成不等于验收通过。普通会话不因使用同一目录而排队，只读任务可并行；只有双方显式声明且范围重叠的 `writeScope` 才等待，并行 Git 写任务优先使用官方 worktree。取消父任务传递给后代，子任务不能扩大权限。主界面保持官方 DSH 会话 UI，不渲染第二套外部会话列表；外部 Codex 开关只限制外部桥接，不关闭内部 Codex CLI 组合。
 
 TaskFeedback 的事件投影、纯状态决策、持久回执与投递调度分别位于 `session-facts.ts`、`state.ts`、`receipts.ts`、`delivery.ts`。Remote 服务仍负责唯一的恢复与编排，不再增加一套通知数据库。
 

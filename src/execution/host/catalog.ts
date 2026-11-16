@@ -15,6 +15,7 @@ import { harnessAllowsFullAccess } from './permissions.ts'
 import { normalizeHarnessProxy } from './proxy.ts'
 import { OFM_INACTIVE_DEFAULT_HARNESSES } from './ofm-source/selection-policy.ts'
 import type { CodexGitBashRuntime } from '../contracts/codex-runtime.ts'
+import { harnessDirectoryOrder } from '../contracts/harness-groups.ts'
 export type { ExecutionCatalog } from '../contracts/catalog.ts'
 export const defaultExecutionCatalog = (): ExecutionCatalog => ({
   version: 2,
@@ -26,6 +27,7 @@ export const defaultExecutionCatalog = (): ExecutionCatalog => ({
       { id: 'claude', name: 'Claude Code', kind: 'acp', command: 'claude' },
       { id: 'grok-build', name: 'Grok Build', kind: 'grok-build', adapter: 'acp-v1' },
       { id: 'antigravity', name: 'Antigravity CLI', kind: 'acp', command: 'agy' },
+      { id: 'opencode', name: 'OpenCode', kind: 'acp', command: 'opencode', adapter: 'acp-v1' },
       // The official MiniMax Code CLI signs in with its own account; the suite never
       // supplies an OPL Gateway key for it.
       {
@@ -47,7 +49,6 @@ export const defaultExecutionCatalog = (): ExecutionCatalog => ({
         command: 'muse',
         adapter: 'muse-protocol-v1',
       },
-      { id: 'opencode', name: 'OpenCode', kind: 'acp', command: 'opencode', adapter: 'acp-v1' },
       { id: 'pi', name: 'Pi Coding Agent', kind: 'acp', command: 'pi', adapter: 'pi-rpc-v1' },
       { id: 'kilo', name: 'Kilo Code', kind: 'acp', command: 'kilo', adapter: 'acp-v1' },
       { id: 'vibe', name: 'Mistral Vibe', kind: 'acp', command: 'vibe-acp', adapter: 'acp-v1' },
@@ -144,8 +145,9 @@ export function normalizeCatalog(value: unknown): ExecutionCatalog {
   )
   harnesses.sort(
     (left, right) =>
+      harnessDirectoryOrder(left.id, right.id) ||
       (harnessOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-      (harnessOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+        (harnessOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER),
   )
   const combinations = input.combinations
     .filter((raw: any) => raw.generated !== true)

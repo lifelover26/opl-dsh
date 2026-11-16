@@ -56,7 +56,8 @@ export function CoordinationSection({
       <div className={css.card}>
         <h3 className={css.name}>项目内协作</h3>
         <p className={css.muted}>
-          直接在对话中说明“请另一模型完成这项任务”。可查看子任务、处理授权、验收交付或继续修改。同项目托管写任务排队，只读任务可并行。
+          直接在对话中说明“请另一模型完成这项任务”。可查看子任务、处理授权、验收交付或继续修改。普通会话可以并行；只有双方显式声明且范围重叠的写入才互斥，并行
+          Git 写任务优先使用 worktree。
         </p>
         {!executionCall && (
           <p className={css.muted}>项目执行服务暂不可用，外部接入设置仍可管理。</p>

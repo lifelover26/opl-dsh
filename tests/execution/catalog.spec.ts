@@ -17,6 +17,30 @@ async function root() {
   return dir
 }
 describe('combination authority', () => {
+  it('orders the directory around common engines while preserving every adapter', () => {
+    const catalog = defaultExecutionCatalog()
+    expect(catalog.harnesses.slice(0, 6).map((item) => item.id)).toEqual([
+      'dsh',
+      'codex',
+      'claude',
+      'grok-build',
+      'antigravity',
+      'opencode',
+    ])
+    expect(new Set(catalog.harnesses.map((item) => item.id)).size).toBe(catalog.harnesses.length)
+    expect(catalog.harnesses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'minimax-code' }),
+        expect.objectContaining({ id: 'kimi-code' }),
+        expect.objectContaining({ id: 'mimo-code' }),
+        expect.objectContaining({ id: 'pool' }),
+        expect.objectContaining({ id: 'step-code' }),
+        expect.objectContaining({ id: 'pi' }),
+        expect.objectContaining({ id: 'kilo' }),
+        expect.objectContaining({ id: 'vibe' }),
+      ]),
+    )
+  })
   it('persists references without a second model catalog', async () => {
     const dir = await root(),
       store = new ExecutionCatalogStore(dir),

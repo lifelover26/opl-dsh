@@ -699,12 +699,34 @@ export async function verifyDesktopClient(
         `document.querySelector('[data-opl-panel="execution-settings"]').open=true`,
       )
       await waitFor(
+        `Boolean(document.querySelector('[data-opl-harness-row="codex"]')) && Boolean(document.querySelector('[data-opl-harness-group="more"]'))`,
+        '执行引擎目录未挂载',
+      )
+      result.harnessDirectory = await pipe.evaluate(
+        session,
+        `(() => {
+          const ids=['dsh','codex','claude','grok-build','antigravity','opencode'];
+          const visible=ids.filter(id=>document.querySelector('[data-opl-harness-row="'+id+'"]')?.getClientRects().length);
+          const group=document.querySelector('[data-opl-harness-group="more"]');
+          return {
+            visible,
+            groupOpen:group.open,
+            groupText:group.querySelector(':scope > summary')?.textContent?.trim(),
+            hiddenSpecialized:Array.from(group.querySelectorAll('[data-opl-harness-row]')).filter(row=>row.getClientRects().length).length,
+          };
+        })()`,
+      )
+      if (result.harnessDirectory.visible.length !== 6)
+        throw new Error('常用执行引擎未按目录顺序直接显示')
+      if (result.harnessDirectory.groupOpen || result.harnessDirectory.hiddenSpecialized)
+        throw new Error('小众执行引擎默认展开或进入首屏')
+      await waitFor(
         `(() => {const row=document.querySelector('[data-opl-proxy-row="minimax-code"]'); const builtin=document.querySelector('[data-opl-proxy-row="dsh"]'); return Boolean(row && row.querySelectorAll('input[type=radio]').length===3 && builtin && Array.from(builtin.querySelectorAll('input[type=radio]')).every(x=>x.disabled))})()`,
         'Harness 独立代理设置未注册',
       )
       result.expandedPathSpacing = await pipe.evaluate(
         session,
-        `(() => {const row=document.querySelector('[data-opl-harness-row="codex"]');const detail=Array.from(row.querySelectorAll('details')).find(x=>x.querySelector(':scope > summary')?.textContent==='可执行文件路径');detail.open=true;const summary=detail.querySelector(':scope > summary');const input=detail.querySelector('input');const gap=input.getBoundingClientRect().top-summary.getBoundingClientRect().bottom;detail.open=false;return gap})()`,
+        `(() => {const row=document.querySelector('[data-opl-harness-row="codex"]');row.open=true;const detail=Array.from(row.querySelectorAll('details')).find(x=>x.querySelector(':scope > summary')?.textContent==='可执行文件路径');detail.open=true;const summary=detail.querySelector(':scope > summary');const input=detail.querySelector('input');const gap=input.getBoundingClientRect().top-summary.getBoundingClientRect().bottom;detail.open=false;row.open=false;return gap})()`,
       )
       if (result.expandedPathSpacing < 11 || result.expandedPathSpacing > 13)
         throw new Error('展开的路径输入框未保留12px间距')
@@ -724,7 +746,7 @@ export async function verifyDesktopClient(
       if (emptyGroups) throw new Error('空组合分组仍占用行距')
       await pipe.evaluate(
         session,
-        `(() => {const row=document.querySelector('[data-opl-proxy-row="minimax-code"]'); row.open=true; row.querySelector('input[value="custom"]').click()})()`,
+        `(() => {const group=document.querySelector('[data-opl-harness-group="more"]');group.open=true;const engine=document.querySelector('[data-opl-harness-row="minimax-code"]');engine.open=true;const row=document.querySelector('[data-opl-proxy-row="minimax-code"]'); row.open=true; row.querySelector('input[value="custom"]').click()})()`,
       )
       await waitFor(
         `Boolean(document.querySelector('[data-opl-proxy-url="minimax-code"]'))`,
@@ -742,7 +764,7 @@ export async function verifyDesktopClient(
       result.settingsSlots.push('execution-settings')
       await pipe.evaluate(
         session,
-        `document.querySelector('[data-opl-panel="execution-settings"]').scrollIntoView({block:'start'})`,
+        `(() => {for(const row of document.querySelectorAll('[data-opl-harness-row]')) row.open=false; document.querySelector('[data-opl-harness-group="more"]').open=false; document.querySelector('[data-opl-panel="execution-settings"]').scrollIntoView({block:'start'})})()`,
       )
       const executionScreenshot = await captureScreenshot('execution-settings')
       if (executionScreenshot) screenshots.push(executionScreenshot)

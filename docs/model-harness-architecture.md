@@ -15,7 +15,7 @@ OPL DSH 在官方桌面上提供账号自动配置、Harness 管理和组合选�
 | 对话                | 官方 Session 或外部 ACP 会话                 | 项目、实际模型与 Harness、权限、历史及协作关联                    |
 | 原生子任务与团队    | 官方 Subagent / Team                         | 原生父子身份、local spawn/fork、消息、roster、task DAG 与生命周期 |
 | 固定角色与 Bot 声明 | 官方 agent preset / persona / named provider | 角色说明、预设与具名 provider/tool 绑定，不另建 OPL Bot 数据库    |
-| 跨 Harness 交付验收 | OPL `harness-sessions/`                      | 跨执行器任务身份、operation、交付、验收与所需写队列               |
+| 跨 Harness 交付验收 | OPL `harness-sessions/`                      | 跨执行器任务身份、operation、交付、验收与显式重叠的 `writeScope`  |
 
 组合不再保存连接或协议。模型列表是 DSH 注册表的只读投影，不写入组合文件。DSH 原生模型页中的 OPL Gateway 子树通过官方 `settings.mutate` 保存模型：DeepSeek 分组位于 `opl-suite.gateway.models`，其他分组位于官方 `llm-pi-ai` 的对应 Provider profile。编辑和运行读取同一份配置。
 
@@ -54,7 +54,7 @@ DeepSeek 4.1 Flash 的 DeepSeek 与 OpenAI 协议渠道默认推理档位为 `hi
 
 - **OPL Gateway**：Gateway 登录、用量、分组权限与凭据。其他 Provider 保留官方的配置入口。
 - **模型**：沿用官方模型页面；OPL Gateway 排在第一位，其他 Provider 和自定义 API 使用官方表单。Gateway 默认显示模型及必要的渠道选项，手动字段和协议放进高级编辑，不要求重填 Key。
-- **Harness**：检测已接入 CLI 的安装、版本与路径；可登记其他程序。检测区分文件存在与版本验证成功，Windows npm 入口选择 `.cmd` 等可执行启动器；ZCode 的桌面入口不在检测时启动。安装与更新使用固定官方入口，npm 使用实际全局安装目录；维护完成后重新验证入口与版本。首次安装的默认入口保存为验证过的绝对路径，显式路径和自定义命令保持原值，发现的其他安装单独展示。内置 DSH 随官方桌面更新，不可删除。
+- **Harness**：检测已接入 CLI 的安装、版本与路径；可登记其他程序。检测区分文件存在与版本验证成功，Windows npm 入口选择 `.cmd` 等可执行启动器；ZCode 的桌面入口不在检测时启动。安装与更新使用固定官方入口，npm 使用实际全局安装目录；维护完成后重新验证入口与版本。首次安装的默认入口保存为验证过的绝对路径，显式路径和自定义命令保持原值，发现的其他安装单独展示。内置 DSH 随官方桌面更新，不可删除。执行引擎页常显 DSH、Codex CLI、Claude Code、Grok Build、Antigravity CLI 与 OpenCode；其余已适配引擎仍在“更多执行引擎”中完整可管，避免用平铺列表把适配数量当作产品优先级。未提供一键安装的引擎保留官方说明与路径登记入口，不伪造安装动作。
 - **组合**：从 DSH 模型目录选择模型，绑定 Harness 与权限。每个模型可指定一个默认组合；没有自定义默认时，GPT 默认 Codex CLI、Claude 默认 Claude Code，其他模型使用已配置的官方默认组合。
 
 对话输入栏复用官方模型目录、模型选择投影、菜单组件与 Slot；OPL 的组合选择菜单显示“模型 · Harness”，来源仅作为展开菜单的分组标题。没有凭据的官方 DeepSeek 模型不作为可选项。DSH 原生组合调用官方 Session 的模型选择接口；外部 Harness 组合绑定到当前官方 Session，由 Host 在 `llm/stream` 阶段转发同一轮请求并把文本流回官方 Session。自动生成组合的权限只作为新委派任务的缺省值，切换模型保留当前会话选择的权限；显式只读组合通过官方只读预设同时设置 sandbox 与审批策略，不产生两者混用的 custom 状态，也不会静默扩大当前权限。原生会话列表不增加第二套 OPL 管理页面。普通原生子任务的目标入口是官方 Subagent/Team；OPL 委派工具负责跨 Harness 与显式交付验收所需的额外语义。

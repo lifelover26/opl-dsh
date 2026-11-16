@@ -29,6 +29,10 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   // through, which is what the desktop composition relies on anyway.
   Button: ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) =>
     React.createElement('button', { ...props, type: 'button' }, children),
+  IconChevronRightOutlineRegular: (props: Record<string, unknown>) =>
+    React.createElement('span', { ...props, 'aria-hidden': 'true' }),
+  StateDot: (props: Record<string, unknown>) =>
+    React.createElement('span', { ...props, 'aria-hidden': 'true' }),
   Switch: ({
     label,
     checked,
@@ -628,6 +632,33 @@ describe('每个外部 Harness 独立的代理设置', () => {
     )
     const combinations = await open(call, ExecutionCatalogSection)
     expect(walk(combinations).some((node) => node.getAttribute?.('data-opl-proxy-row'))).toBe(false)
+  })
+
+  it('常用执行引擎直接列出，其余引擎收在一个可展开目录中', async () => {
+    const { call } = fixture(catalog())
+    const view = await open(call)
+    const directory = walk(view).find(
+      (node) => node.getAttribute?.('data-opl-harness-group') === 'more',
+    )!
+    expect(directory).toBeTruthy()
+    expect(directory.nodeName).toBe('DETAILS')
+    expect(directory.getAttribute('open')).toBeNull()
+    expect(text(directory)).toContain('更多执行引擎')
+    expect(text(directory)).toContain('2 个')
+    expect(text(directory)).toContain('MiniMax Code')
+    expect(text(directory)).toContain('自建 CLI')
+    const specialized = new Set(
+      walk(directory)
+        .map((node) => node.getAttribute?.('data-opl-harness-row'))
+        .filter(Boolean),
+    )
+    const primary = walk(view)
+      .filter((node) => {
+        const id = node.getAttribute?.('data-opl-harness-row')
+        return Boolean(id) && !specialized.has(id)
+      })
+      .map((node) => node.getAttribute('data-opl-harness-row'))
+    expect(primary).toEqual(['dsh', 'codex', 'claude', 'grok-build'])
   })
 
   it('仅在上方选择启停，停用后从下方隐藏并保留原配置以供恢复', async () => {
