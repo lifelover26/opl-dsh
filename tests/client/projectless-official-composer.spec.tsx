@@ -91,16 +91,14 @@ describe('official projectless composer adapter', () => {
     expect(f.entries()[0]!.component).toBe(f.original)
   })
 
-  it('replaces the unbound workspace lock with a restoration status', () => {
+  it('keeps the official blank-home workspace trigger before Session creation', () => {
     const f = fixture()
     f.register()
     const dispose = f.install()
     const regular = { variant: 'hero' as const, disabled: true, onRequestWorkspace: () => {} }
-    const pending = render(f, regular)
-    expect(pending.type).toBe('div')
-    expect(pending.props.role).toBe('status')
-    expect(pending.props.children).toContain('正在恢复会话…')
-    expect(pending.props.onRequestWorkspace).toBeUndefined()
+    const home = render(f, regular)
+    expect(home.type).toBe(f.original)
+    expect(home.props).toEqual({ ...liveProps, ...regular })
     const restored = {
       sessionId: 'session-restored-without-workspace' as never,
       variant: 'hero' as const,
@@ -189,7 +187,10 @@ describe('official projectless composer adapter', () => {
     } as ComposerBarProps
     try {
       await act(async () => root.render(createElement(entry.component, props)))
-      expect(container.textContent).toBe('正在恢复会话…')
+      expect(container.textContent).toBe('')
+      expect(container.firstChild?.nodeName).toBe('TEXTAREA')
+      expect(container.firstChild?.getAttribute('disabled')).not.toBeNull()
+      expect(container.firstChild?.getAttribute('placeholder')).toBe('选择一个工作区开始')
       markProjectlessSession('restored-session')
       await act(async () =>
         root.render(

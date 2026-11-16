@@ -30,7 +30,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
  * when its owner or this plugin unloads; do not register its child slots twice.
  * @param entries - current official composer registrations.
  * @param subscribe - official registration-change subscription.
- * @param restoringLabel - localized status while the official Session input is unavailable.
+ * @param restoringLabel - localized status after Session identity restoration, before its input binds.
  * @returns disposer restoring the resident component.
  */
 export function installProjectlessOfficialComposer(
@@ -55,6 +55,10 @@ export function installProjectlessOfficialComposer(
         input !== undefined &&
         props.keyboard !== undefined &&
         props.inputActions !== undefined
+      // With no Session identity the official component owns the blank home:
+      // its composer remains as the inert Workspace-picker trigger. Only a
+      // restored identity without its input face is a restoration state.
+      if (props.sessionId === undefined) return createElement(component, props)
       if (!live) {
         return createElement(
           'div',
