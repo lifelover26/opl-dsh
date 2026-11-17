@@ -74,12 +74,13 @@ jobs:
           node --test tests/native-bridge.test.mjs tests/windows-acl.test.mjs tests/windows-official-installer.test.mjs
           node --test tests/update-runner.test.mjs
       - name: Download verified official desktop and run isolated qualification
+        id: qualification
         run: node scripts/qualify-official-runtime.mjs --download --evidence dist/official-qualification.json
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: ${{ always() && (steps.qualification.outcome == 'success' || steps.qualification.outcome == 'failure') }}
         with:
           name: official-qualification-${{ matrix.os }}
           path: |
             dist/official-qualification.json
             dist/official-qualification-client-*.png
-          if-no-files-found: error
+          if-no-files-found: ${{ steps.qualification.outcome == 'success' && 'error' || 'warn' }}

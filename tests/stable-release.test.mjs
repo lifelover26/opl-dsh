@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import YAML from 'yaml'
 import { assertQualification } from '../scripts/publish-stable-release.mjs'
 
 const artifact = {
@@ -142,9 +143,27 @@ test('stable workflow makes Windows qualification and evidence mandatory', async
     'utf8',
   )
   assert.doesNotMatch(workflow, /continue-on-error/)
+  const jobs = YAML.parse(workflow).jobs
+  assert.deepEqual(jobs.publish.needs, ['prepare', 'package', 'qualify'])
+  const upload = jobs.qualify.steps.find(
+    (step) => step.with?.name === 'release-qualification-${{ matrix.os }}',
+  )
+  assert.equal(
+    jobs.qualify.steps.find((step) => step.id === 'qualification')?.['continue-on-error'],
+    undefined,
+  )
+  assert.equal(
+    upload.if,
+    "${{ always() && (steps.qualification.outcome == 'success' || steps.qualification.outcome == 'failure') }}",
+  )
+  assert.equal(
+    upload.with['if-no-files-found'],
+    "${{ steps.qualification.outcome == 'success' && 'error' || 'warn' }}",
+  )
   assert.match(
-    workflow,
-    /name: release-qualification-\$\{\{ matrix\.os \}\}[\s\S]*?if-no-files-found: error/,
+    jobs.qualify.steps.find((step) => step.name === 'Verify shared SuperAgent tests on Windows')
+      .run,
+    /--maxWorkers=1/,
   )
   assert.match(
     workflow,
@@ -160,4 +179,22 @@ test('stable workflow makes Windows qualification and evidence mandatory', async
   )
   assert.doesNotMatch(publisher, /status: 'unavailable'|status: 'failed'/)
   assert.match(publisher, /OPL_PREPARED_OFFICIAL_WINDOWS_VERSION/)
+})
+
+test('compatibility retains qualification failures without secondary missing-artifact errors', async () => {
+  const source = await readFile(
+    new URL('../.github/workflows/official-compatibility.yml', import.meta.url),
+    'utf8',
+  )
+  const steps = YAML.parse(source).jobs['official-desktop'].steps
+  assert.equal(steps.find((step) => step.id === 'qualification')?.['continue-on-error'], undefined)
+  const upload = steps.find((step) => step.with?.name === 'official-qualification-${{ matrix.os }}')
+  assert.equal(
+    upload.if,
+    "${{ always() && (steps.qualification.outcome == 'success' || steps.qualification.outcome == 'failure') }}",
+  )
+  assert.equal(
+    upload.with['if-no-files-found'],
+    "${{ steps.qualification.outcome == 'success' && 'error' || 'warn' }}",
+  )
 })
