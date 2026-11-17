@@ -37,7 +37,9 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   await ctx.plugin(gateway, structuredClone(config.gateway.get()) as gateway.OplGatewayConfig)
   await ctx.plugin(conversationStats)
   await ctx.plugin(mcpApps)
-  await ctx.plugin(nativeModelProviders)
+  // Its Windows keyring migration writes through the official profile editor,
+  // which waits for the enclosing Loader entry to finish starting.
+  ctx.plugin(nativeModelProviders)
   await ctx.plugin(GatewayModelsService)
   await ctx.plugin(SetupService)
   await ctx.plugin(suiteControl)
