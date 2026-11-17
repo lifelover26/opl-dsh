@@ -4,6 +4,8 @@
 
 Linux CI 继续运行 Host / Client 类型检查、构建与全部自动测试。官方桌面兼容工作流在 macOS arm64 与 Windows 上下载并运行未修改的官方桌面，用独立数据目录验证增强包；它不需要模型账号，不访问实际用户 profile。
 
+Linux x64 另有 `installer/install-linux.mjs` 的 CLI/Web 迁移入口。它使用独立自定义 profile、官方插件管理器和本机浏览器，必须通过实际 Host、控制 RPC、执行组合和 SuperAgent 状态回读验收；这些结果不属于官方 Electron Desktop 资格，也不能据此宣称 Linux Desktop 已发布。
+
 开发依赖统一固定为 DSH `0.2.2-rc.3`、Cordis `4.1.0` API cohort，具体版本以 `package.json` 与锁文件为准。官方桌面以两个安装 feed 的实时版本为准；稳定 Release 要求 macOS arm64 与 Windows x64 feed 版本相同，并在同一冻结版本上完成双平台隔离资格验收。官方版本带 `-rc` 时仍属于上游候选阶段。任一平台资格失败或证据缺失都会阻断 Release。
 
 安装器使用官方插件管理器把 Agent Team profile 与 Auto Review bundle 纳入首次迁移。它会校验 bundle 与桌面版本属于同一官方 cohort，并只在没有迁移回执时写入一次；已有明确禁用项不重新启用，后续套件修复也保留官方插件管理器的启用状态。官方插件管理器拥有这些 bundle 的启用、禁用、卸载和生命周期，OPL 不修改应用资源或代管插件状态。

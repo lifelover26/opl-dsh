@@ -66,10 +66,11 @@ describe('native decision-provider integration', () => {
         path: join(home, '.credentials.yaml'),
         watch: false,
       })
+      const mutate = vi.fn(async () => {})
       ctx.provide('settings', {
         configure: () => () => {},
         describe: () => [{ ns: 'llm-pi-ai', revision: 0 }],
-        mutate: async () => {},
+        mutate,
       })
       const native = ctx.plugin(official, {})
       await native
@@ -82,6 +83,7 @@ describe('native decision-provider integration', () => {
         ],
       })
       await ctx.plugin(providers)
+      if (process.platform !== 'win32') expect(mutate).not.toHaveBeenCalled()
       expect(
         ctx.llm.listConfigurableProviders().some((item) => item.provider === 'huawei-maas'),
       ).toBe(false)

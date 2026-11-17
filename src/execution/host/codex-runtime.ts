@@ -1,5 +1,6 @@
 /** Verification and publication inputs for the optional Codex Git Bash runtime. */
 import { join } from 'node:path'
+import { oplProfilePath } from '../../shared/host/profile-paths.ts'
 import {
   importCodexCandidate,
   verifyCodexCandidate,
@@ -13,7 +14,7 @@ export function prepareCodexRuntime(
 ) {
   if (process.platform !== 'win32' || process.arch !== 'x64')
     throw Error('此 Codex Git Bash 候选仅支持 Windows x64')
-  const store = join(home, 'profiles/desktop/harness-runtimes/codex')
+  const store = oplProfilePath(home, 'harness-runtimes', 'codex')
   if (request.source !== undefined) importCodexCandidate(request.source, store, request.version)
   return verifyCodexCandidate(join(store, request.version), request.version)
 }

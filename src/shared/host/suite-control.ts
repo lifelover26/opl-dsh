@@ -1,8 +1,7 @@
 /** One general launch/update binding; collaboration contributes its optional operations. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { TypertGateway } from '@deepseek-ai/dsh-api-gateway'
-import { join } from 'node:path'
-import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
+import { oplProfilePath } from './profile-paths.ts'
 import { setupStatus, finishSetup } from '../../setup/host/state.ts'
 import { hostPeer, invokeHostRemote } from '../../compat/host/remote-invocation.ts'
 import { startControlBridge } from './control-bridge.ts'
@@ -46,10 +45,6 @@ export function apply(ctx: Context): void {
     },
   }
   ctx.effect(() =>
-    startControlBridge(
-      bridge,
-      hostPeer(ctx),
-      join(dshHomePath(), 'profiles', 'desktop', 'control.json'),
-    ),
+    startControlBridge(bridge, hostPeer(ctx), oplProfilePath(undefined, 'control.json')),
   )
 }

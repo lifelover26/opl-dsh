@@ -2,6 +2,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
+import { oplProfilePath } from '../../shared/host/profile-paths.ts'
 import type { HarnessSession } from '../contracts/sessions.ts'
 import { DSH_COMBINATION } from '../contracts/sessions.ts'
 import { harnessAllowsFullAccess } from './permissions.ts'
@@ -245,8 +246,8 @@ export class HarnessSessionStore {
   private readonly persisted = new Map<string, string>()
   private queue: Promise<void> = Promise.resolve()
   constructor(home: string) {
-    this.directory = join(home, 'profiles/desktop/harness-sessions')
-    this.legacyFilename = join(home, 'profiles/desktop/harness-sessions.json')
+    this.directory = oplProfilePath(home, 'harness-sessions')
+    this.legacyFilename = oplProfilePath(home, 'harness-sessions.json')
   }
   filename(id: string): string {
     return join(this.directory, createHash('sha256').update(id).digest('hex') + '.json')

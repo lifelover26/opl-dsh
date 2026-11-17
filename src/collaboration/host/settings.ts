@@ -39,7 +39,7 @@ export async function coordinationAction(
       autoStart: config.autoStart !== false,
       version: process.env.OPL_OFFICIAL_VERSION ?? installed.officialVersion ?? 'unknown',
       enhancementVersion: installed.suiteVersion ?? 'unknown',
-      superagentSupported: process.platform === 'darwin',
+      superagentSupported: process.platform === 'darwin' || process.platform === 'linux',
       update: { ...JSON.parse(state), checkTrigger: 'maintenance-launcher' },
       paths: {
         suiteRoot: installed.suiteRoot,
@@ -63,11 +63,14 @@ export async function coordinationAction(
       pathToFileURL(join(installed.release, 'skill-install.mjs')).href
     )) as { installSkill: (options: object) => string }
     const executable =
-      process.platform === 'win32'
-        ? join(installed.app, 'DeepSeek Harness.exe')
-        : join(installed.app, 'Contents/MacOS/DeepSeek Harness')
+      process.platform === 'linux'
+        ? process.execPath
+        : process.platform === 'win32'
+          ? join(installed.app, 'DeepSeek Harness.exe')
+          : join(installed.app, 'Contents/MacOS/DeepSeek Harness')
     module.installSkill({
       executable,
+      profile: installed.profile ?? 'desktop',
       ...installed,
       root: installed.suiteRoot,
       codexHome: dirname(dirname(installed.skillDir)),

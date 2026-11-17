@@ -109,16 +109,18 @@ export function CoordinationSection({
             void act(async () => {
               const result = await call('superagent-open')
               if (result.state === 'running')
-                throw new Error('SuperAgent 窗口已在运行，请切换到该窗口。关闭后再次打开可更新。')
-            }, '已启动 SuperAgent 独立窗口。首次请完成模型、仓库与机器人账号设置。')
+                throw new Error(
+                  'SuperAgent 正在启动，请稍后重试；独立 Host 已在运行时不会重复安装。',
+                )
+            }, '已打开 SuperAgent 独立页面。首次请完成模型、仓库与机器人账号设置。')
           }
         >
           打开 SuperAgent
         </Button>
         <p className={css.muted}>
           {status?.superagentSupported
-            ? '首次打开需准备插件。使用独立的登录、会话和数据目录；在面板完成设置后开始接单。'
-            : '本版 SuperAgent 原型支持 macOS；其账户与执行命令需要 POSIX 环境。'}
+            ? '首次打开需准备插件。使用独立的登录、会话和数据目录；再次点击会重新打开页面，更新请先退出独立 Host。'
+            : '本版 SuperAgent 原型支持 macOS 和 Linux；其账户与执行命令需要 POSIX 环境。'}
         </p>
       </div>
       <details className={css.details}>

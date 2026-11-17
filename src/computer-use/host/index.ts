@@ -35,8 +35,12 @@ export const KIMI_CU_MUTATIONS = new Set<KimiCuAction>([
 ])
 
 /** Register one tool on each native DSH Agent, not on every external Harness. */
-export function installComputerUse(ctx: Context): void {
-  const windows = process.platform === 'win32'
+export function installComputerUse(
+  ctx: Context,
+  { platform = process.platform }: { platform?: NodeJS.Platform } = {},
+): void {
+  if (platform !== 'darwin' && platform !== 'win32') return
+  const windows = platform === 'win32'
   const clients = new Map<string, KimiCuClient>()
   const install = (agent: Agent): void => {
     agent.ctx.inject(['tools', 'attachments'], (scope) => {

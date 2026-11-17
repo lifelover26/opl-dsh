@@ -15,13 +15,21 @@ const optionalBundles = [
   '@deepseek-ai/dsh-experimental-agent-team-profile',
   '@deepseek-ai/dsh-experimental-auto-review',
 ]
+const cliProfile = process.env.OPL_DSH_CLI_PROFILE
+if (
+  cliProfile !== undefined &&
+  (!/^[a-z][a-z0-9-]*$/u.test(cliProfile) || cliProfile === 'desktop')
+)
+  throw new Error('CLI profile 名称无效')
+const profileName = cliProfile ?? 'desktop'
 async function main() {
-  const resources =
-    process.platform === 'win32'
+  const resources = cliProfile
+    ? undefined
+    : process.platform === 'win32'
       ? join(application, 'resources')
       : join(application, 'Contents/Resources')
-  const runtime = join(resources, 'app.asar/dsh')
-  const pnpm = officialPnpm(resources)
+  const runtime = cliProfile ? application : join(resources, 'app.asar/dsh')
+  const pnpm = cliProfile ? 'pnpm' : officialPnpm(resources)
   const requireRuntime = createRequire(join(runtime, 'package.json'))
   const load = (name) => import(pathToFileURL(requireRuntime.resolve(name)).href)
   const official = JSON.parse(
@@ -41,7 +49,7 @@ async function main() {
   const templates =
     boot.PROFILE_TEMPLATES ?? (await load('@deepseek-ai/dsh-official-bundles')).PROFILE_TEMPLATES
   const { runPluginCommand } = await load('@deepseek-ai/dsh-plugin-manager/operations')
-  const dir = join(home, 'profiles/desktop')
+  const dir = join(home, 'profiles', profileName)
   mkdirSync(dir, { recursive: true, mode: 0o700 })
   initProfile(dir, templates.web.bundles)
   const workspace = join(dir, 'pnpm-workspace.yaml')
@@ -53,20 +61,24 @@ async function main() {
   const install = async (args) => {
     const result = await runPluginCommand(
       {
-        profile: 'desktop',
+        profile: profileName,
         dir,
         installAnchor: requireRuntime.resolve('@deepseek-ai/dsh/package.json'),
         cwd: process.cwd(),
       },
       args,
       {
-        command: process.execPath,
-        args: ['--expose-internals', pnpm],
-        env: {
-          ELECTRON_RUN_AS_NODE: '1',
-          PATH: join(resources, 'runtime/bin') + delimiter + process.env.PATH,
-        },
-        execution: 'service',
+        ...(cliProfile
+          ? { command: pnpm }
+          : {
+              command: process.execPath,
+              args: ['--expose-internals', pnpm],
+              env: {
+                ELECTRON_RUN_AS_NODE: '1',
+                PATH: join(resources, 'runtime/bin') + delimiter + process.env.PATH,
+              },
+            }),
+        execution: cliProfile ? 'cli' : 'service',
         outputBytes: 8192,
         lockWaitMs: 1000,
         idleTimeoutMs: 120000,
@@ -112,6 +124,16 @@ async function main() {
     await restoreBundles(
       (manifest.dsh?.profile?.bundles ?? []).filter((name) => !disabled.includes(name)),
     )
+  }
+  const orderedManifest = boot.readProfileManifest('dsh', dir)
+  const currentBundles = orderedManifest.dsh?.profile?.bundles ?? []
+  const oplOrder = names.filter((name) => currentBundles.includes(name))
+  if (oplOrder.length > 1) {
+    const first = currentBundles.findIndex((name) => names.includes(name))
+    const remaining = currentBundles.filter((name) => !names.includes(name))
+    const next = [...remaining.slice(0, first), ...oplOrder, ...remaining.slice(first)]
+    if (JSON.stringify(next) !== JSON.stringify(currentBundles))
+      boot.writeProfileBundles(dir, orderedManifest, next)
   }
   if (plugins.length) {
     const { withFileLock, writeFileAtomic } = await load('@deepseek-ai/dsh-atomic-write')

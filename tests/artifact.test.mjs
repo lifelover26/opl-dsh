@@ -111,6 +111,11 @@ test('three real packages own distinct Host and Client lifecycles', async () => 
       await readFile(new URL(`${id}-package/package/package.json`, output), 'utf8'),
     )
     assert.equal(pkg.name, plugin.package)
+    if (id === 'collaboration') {
+      assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-agent-preset-registry'], '*')
+      assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-skill-filesystem'], '*')
+      assert.equal(pkg.peerDependencies['@deepseek-ai/dsh-tool-skill'], '*')
+    }
     const client = await readFile(new URL(`${id}-package/package/lib/client.js`, output), 'utf8')
     assert.ok(client.includes(`id:"${plugin.package}"`))
     const metadata = JSON.parse(
@@ -133,4 +138,5 @@ test('three real packages own distinct Host and Client lifecycles', async () => 
   assert.doesNotMatch(baseHost, /class HarnessService|OfficialCollaborationBridge/)
   assert.doesNotMatch(executionHost, /new OfficialCollaborationBridge/)
   assert.match(collaborationHost, /OfficialCollaborationBridge/)
+  assert.match(collaborationHost, /DomainAgentPresetService/)
 })

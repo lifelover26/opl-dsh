@@ -109,7 +109,12 @@ const hash = (value) => createHash('sha256').update(JSON.stringify(value)).diges
 let binding
 async function connected() {
   try {
-    const b = JSON.parse(await readFile(join(config.home, 'profiles/desktop/control.json'), 'utf8'))
+    const b = JSON.parse(
+      await readFile(
+        join(config.home, 'profiles', config.profile ?? 'desktop', 'control.json'),
+        'utf8',
+      ),
+    )
     process.kill(b.pid, 0)
     binding = b
     return true

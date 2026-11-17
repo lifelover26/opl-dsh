@@ -124,7 +124,31 @@ export async function buildFeaturePlugins({ root, output, project, tar, official
         .sort()
         .map((name) => [name, '*']),
     )
-    if (feature.id === 'collaboration') peers['@one-person-lab/dsh-execution'] = project.version
+    if (feature.id === 'collaboration') {
+      peers['@one-person-lab/dsh-execution'] = project.version
+      for (const name of [
+        '@deepseek-ai/dsh-agent-instructions',
+        '@deepseek-ai/dsh-agent-preset-registry',
+        '@deepseek-ai/dsh-command-compact',
+        '@deepseek-ai/dsh-compaction-basic',
+        '@deepseek-ai/dsh-compaction-tool-result-pruner',
+        '@deepseek-ai/dsh-persona',
+        '@deepseek-ai/dsh-skill-filesystem',
+        '@deepseek-ai/dsh-time-context',
+        '@deepseek-ai/dsh-tool-ask-user',
+        '@deepseek-ai/dsh-tool-bash',
+        '@deepseek-ai/dsh-tool-fs',
+        '@deepseek-ai/dsh-tool-fs-search',
+        '@deepseek-ai/dsh-tool-jobs',
+        '@deepseek-ai/dsh-tool-office',
+        '@deepseek-ai/dsh-tool-present',
+        '@deepseek-ai/dsh-tool-pwsh',
+        '@deepseek-ai/dsh-tool-skill',
+        '@deepseek-ai/dsh-tool-todo',
+        '@deepseek-ai/dsh-tool-web',
+      ])
+        peers[name] = '*'
+    }
     await writeFile(
       join(destination, 'package.json'),
       JSON.stringify(

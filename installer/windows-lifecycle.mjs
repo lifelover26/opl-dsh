@@ -86,21 +86,27 @@ function runHelper(script, env) {
   }
 }
 
-function spawnInherited(command, args, env) {
-  const child = spawn(command, args, { env, detached: true, stdio: 'ignore' })
+function spawnInherited(command, args, env, stdio) {
+  const child = spawn(command, args, { env, detached: true, stdio })
   child.unref()
   return child
 }
 
 /**
  * Start a Windows process through WMI, or a detached POSIX process.
- * @param options - executable, argv, helper environment and diagnostic label.
+ * @param options - executable, argv, helper environment, diagnostic label and optional POSIX stdio.
  * @returns launch PID and method, or an explicit Windows refusal; envApplied
  * reports whether the target receives the supplied environment.
  */
-export function launchIndependent({ command, args = [], env = process.env, label }) {
+export function launchIndependent({
+  command,
+  args = [],
+  env = process.env,
+  label,
+  stdio = 'ignore',
+}) {
   if (process.platform !== 'win32') {
-    const pid = spawnInherited(command, args, env).pid
+    const pid = spawnInherited(command, args, env, stdio).pid
     return {
       pid,
       method: 'posix-inherit',
