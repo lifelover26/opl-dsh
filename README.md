@@ -58,6 +58,8 @@ node installer/install-linux.mjs "dist/OPL DSH 一键安装"
 
 启动器在 `127.0.0.1:4180` 监听并打印带认证信息的地址。可用 `OPL_PROFILE_NAME` 指定另一个非 `desktop`、非 `web` 的独立 profile，用 `OPL_LINUX_PORT` 修改端口。安装仍通过官方插件管理器完成，KimiCU、Windows 会话清理 Skill 和增强层自动更新目前不提供 Linux 实现；更新时请重新构建并运行同一安装入口。
 
+OPL 领域智能体预设是可选集成：需要另外安装 OPL Framework 和所需领域 Package，并让启动 DSH 的环境能通过 `PATH` 调用 `opl`。可在同一终端运行 `opl app state --profile fast --json` 核对当前 Package 投影；预设发现和缺少入口时的行为见[领域智能体预设](docs/cross-harness-team.md#opl-领域智能体预设)。Linux CLI/Web 安装本身不要求安装领域 Package。
+
 首次使用见[首次启动与登录](docs/first-run.md)。
 
 ## 主要能力
@@ -77,12 +79,12 @@ node installer/install-linux.mjs "dist/OPL DSH 一键安装"
 
 ### 常用执行组合
 
-| 来源与模型                    | Harness                                | 使用前提                                                            |
-| ----------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
-| OPL DeepSeek V4.1 Flash       | DSH                                    | 对应 Gateway 分组可用                                               |
-| OPL GPT                       | Codex CLI                              | 分组与 CLI 已就绪                                                   |
-| OPL Claude Opus 5.5、Fable 5.2 | Claude Code                            | Claude、AWS、Kiro 渠道独立选择                                      |
-| OPL Grok 4.7                  | Grok Build                             | 分组与 CLI 已就绪                                                   |
+| 来源与模型                      | Harness                                | 使用前提                                                            |
+| ------------------------------- | -------------------------------------- | ------------------------------------------------------------------- |
+| OPL DeepSeek V4.1 Flash         | DSH                                    | 对应 Gateway 分组可用                                               |
+| OPL GPT                         | Codex CLI                              | 分组与 CLI 已就绪                                                   |
+| OPL Claude Opus 5.5、Fable 5.2  | Claude Code                            | Claude、AWS、Kiro 渠道独立选择                                      |
+| OPL Grok 4.7                    | Grok Build                             | 分组与 CLI 已就绪                                                   |
 | OPL Gemini 4 Carbon、4 Hydrogen | Antigravity CLI（默认）；OpenCode 备选 | 使用 Gateway Gemini 分组凭据，无需 Google 登录；支持图片与 Git Bash |
 | MiniMax M3.1-Flash、M3          | mcode                                  | 官方账号；仅支持明确授权的完全访问                                  |
 | OFM 免费模型与虚拟路由          | 按来源选择已适配 Harness               | 见 [OFM 组合](docs/harness-adaptation.md#our-free-model-组合)       |

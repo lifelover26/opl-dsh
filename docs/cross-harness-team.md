@@ -25,6 +25,10 @@
 
 协作插件通过 `opl app state --profile fast --json` 读取 App/Framework 的权威 `agent_packages` 投影，只注册同时满足以下条件的标准智能体：已安装、已激活、Codex 可见、依赖就绪、允许启动，并且首页路由可见。MAS、MAG、OBF 等名称来自当前 Package，不在插件中维护固定名单；RCA 等未激活或不可启动的 Package 不会伪装成可用。
 
+此集成使用本机已安装的 OPL Framework `opl` 命令，DSH 安装器不代装 Framework 或领域 Package。启动 DSH 的环境须能通过 `PATH` 找到 `opl`；可以在同一环境运行上述只读命令，确认能返回当前 Package 投影。领域执行所需的 Temporal worker 等运行条件继续由相应 Package 管理。
+
+未安装 Framework、命令不可调用或投影暂时不可读时，Host 日志会记录预设发现失败，官方角色、普通会话与执行组合仍可使用。首次发现成功前不会添加领域预设；入口恢复后，插件会在下一次定期刷新时重新读取，刷新间隔为 60 秒。Package 的安装、修复与激活继续使用其原生入口。
+
 1. 新建会话，在官方 Agent 预设菜单选择所需领域智能体。
 2. 预设通过官方 `skill-filesystem` 指向该 Package 当前安装来源的主 Skill。人设要求先调用官方 `skill` 工具加载主 Skill，也可以在输入框使用对应的 `/med-autoscience` 等官方 Skill 命令。
 3. 在「协作与自动化 → 角色与执行」为交互会话绑定已就绪的 DSH、Codex 或 Claude 组合。没有可用模型来源或对应 Harness 时，先完成配置；不会自动改用无关模型。正式 StageRun 的 executor 仍由 Package 合同决定，不随交互绑定改变。
