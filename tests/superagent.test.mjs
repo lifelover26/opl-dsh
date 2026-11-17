@@ -119,8 +119,72 @@ test(
 )
 
 test(
+  'Linux running SuperAgent reopens its existing authenticated page',
+  { skip: process.platform !== 'linux' },
+  async () => {
+    const base = await mkdtemp(join(tmpdir(), 'opl-superagent-running-'))
+    const suiteRoot = join(base, 'suite')
+    const root = join(suiteRoot, 'superagent')
+    const home = join(root, 'home')
+    const profile = join(home, 'profiles/opl-superagent')
+    const release = join(base, 'release')
+    const server = createServer((req, res) => {
+      res.setHeader('content-type', 'application/json')
+      assert.equal(req.url, '/control')
+      assert.equal(req.headers.authorization, 'Bearer fixture-control')
+      res.end(
+        JSON.stringify({
+          ok: true,
+          value: `http://127.0.0.1:${server.address().port}/#opl-setup`,
+        }),
+      )
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    try {
+      await mkdir(release, { recursive: true })
+      await writeFile(join(release, 'opl.tgz'), 'opl')
+      const name = 'dsh-superagent-123456789abc.tgz'
+      await writeFile(join(release, name), 'superagent')
+      const artifact = {
+        name: 'opl.tgz',
+        sha256: digest('opl'),
+        suiteSha256: 'v1',
+        superagent: { name, sha256: digest('superagent') },
+        plugins: ['execution', 'collaboration'].map((id) => ({
+          package: '@one-person-lab/dsh-' + id,
+          name: `opl-dsh-${id}-1.0.0.tgz`,
+          sha256: digest(id),
+        })),
+      }
+      await writeFile(join(release, 'artifact.json'), JSON.stringify(artifact))
+      for (const plugin of artifact.plugins)
+        await writeFile(join(release, plugin.name), plugin.package.split('dsh-')[1])
+      await mkdir(profile, { recursive: true })
+      await writeFile(
+        join(profile, 'control.json'),
+        JSON.stringify({
+          pid: process.pid,
+          token: 'fixture-control',
+          endpoint: `http://127.0.0.1:${server.address().port}/control`,
+        }),
+      )
+      let opened
+      const result = await openSuperagent(
+        { suiteRoot, release, app: join(base, 'unused') },
+        { open: (url) => (opened = url) },
+      )
+      assert.deepEqual(result, { state: 'opened' })
+      assert.equal(opened, `http://127.0.0.1:${server.address().port}/#opl-setup`)
+    } finally {
+      await new Promise((resolve) => server.close(resolve))
+      await rm(base, { recursive: true, force: true })
+    }
+  },
+)
+
+test(
   'unsupported platforms refuse before touching installation data',
-  { skip: process.platform === 'darwin' },
+  { skip: process.platform === 'darwin' || process.platform === 'linux' },
   async () => {
     await assert.rejects(openSuperagent({}), /POSIX/)
   },

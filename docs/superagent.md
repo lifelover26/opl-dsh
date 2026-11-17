@@ -1,10 +1,10 @@
 # SuperAgent 仓库协作
 
-OPL DSH 随套件提供 [DeepSeek SuperAgent 原型](https://github.com/deepseek-ai/dsh-superagent-prototype)，版本 `0.1.0`，固定源码提交 `6337fc823ce20251c8de8085948165c81aaa701e`。本版官方桌面与开发 API 均为 `0.2.1-rc.5`，上游仍属候选阶段。
+OPL DSH 随套件提供 [DeepSeek SuperAgent 原型](https://github.com/deepseek-ai/dsh-superagent-prototype)，版本 `0.1.0`，固定源码提交 `6337fc823ce20251c8de8085948165c81aaa701e`。当前开发 API 为 `0.2.2-rc.3`，上游仍属候选阶段。
 
 ## 使用
 
-macOS 打开 **设置 → 协作与自动化 → SuperAgent 仓库协作 → 打开 SuperAgent**。首次准备插件后会打开独立官方桌面；点击侧栏 **Superagent** 进入原版管理面板。
+macOS 或 Linux 打开 **设置 → 协作与自动化 → SuperAgent 仓库协作 → 打开 SuperAgent**。macOS 首次准备插件后会打开独立官方桌面；Linux 会启动独立的 `opl-superagent` CLI/Web profile 并用本机浏览器打开。点击侧栏 **Superagent** 进入原版管理面板。
 
 1. 在独立窗口配置模型，可使用 OPL Gateway 或官方模型来源。日常窗口的登录与会话不会复制进来。
 2. 在 SuperAgent 的 GitHub 来源中填写一个 `owner/repo` 和机器人专用 `gh` wrapper。机器人账号需要该仓库写权限；wrapper 使用独立的 `GH_CONFIG_DIR`，先由用户完成 `gh auth login`。
@@ -31,6 +31,6 @@ OPL 保留原版完整管理面板，只在日常协作设置增加一个打开�
 
 独立实例位于安装回执 `suiteRoot` 下的 `superagent/`：`home/` 保存官方 profile、模型登录与会话，`state/` 保存 SuperAgent 数据库、账户 wrapper 和工单目录，`electron/` 保存独立窗口数据。用户自定义 `stateDir` 后，以原版插件设置为准。备份应同时包含独立 profile 和实际状态目录。
 
-窗口运行时再次点击会提示切换到已有窗口，不安装更新。关闭独立窗口后再次打开，入口从当前 OPL 安装回执读取已验证的 bundle，保留用户配置与数据库并更新插件。独立窗口不运行日常 profile 的自动更新器。升级或回退前先备份状态；上游数据库不支持降级到较旧 Schema。
+macOS 窗口运行时再次点击会提示切换到已有窗口；Linux 会重新打开现有页面。两种平台都不会在 Host 运行中重复安装。更新前请先退出独立 Host：macOS 关闭独立桌面窗口，Linux 结束对应 CLI 进程。再次打开时，入口从当前 OPL 安装回执读取已验证的 bundle，保留用户配置与数据库并更新插件；启动输出写入独立目录的 `desktop.log`。独立实例不运行日常 profile 的自动更新器。升级或回退前先备份状态；上游数据库不支持降级到较旧 Schema。
 
-本版入口支持 macOS。上游账户 wrapper、执行命令和目录校验依赖 POSIX；Windows 仍提供其他 OPL 功能，SuperAgent 按钮显示支持范围。外部 GitHub／飞书收发需要用户完成对应机器人账号与授权配置。
+本版入口支持 macOS 和 Linux。上游账户 wrapper、执行命令和目录校验依赖 POSIX；Windows 仍提供其他 OPL 功能，SuperAgent 按钮显示支持范围。Linux 使用独立 CLI/Web profile，不伪造 Electron Desktop 资格。外部 GitHub／飞书收发需要用户完成对应机器人账号与授权配置。

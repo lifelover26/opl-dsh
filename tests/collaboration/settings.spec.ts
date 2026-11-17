@@ -44,6 +44,7 @@ it('reads the Suite updater state from a legacy profile receipt, not a profile-l
     installed: true,
     autoStart: false,
     update: { state: 'updated', version: '0.3.0', checkTrigger: 'maintenance-launcher' },
+    superagentSupported: process.platform === 'darwin' || process.platform === 'linux',
     paths: { suiteRoot, profileHome: state.home, skillDir },
   })
 })
