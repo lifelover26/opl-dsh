@@ -4,6 +4,8 @@
 
 官方 DSH 保存成员身份、团队消息、任务板与权限。本插件只保存角色到组合的引用，外部会话由 OPL 执行组合关联。外部引擎通过 `opl-harness` MCP 的 `dsh_*` 工具，以当前官方成员身份调用官方协作能力。
 
+本插件还读取本机 App/Framework 的权威 Package 投影，将已安装、已激活且允许启动的标准智能体注册为官方 Agent 预设。新会话可选择 MAS、MAG、OBF 等预设，通过官方 Skill 系统加载主 Skill，再在这里为交互会话绑定 DSH、Codex 或 Claude 组合。正式 StageRun 的 executor 仍由 Package 合同决定，Package 的安装、激活、专业产物和质量判断仍归各自 owner。
+
 关闭本插件后，角色绑定和 OPL 协作工具停止接入，执行组合仍可单独使用。已有官方成员、消息、交付记录与外部会话数据保留。
 
 由 **One Person Lab** 维护。[项目与使用说明](https://github.com/gaofeng21cn/opl-dsh)

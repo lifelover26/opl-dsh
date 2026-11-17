@@ -133,6 +133,28 @@ it('allows catalog and conversation editing through authenticated execution cont
   }
 })
 
+it('allows role catalog and validated binding saves through authenticated collaboration control', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'opl-role-control-'))
+  const invoke = vi.fn(async () => ({ presets: [], combinations: [] }))
+  const stop = await startBridge({ invoke } as unknown as TypertGateway, join(dir, 'control.json'))
+  try {
+    const binding = readBinding(join(dir, 'control.json'))
+    expect(
+      await rpc(binding, { namespace: 'oplRoleExecution', method: 'catalog', args: {} }),
+    ).toMatchObject({ status: 200, json: { ok: true } })
+    expect(
+      await rpc(binding, { namespace: 'oplRoleExecution', method: 'save', args: {} }),
+    ).toMatchObject({ status: 200, json: { ok: true } })
+    expect(
+      (await rpc(binding, { namespace: 'oplRoleExecution', method: 'delete', args: {} })).status,
+    ).toBe(403)
+    expect(invoke).toHaveBeenCalledTimes(2)
+  } finally {
+    await stop()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 it('routes Codex selection and rollback through the authenticated execution owner', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'opl-codex-control-'))
   const invoke = vi.fn(async () => ({ mode: 'git-bash', command: 'verified-codex' }))

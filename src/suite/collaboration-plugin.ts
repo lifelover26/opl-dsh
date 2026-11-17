@@ -6,6 +6,7 @@ import TaskFeedbackService from '../collaboration/host/feedback/index.ts'
 import { OfficialCollaborationBridge } from '../collaboration/host/official-tools.ts'
 import { installCollaborationTools } from '../collaboration/host/tools.ts'
 import { installExternalCodex } from '../collaboration/host/external-codex.ts'
+import { DomainAgentPresetService } from '../collaboration/host/domain-agent-presets.ts'
 export { Config }
 export const name = 'opl-collaboration'
 export const inject = [
@@ -20,12 +21,14 @@ export const inject = [
   'sessionController',
   'sandboxPolicy',
   'approval',
+  'agentPresets',
 ]
 export function apply(ctx: Context, config: Config): void {
   ctx.provide('oplOfficialCollaboration', new OfficialCollaborationBridge(ctx))
   installCollaborationTools(ctx, ctx.oplHarness)
   installExternalCodex(ctx, ctx.oplHarness)
   ctx.plugin(CoordinationService)
+  ctx.plugin(DomainAgentPresetService)
   ctx.plugin(RoleExecutionService)
   ctx.plugin(TaskFeedbackService, {
     wakeTransport: config.wakeTransport.get(),
