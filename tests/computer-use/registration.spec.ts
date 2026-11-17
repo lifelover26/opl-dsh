@@ -64,7 +64,7 @@ const agent = {
 }
 let tools: ToolRegistry
 
-async function fixture(preset: string) {
+async function fixture(preset: string, platform: NodeJS.Platform = 'darwin') {
   const ctx = new Context()
   contexts.push(ctx)
   await ctx.plugin({
@@ -79,11 +79,15 @@ async function fixture(preset: string) {
       })
     },
   })
-  installComputerUse(ctx)
+  installComputerUse(ctx, { platform })
   return tools.tools.get('computer_use')!
 }
 
 describe('Computer Use DSH tool', () => {
+  it('does not expose a macOS or Windows companion on Linux', async () => {
+    expect(await fixture('read-only', 'linux')).toBeUndefined()
+  })
+
   it('allows read-only observation without changing the session permission', async () => {
     call.mockResolvedValue({ content: [{ type: 'text', text: 'Finder' }] })
     const tool = await fixture('read-only')

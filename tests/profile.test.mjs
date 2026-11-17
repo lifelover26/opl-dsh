@@ -21,7 +21,14 @@ async function runtime(
   t,
   owner,
   existing,
-  { disableAndReinstall = false, teamVersion, promotedTeam = false, migrationReceipt } = {},
+  {
+    disableAndReinstall = false,
+    teamVersion,
+    promotedTeam = false,
+    migrationReceipt,
+    cliProfile,
+    featurePlugins = false,
+  } = {},
 ) {
   const runtimeVersion = promotedTeam ? '0.2.2-rc.2' : officialVersion
   const root = await mkdtemp(join(tmpdir(), 'opl-profile-template-'))
@@ -29,10 +36,10 @@ async function runtime(
   const app = join(root, 'official')
   const resources =
     process.platform === 'win32' ? join(app, 'resources') : join(app, 'Contents/Resources')
-  const runtime = join(resources, 'app.asar/dsh')
+  const runtime = cliProfile ? app : join(resources, 'app.asar/dsh')
   const payload = join(root, 'payload')
   const home = join(root, 'home')
-  const profile = join(home, 'profiles/desktop')
+  const profile = join(home, 'profiles', cliProfile ?? 'desktop')
   await mkdir(runtime, { recursive: true })
   await mkdir(payload)
   await writeFile(join(runtime, 'package.json'), '{"type":"module"}\n')
@@ -106,10 +113,31 @@ ${owner === 'app-boot' ? template : ''}`,
   await module(
     '@deepseek-ai/dsh-plugin-manager',
     { './operations': './index.mjs' },
-    `import { writeFileSync } from 'node:fs';
+    `import { writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 export async function runPluginCommand(profile, args) {
   writeFileSync(join(profile.dir, 'install-observation.json'), JSON.stringify({ profile: profile.profile, args }));
+  const additions = ${JSON.stringify(
+    featurePlugins
+      ? [
+          '@one-person-lab/dsh-collaboration',
+          '@one-person-lab/dsh-execution',
+          '@one-person-lab/dsh-opl',
+        ]
+      : [],
+  )};
+  if (additions.length) {
+    const manifest = JSON.parse(readFileSync(join(profile.dir, 'package.json'), 'utf8'));
+    manifest.dependencies ??= {};
+    manifest.dsh ??= { profile: {} };
+    manifest.dsh.profile ??= {};
+    manifest.dsh.profile.bundles ??= [];
+    for (const name of additions) {
+      manifest.dependencies[name] = 'file:fixture.tgz';
+      manifest.dsh.profile.bundles.push(name);
+    }
+    writeFileSync(join(profile.dir, 'package.json'), JSON.stringify(manifest));
+  }
   return { exitCode: 0 };
 }`,
   )
@@ -144,17 +172,33 @@ export async function withFileLock(file, operation, options) {
     await mkdir(profile, { recursive: true })
     await writeFile(join(profile, 'opl-official-bundles.json'), JSON.stringify(migrationReceipt))
   }
-  const env = { ...process.env }
+  const env = { ...process.env, OPL_DSH_CLI_PROFILE: cliProfile }
+  if (cliProfile === undefined) delete env.OPL_DSH_CLI_PROFILE
   delete env.ELECTRON_RUN_AS_NODE
   for (const key of ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR'])
     delete env[key]
   const archive = join(root, 'owned-enhancement.tgz')
   const install = () =>
-    run(process.execPath, [join(payload, 'profile.cjs'), app, home, archive], {
-      env,
-      timeout: 30000,
-      windowsHide: true,
-    })
+    run(
+      process.execPath,
+      [
+        join(payload, 'profile.cjs'),
+        app,
+        home,
+        archive,
+        ...(featurePlugins
+          ? [
+              '--plugin=' + join(root, 'execution.tgz'),
+              '--plugin=' + join(root, 'collaboration.tgz'),
+            ]
+          : []),
+      ],
+      {
+        env,
+        timeout: 30000,
+        windowsHide: true,
+      },
+    )
   await install()
   if (disableAndReinstall) {
     const manifest = JSON.parse(await readFile(join(profile, 'package.json'), 'utf8'))
@@ -186,6 +230,24 @@ for (const owner of ['app-boot', 'official-bundles'])
     assert.deepEqual(result.manifest.dsh.profile.bundles, [...bundles, ...officialBundles])
     assert.deepEqual(result.install, { profile: 'desktop', args: ['add', result.archive] })
   })
+
+test('CLI installation uses the requested custom profile with the web template', async (t) => {
+  const result = await runtime(t, 'app-boot', undefined, { cliProfile: 'opl-linux' })
+  assert.deepEqual(result.template, bundles)
+  assert.deepEqual(result.manifest.dsh.profile.bundles, [...bundles, ...officialBundles])
+  assert.deepEqual(result.install, { profile: 'opl-linux', args: ['add', result.archive] })
+})
+
+test('feature installation restores suite execution collaboration dependency order', async (t) => {
+  const result = await runtime(t, 'app-boot', undefined, { featurePlugins: true })
+  assert.deepEqual(result.manifest.dsh.profile.bundles, [
+    ...bundles,
+    ...officialBundles,
+    '@one-person-lab/dsh-opl',
+    '@one-person-lab/dsh-execution',
+    '@one-person-lab/dsh-collaboration',
+  ])
+})
 
 test('the moved template leaves an existing profile manifest intact', async (t) => {
   const existing = {

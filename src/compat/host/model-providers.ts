@@ -122,7 +122,8 @@ export async function apply(ctx: Context): Promise<void> {
     }
   })
   const configuration = () => entry.fiber!.effectiveConfig as ExtraConfig
-  const keyringMigrationNeeded = configuration().providerKeyringMigration.get() < 1
+  const keyringMigrationNeeded =
+    process.platform === 'win32' && configuration().providerKeyringMigration.get() < 1
   if (keyringMigrationNeeded) {
     await keyringOverlay.migratePlaintext()
     const view = ctx.settings.describe().find((item) => item.ns === ns)

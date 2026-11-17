@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile, copyFile, constants } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
+import { dirname } from 'node:path'
+import { oplProfilePath } from '../../shared/host/profile-paths.ts'
 import { DSH_COMBINATION, GROK_COMBINATION, type HarnessCatalog } from '../contracts/sessions.ts'
 import {
   displayModelSource,
@@ -218,8 +218,8 @@ export class ExecutionCatalogStore {
   private value = defaultExecutionCatalog()
   private ready: Promise<void>
   private queue: Promise<void> = Promise.resolve()
-  constructor(home = dshHomePath()) {
-    this.filename = join(home, 'profiles/desktop/execution-catalog.json')
+  constructor(home?: string) {
+    this.filename = oplProfilePath(home, 'execution-catalog.json')
     this.ready = this.load()
   }
   private async load() {

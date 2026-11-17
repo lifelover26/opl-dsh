@@ -1,7 +1,8 @@
 /** Conversation choices for CLI effort IDs, separate from provider request controls. */
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { oplProfilePath } from '../../shared/host/profile-paths.ts'
 
 export class ExternalEffortStore {
   private values: Record<string, string | null> = {}
@@ -9,7 +10,7 @@ export class ExternalEffortStore {
   private readonly filename: string
   readonly ready: Promise<void>
   constructor(home: string) {
-    this.filename = join(home, 'profiles/desktop/external-effort-selection.json')
+    this.filename = oplProfilePath(home, 'external-effort-selection.json')
     this.ready = this.load()
   }
   private async load(): Promise<void> {

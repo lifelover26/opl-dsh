@@ -215,6 +215,7 @@ for (const file of [
   'install.cmd',
   'install.ps1',
   'install.mjs',
+  'install-linux.mjs',
   'profile.cjs',
   'model-plugins.cjs',
   'split-plugins.cjs',

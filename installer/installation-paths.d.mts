@@ -1,6 +1,7 @@
 export interface InstallationReceipt {
   home: string
   profileHome: string
+  profile?: string
   suiteRoot: string
   skillDir: string
   ledgerDir: string

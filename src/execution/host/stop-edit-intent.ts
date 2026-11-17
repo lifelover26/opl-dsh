@@ -8,6 +8,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { oplProfilePath } from '../../shared/host/profile-paths.ts'
 import type { StopEditIntent, StopEditResult } from '../contracts/stop-edit.ts'
 import { StopEditError } from './stop-edit.ts'
 
@@ -49,7 +50,7 @@ export class StopEditIntentStore {
   private queue: Promise<void> = Promise.resolve()
 
   constructor(home: string) {
-    this.directory = join(home, 'profiles/desktop/stop-edit-intents')
+    this.directory = oplProfilePath(home, 'stop-edit-intents')
   }
 
   filename(sessionId: string): string {

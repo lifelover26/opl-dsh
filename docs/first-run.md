@@ -16,6 +16,14 @@ OPL DSH 使用官方 DeepSeek Harness 桌面，在应用内提供统一的账户
 
 首次设置状态由 Host 的 `opl-suite` 配置保存；登录和密钥仍由各自的官方/OPL 账户服务管理。设置 RPC 使用官方 Connection 的受认证路由；模型选择保存成功后才标记完成。已配置账户的安装升级时保留状态。
 
+## Linux CLI/Web 首启
+
+Linux 使用 `launch-opl-linux.sh` 启动独立的 `opl-linux` profile。启动器在 `127.0.0.1:4180` 监听，并在标准输出打印带认证参数的完整地址；请打开该完整地址，不要复用其他 profile 的 token 或当前 `web` 页面地址。页面中的 OPL 账户选择、Gateway 登录和官方账号授权仍由同一组 Host/Client 服务处理，不经过 Electron 欢迎窗口。
+
+地址丢失或页面返回 `401` 时，先从启动该 profile 的终端正常结束 Host，再运行启动器取得新的认证地址。不要使用无认证参数的地址反复尝试，也不要读取其他进程的控制文件。若需要诊断启动失败，请检查启动器输出；SuperAgent 独立实例的启动输出另存于其 `superagent/desktop.log`。
+
 ## 验证范围
+
+Linux CLI/Web 的 Host、认证页面、控制 RPC 和 SuperAgent 状态接口可与官方桌面分开验收；这些结果不属于 Electron Desktop 资格。
 
 已在未修改的官方 Apple Silicon 桌面验证：应用内弹窗、Gateway 登录页呈现、官方授权发起与取消、官方 API Key 输入界面、一次跳过进入工作区、重启不再提示。官方账号完整授权需要用户自己的账号，本轮未完成该外部登录。Windows x64 已在未修改的官方桌面验证安装、应用内首启、Gateway 登录页呈现、稍后进入工作区及 Codex 协作设置。增强包使用独立自动更新入口，不分发自有桌面壳；官方桌面版本变化后需重新验收插件接口。

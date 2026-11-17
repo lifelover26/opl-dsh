@@ -2,6 +2,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, open, readdir, readFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
+import { oplProfilePath } from '../../shared/host/profile-paths.ts'
 import { z } from 'zod'
 import {
   validateExternalEditResult,
@@ -96,7 +97,7 @@ export class FileExternalEditJournal implements ExternalEditJournal {
   private failed = false
 
   constructor(home: string) {
-    this.directory = join(home, 'profiles/desktop/external-message-edit-intents')
+    this.directory = oplProfilePath(home, 'external-message-edit-intents')
   }
 
   private filename(id: string): string {

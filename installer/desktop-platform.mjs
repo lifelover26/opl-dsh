@@ -6,10 +6,13 @@ export function openLoginPage(url) {
     throw new Error('登录页面必须来自本机 OPL DSH')
   if (process.platform === 'win32')
     execFileSync('rundll32.exe', ['url.dll,FileProtocolHandler', url], { windowsHide: true })
-  else execFileSync('/usr/bin/open', [url])
+  else if (process.platform === 'darwin') execFileSync('/usr/bin/open', [url])
+  else if (process.platform === 'linux') execFileSync('xdg-open', [url])
+  else throw new Error('当前平台不支持打开本机登录页面')
 }
 export function focusApplication(application) {
-  if (process.platform !== 'win32') return execFileSync('/usr/bin/open', ['-a', application])
+  if (process.platform === 'darwin') return execFileSync('/usr/bin/open', ['-a', application])
+  if (process.platform !== 'win32') throw new Error('当前平台不支持聚焦桌面应用')
   const script =
     '$p = Get-Process | Where-Object { $_.Path -eq $env:OPL_APPLICATION_PATH -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1; if ($p) { $shell = New-Object -ComObject WScript.Shell; $null = $shell.AppActivate($p.Id) }'
   execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {

@@ -137,11 +137,11 @@ TaskFeedback 的事件投影、纯状态决策、持久回执与投递调度分�
 | 内容                     | 权威位置                                                                                                                 |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | 官方模型、登录与原生会话 | `DSH_HOME`，默认 `~/.dsh`；由官方设置、凭据和会话服务负责                                                                |
-| 组合配置                 | `profiles/desktop/execution-catalog.json`；不保存模型连接和密钥                                                          |
-| OPL 会话映射、轮次与交付 | `profiles/desktop/harness-sessions/`，每个会话一个按 ID 哈希命名的文件                                                   |
-| 原生对话的组合选择       | `profiles/desktop/combination-selection.json`                                                                            |
+| 组合配置                 | `profiles/<当前 profile>/execution-catalog.json`；不保存模型连接和密钥。Desktop 为 `desktop`，Linux 默认为 `opl-linux` |
+| OPL 会话映射、轮次与交付 | `profiles/<当前 profile>/harness-sessions/`，每个会话一个按 ID 哈希命名的文件                                             |
+| 原生对话的组合选择       | `profiles/<当前 profile>/combination-selection.json`                                                                      |
 | OPL TaskFeedback 数据    | 官方 Storage Domain 的 `task_feedback` 域                                                                                |
-| 套件版本、更新缓存与状态 | 安装回执中的 `suiteRoot`；Mac 默认 `~/Library/Application Support/OPL DSH Suite`，Windows 默认 `%APPDATA%/OPL DSH Suite` |
+| 套件版本、更新缓存与状态 | 安装回执中的 `suiteRoot`；Mac 默认 `~/Library/Application Support/OPL DSH Suite`，Windows 默认 `%APPDATA%/OPL DSH Suite`，Linux 默认 `~/.local/share/OPL DSH Suite` |
 | Codex Skill 与派发账本   | 回执中的 `skillDir`、`ledgerDir`；已有账本路径在修复时保留                                                               |
 
 安装回执明确 `suiteRoot`、`profileHome`、`skillDir`、`ledgerDir`，profile 下的回执用于找到 Suite。旧回执可从已有 release 路径解析，不猜另一个根目录。自定义 profile 的升级、回滚与启动都显式传递原 profile。
@@ -171,6 +171,19 @@ SuperAgent 的 POSIX 服务控制、账户 Shell wrapper、Unix 信号与权限�
 官方桌面资格工作流在相关变更、发布及手动触发时覆盖 macOS arm64 与 Windows。它使用独立临时 profile 和模拟模型，验证实际 Client 插槽、RPC、两类协议模型流、官方工具、重启恢复及官方应用未修改，产出 JSON 和截图。具体命令和平台要求见 [兼容验证](compatibility.md)。
 
 本地模拟验证不等于真实 Gateway 或所有外部 Harness 组合验收；一台 Mac 的通过也不代表 Windows 通过。发布还需要实际公开资产与摘要回读。本地实现请求不自动触发提交、推送、发布或用户 profile 升级。
+
+## Linux CLI/Web 迁移
+
+Linux 使用独立 CLI/Web profile，不加载 Electron 专属 `desktop` profile。默认名称为 `opl-linux`，启动器显式设置 `DSH_PROFILE`、`DSH_PROFILE_DIR` 和 `OPL_PROFILE_NAME`，避免继承调用方其他 profile 的环境。OPL 状态文件统一由 `src/shared/host/profile-paths.ts` 解析到实际 profile，Desktop 未提供这些变量时仍回退到 `desktop`。
+
+```sh
+npm ci --ignore-scripts
+npm run build
+node installer/install-linux.mjs "dist/OPL DSH 一键安装"
+"$HOME/.local/share/OPL DSH Suite/launch-opl-linux.sh"
+```
+
+安装器复用官方 `runPluginCommand`，固定三包和 OFM 的版本与摘要，并保持 `suite → execution → collaboration` 的装载顺序。Linux 不安装 KimiCU、Windows 会话清理 Skill，也不启用 Desktop 的增强层自动更新。SuperAgent 使用单独的 `opl-superagent` home/profile/state，不与主 OPL profile 共享会话或工单状态。Linux CLI/Web 验收不替代 macOS/Windows 官方桌面资格。
 
 ## 本地候选安装
 

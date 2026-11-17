@@ -2,6 +2,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readdir, readFile, writeFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
+import { oplProfilePath } from '../../shared/host/profile-paths.ts'
 import type { MessageEditSend } from '../contracts/message-edit.ts'
 import type { UserMessage } from '@deepseek-ai/dsh-llm'
 import { validPromptContent } from './multimodal-prompt.ts'
@@ -48,7 +49,7 @@ export class MessageEditStore {
   private readonly records = new Map<string, EditIntent>()
   private queue = Promise.resolve()
   constructor(home: string) {
-    this.directory = join(home, 'profiles/desktop/message-edit-intents')
+    this.directory = oplProfilePath(home, 'message-edit-intents')
   }
   private filename(id: string) {
     return join(this.directory, createHash('sha256').update(id).digest('hex') + '.json')

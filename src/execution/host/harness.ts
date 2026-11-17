@@ -118,6 +118,7 @@ import {
 import type { HarnessContextReading } from '../contracts/usage.ts'
 export type { HarnessStartRequest } from '../../contracts/types.ts'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
+import { oplProfilePath } from '../../shared/host/profile-paths.ts'
 import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { ModelCatalog, ModelSelection } from '@deepseek-ai/dsh-api-session-controller/types'
 import type {} from '@deepseek-ai/dsh-workspace'
@@ -550,7 +551,7 @@ export class HarnessService {
   private async loadSelections() {
     try {
       const value = JSON.parse(
-        await readFile(join(this.directory, 'profiles/desktop/combination-selection.json'), 'utf8'),
+        await readFile(oplProfilePath(this.directory, 'combination-selection.json'), 'utf8'),
       ) as unknown
       if (
         !value ||
@@ -567,7 +568,7 @@ export class HarnessService {
   private async bindSelection(sessionId: string, combination: string) {
     this.selections[sessionId] = combination
     const bytes = JSON.stringify(this.selections, null, 2) + '\n'
-    const filename = join(this.directory, 'profiles/desktop/combination-selection.json')
+    const filename = oplProfilePath(this.directory, 'combination-selection.json')
     const write = this.writeQueue.then(async () => {
       await mkdir(dirname(filename), { recursive: true, mode: 0o700 })
       const temp = filename + '.' + randomUUID()

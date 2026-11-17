@@ -14,24 +14,37 @@ import { Config } from './config.ts'
 export { Config } from './config.ts'
 
 export const name = 'opl-suite'
-export const inject: string[] = []
+export const inject = [
+  'loader',
+  'llm',
+  'settings',
+  'credentials',
+  'sessionProjections',
+  'agents',
+  'sessions',
+  'sessionController',
+  'agentDefaultModel',
+  'typertGateway',
+  'webServer',
+  'connection',
+]
 
 /** Mount account services and publish the authenticated local control binding.
  * @param ctx - Official Host context.
  */
-export function apply(ctx: Context, config: Config): void {
-  if (process.platform === 'win32') ctx.plugin(gitBash, {})
-  ctx.plugin(gateway, structuredClone(config.gateway.get()) as gateway.OplGatewayConfig)
-  ctx.plugin(conversationStats)
-  ctx.plugin(mcpApps)
-  ctx.plugin(nativeModelProviders)
-  ctx.plugin(GatewayModelsService)
-  ctx.plugin(SetupService)
-  ctx.plugin(suiteControl)
+export async function apply(ctx: Context, config: Config): Promise<void> {
+  if (process.platform === 'win32') await ctx.plugin(gitBash, {})
+  await ctx.plugin(gateway, structuredClone(config.gateway.get()) as gateway.OplGatewayConfig)
+  await ctx.plugin(conversationStats)
+  await ctx.plugin(mcpApps)
+  await ctx.plugin(nativeModelProviders)
+  await ctx.plugin(GatewayModelsService)
+  await ctx.plugin(SetupService)
+  await ctx.plugin(suiteControl)
   ctx.inject(['sessions', 'agents', 'sessionController', 'settings', 'typertGateway'], (child) => {
     child.provide('oplUpdateRuntime', installUpdateRuntime(child))
   })
-  ctx.plugin(UpdateService)
+  await ctx.plugin(UpdateService)
   ctx.inject(['settings'], (child) => {
     child.effect(() => child.settings.configure({ auto: false }, ctx.fiber))
   })
