@@ -1,7 +1,16 @@
 /** Runtime tests join real persistent state, metadata parsing and feedback projection. */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { appendFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import {
+  appendFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { setTimeout as delay } from 'node:timers/promises'
@@ -25,7 +34,7 @@ async function fixture(
   t,
   { task = false, history = '', feedback, queue, inspect, send, backendVersion = '0.167.0' } = {},
 ) {
-  const root = await mkdtemp(join(tmpdir(), 'opl-coordinator-runtime-'))
+  const root = await mkdtemp(join(await realpath(tmpdir()), 'opl-coordinator-runtime-'))
   t.after(() => rm(root, { force: true, recursive: true }))
   const codexHome = join(root, 'codex'),
     cwd = join(root, 'workspace')

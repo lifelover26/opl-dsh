@@ -7,6 +7,7 @@ import {
   writeFile,
   appendFile,
   readFile,
+  realpath,
   rm,
   rename,
   symlink,
@@ -60,7 +61,8 @@ const hook = (extra = {}) => ({
 })
 
 async function fixture(t, { header = meta(), records = '' } = {}) {
-  const root = await mkdtemp(join(tmpdir(), 'opl-coordinator-hooks-'))
+  // macOS may expose the system temporary directory through /var or /tmp aliases.
+  const root = await mkdtemp(join(await realpath(tmpdir()), 'opl-coordinator-hooks-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   const codexHome = join(root, 'codex-home'),
     cwd = join(root, 'project')
