@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
+import { defaultExecutionCatalog } from '../../src/execution/host/catalog.ts'
+import { ExecutionModelResolver } from '../../src/execution/host/execution-models.ts'
 import {
   resolveGatewayExecution,
   resolveGatewayGeminiExecution,
@@ -31,6 +33,58 @@ function fixture(models: unknown[] = [{ id: 'custom' }]) {
 }
 
 describe('Gateway route metadata for external engines', () => {
+  it('keeps a custom Gemini Chat route and its saved combinations on upgrade', async () => {
+    const argon = { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' }
+    const flash = { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' }
+    const profile = {
+      api: 'openai-completions',
+      baseURL: 'https://custom.invalid/v1',
+      models: [{ id: 'gemini-4-argon' }, { id: 'gemini-3.8-flash' }],
+    }
+    const settings = {
+      describe: () => [
+        { ns: 'llm-pi-ai', value: { providers: { 'opl-gateway-gemini': profile } } },
+      ],
+    }
+    const ctx = {
+      get: (name: string) =>
+        name === 'settings'
+          ? settings
+          : name === 'oplGatewayAccount'
+            ? { status: async () => ({ groups: [{ id: 'gemini', state: 'ready' }] }) }
+            : undefined,
+      credentials: { resolve: async () => ({ value: 'fixture-key' }) },
+    } as unknown as Context
+    const catalog = defaultExecutionCatalog()
+    const saved = {
+      id: 'my-flash',
+      name: 'My Flash',
+      modelRef: flash,
+      harnessRef: 'opencode',
+      permissionPolicy: 'workspace' as const,
+      enabled: true,
+      isDefault: true,
+    }
+    catalog.combinations.push(saved)
+    const resolver = new ExecutionModelResolver(ctx, {
+      get: async () => structuredClone(catalog),
+    } as never)
+
+    const custom = await resolver.resolve()
+    expect(custom.models).toContainEqual(expect.objectContaining({ ref: argon, available: true }))
+    expect(custom.combinations.filter((item) => item.modelRef.model === argon.model)).toEqual([])
+    expect(custom.combinations.find((item) => item.id === saved.id)).toEqual(saved)
+    expect(await resolveGatewayExecution(ctx, argon)).toMatchObject({ baseURL: profile.baseURL })
+    await expect(resolveGatewayGeminiExecution(ctx, argon)).rejects.toThrow('自定义 Gemini 地址')
+
+    profile.baseURL = 'https://gateway.medopl.com/v1/'
+    const bundle = await resolver.resolve()
+    expect(bundle.combinations).toContainEqual(
+      expect.objectContaining({ modelRef: argon, harnessRef: 'antigravity', isDefault: true }),
+    )
+    expect(bundle.combinations.find((item) => item.id === saved.id)).toEqual(saved)
+  })
+
   it('uses the Gemini group credential and its declared native endpoint independently of Chat', async () => {
     const resolve = vi.fn(async () => ({ value: 'native-fixture-key' }))
     const ctx = { get: () => undefined, credentials: { resolve } } as unknown as Context

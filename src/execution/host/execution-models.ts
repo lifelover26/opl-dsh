@@ -3,6 +3,7 @@ import { invokeHostRemote } from '../../compat/host/remote-invocation.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import {
+  gatewayGeminiNativeEndpointConfigured,
   internalGatewayProvider,
   gatewayModelSettings,
 } from '../../gateway/host/execution-access.ts'
@@ -444,9 +445,11 @@ export class ExecutionModelResolver {
               : {}),
         })
       }
+    const nativeGemini = gatewayGeminiNativeEndpointConfigured(this.ctx)
     let defaultMigrationChanged = false
     for (const model of catalog.models) {
       const official = officialHarnessFor(model.ref)
+      if (official === 'antigravity' && !nativeGemini) continue
       const hasDefault = catalog.combinations.some(
         (item) =>
           !isRetiredModel(item.modelRef) &&
@@ -502,6 +505,15 @@ export class ExecutionModelResolver {
       }
     }
     if (defaultMigrationChanged) await this.store.set(catalog)
+    if (!nativeGemini)
+      catalog.combinations = catalog.combinations.filter(
+        (item) =>
+          !(
+            item.harnessRef === 'antigravity' &&
+            officialHarnessFor(item.modelRef) === 'antigravity' &&
+            unmodifiedAutomatic(item)
+          ),
+      )
     // A persisted automatic row is a projection, not a user decision. Keep its
     // identity and permission settings, but make its enabled state follow the
     // model that actually owns it. This also repairs rows written by an older
