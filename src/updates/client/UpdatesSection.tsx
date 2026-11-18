@@ -232,7 +232,7 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
           >
             {t('releaseNotes')}
           </a>
-          {status?.localCandidate || release.compatibility === 'full-suite' ? (
+          {(status?.localCandidate || release.compatibility === 'full-suite') && (
             <a
               className={updatesCss.link}
               href={release.url}
@@ -241,7 +241,8 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
             >
               {t('download')}
             </a>
-          ) : (
+          )}
+          {release.compatibility === 'enhancement' && (
             <>
               {!status?.pendingVersion && (
                 <Button
@@ -252,9 +253,11 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
                   {t(preparing ? 'preparing' : 'prepare')}
                 </Button>
               )}
-              <Button variant="outline" disabled={!writable} onClick={() => void applyNow()}>
-                {t(operation === 'apply' ? 'applying' : 'applyNow')}
-              </Button>
+              {!status?.localCandidate && (
+                <Button variant="outline" disabled={!writable} onClick={() => void applyNow()}>
+                  {t(operation === 'apply' ? 'applying' : 'applyNow')}
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -278,7 +281,7 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
               handoff
                 ? 'restartHandoff'
                 : status.localCandidate
-                  ? 'pendingInstaller'
+                  ? 'candidatePending'
                   : countdown !== null
                     ? 'restartCountdown'
                     : restart?.phase === 'waiting'

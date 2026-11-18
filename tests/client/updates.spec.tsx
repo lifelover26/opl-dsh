@@ -999,7 +999,7 @@ describe('update controls', () => {
     expect(f.api.applyNow).not.toHaveBeenCalled()
   })
 
-  it('offers the full release installer for a local candidate without preparing or applying it', async () => {
+  it('lets a local candidate prepare a compatible release without restarting', async () => {
     const f = await mount({
       initial: status({
         localCandidate: true,
@@ -1021,6 +1021,9 @@ describe('update controls', () => {
     await act(async () => f.controller.applyNow())
     expect(f.api.applyNow).not.toHaveBeenCalled()
     expect(f.api.prepare).not.toHaveBeenCalled()
+    await click(button(f.container, zh.prepare))
+    expect(f.api.prepare).toHaveBeenCalledTimes(1)
+    expect(f.api.applyNow).not.toHaveBeenCalled()
   })
 
   it('keeps a candidate pending plan cancellable without promising immediate application', async () => {
@@ -1031,9 +1034,9 @@ describe('update controls', () => {
         pendingVersion: '0.2.56',
       }),
     })
-    expect(f.container.textContent).toContain(zh.pendingInstaller.replace('{version}', '0.2.56'))
+    expect(f.container.textContent).toContain(zh.candidatePending.replace('{version}', '0.2.56'))
     expect(f.container.querySelector('[data-opl-update-notice]')?.getAttribute('title')).toContain(
-      zh.noticeFullSuite.replace('{version}', '0.2.56'),
+      zh.candidatePending.replace('{version}', '0.2.56'),
     )
     expect(
       [...section(f.container).querySelectorAll('button')].map((node) => node.textContent),
