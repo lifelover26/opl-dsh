@@ -1,4 +1,4 @@
-/** Use MCode 0.7.4's native per-session Windows shell binding. */
+/** Use MCode's native per-session Windows shell binding. */
 import { win32 } from 'node:path'
 
 const samePath = (a, b) =>

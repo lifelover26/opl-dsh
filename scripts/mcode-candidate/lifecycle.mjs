@@ -501,7 +501,7 @@ export function verifyImportCandidate(
 
   const declaredVersion = manifest.version
   const npmOverlay = manifest.distribution === 'official-npm-overlay'
-  const officialBase = npmOverlay ? distribution.official.version : plan.official.version
+  const officialBase = npmOverlay ? String(declaredVersion).split('-')[0] : plan.official.version
   const shapeOk = VERSION_PATTERN.test(declaredVersion)
   check('version-declared', shapeOk, declaredVersion)
   check(
@@ -535,7 +535,7 @@ export function verifyImportCandidate(
   check('toolchain-not-stubbed', !stubbed, stubbed ? '替身工具链产物，不可导入' : '真实工具链')
   if (npmOverlay) {
     try {
-      const result = verifyOfficialDistribution(join(base, 'official'))
+      const result = verifyOfficialDistribution(join(base, 'official'), officialBase)
       check('official-npm-unchanged', true, `${result.version}: ${result.files} files`)
     } catch (error) {
       check('official-npm-unchanged', false, error.message)
