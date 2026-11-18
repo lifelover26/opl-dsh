@@ -536,13 +536,19 @@ export async function verifyDesktopClient(
       }
       for (const [label, selector] of [
         ['增强会话统计', statsSwitch],
-        ['增强待办状态', featureSwitch(['增强待办状态', 'Enhanced todo status'])],
         ['记住权限预设', featureSwitch(['记住权限预设', 'Remember permission preset'])],
       ]) {
         await waitFor(`Boolean(${selector} && !${selector}.disabled)`, label + '设置未就绪')
         if ((await pipe.evaluate(session, `${selector}.getAttribute('aria-checked')`)) !== 'false')
           throw new Error(label + '必须默认关闭')
       }
+      if (
+        await pipe.evaluate(
+          session,
+          `Boolean(${featureSwitch(['增强待办状态', 'Enhanced todo status'])})`,
+        )
+      )
+        throw new Error('待办面板应使用官方展示')
       const countSelector =
         'document.querySelector("[data-opl-preference=conversation-counts] button")'
       if (await pipe.evaluate(session, `Boolean(${countSelector})`))
