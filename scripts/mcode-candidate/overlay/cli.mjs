@@ -9,26 +9,26 @@ const candidate = JSON.parse(readFileSync(new URL('../package.json', import.meta
 const official = JSON.parse(
   readFileSync(new URL('../official/package.json', import.meta.url), 'utf8'),
 )
-if (official.name !== '@minimax-ai/code' || official.version !== '0.7.4')
+if (official.name !== '@minimax-ai/code' || official.version !== '0.7.7')
   throw Error('The pinned official MCode package is missing or has a different version.')
 const args = process.argv.slice(2)
 if (args[0] === 'acp' || (args[0] === 'login' && process.env.OPL_MCODE_AUTH_CONTROL === '1')) {
   // The official entry initializes the saved account region before loading its runtime.
-  const { r: initializeEnvironment } = await import('../official/chunks/chunk-CMWH3NZU.js')
-  const { getTuiDataDirPath } = await import('../official/chunks/data-dir-VLNTBIAQ.js')
+  const { u: initializeEnvironment } = await import('../official/chunks/chunk-3BMJHMYK.js')
+  const { getTuiDataDirPath } = await import('../official/chunks/data-dir-UGDS3O6D.js')
   initializeEnvironment({ dataDir: getTuiDataDirPath() })
 }
 if (args.length === 1 && ['--version', '-v'].includes(args[0])) {
   process.stdout.write(candidate.version + '\n')
 } else if (args[0] === 'acp') {
-  const { runTuiAcpCommand } = await import('../official/chunks/run-acp-command-HJTGJSHA.js')
+  const { runTuiAcpCommand } = await import('../official/chunks/run-acp-command-GUHNYSM3.js')
   const { createTuiRuntime, shutdownTuiRuntime } =
-    await import('../official/chunks/lifecycle-GP7HDNAT.js')
+    await import('../official/chunks/lifecycle-RO4GC7HT.js')
   const input = new PassThrough()
   const output = new PassThrough()
   let bridge
   try {
-    const { runTuiCli } = await import('../official/chunks/main-G357CS7U.js')
+    const { runTuiCli } = await import('../official/chunks/main-IAXUNU3B.js')
     await runTuiCli({
       runAcp: async (version, lane, systemPromptOverrides) =>
         runTuiAcpCommand(
@@ -76,9 +76,9 @@ if (args.length === 1 && ['--version', '-v'].includes(args[0])) {
     bridge?.close()
   }
 } else if (args[0] === 'login' && process.env.OPL_MCODE_AUTH_CONTROL === '1') {
-  const { runTuiLogin } = await import('../official/chunks/auth-command-BO6OVFUW.js')
-  const { c: createApplication } = await import('../official/chunks/chunk-VR5GZAY6.js')
-  const { d: prepareDataDir } = await import('../official/chunks/chunk-WTOVTF3H.js')
+  const { runTuiLogin } = await import('../official/chunks/auth-command-OETDTSNR.js')
+  const { b: createApplication } = await import('../official/chunks/chunk-B3MMBAYA.js')
+  const { d: prepareDataDir } = await import('../official/chunks/chunk-TUBHL77A.js')
   const regionIndex = args.indexOf('--region')
   const region = regionIndex < 0 ? undefined : { cn: 'cn', global: 'en' }[args[regionIndex + 1]]
   if (regionIndex >= 0 && !region) throw Error('Select cn or global for MiniMax login.')
@@ -87,7 +87,7 @@ if (args.length === 1 && ['--version', '-v'].includes(args[0])) {
     ...(region ? { region } : {}),
   })
   try {
-    const { runTuiCli } = await import('../official/chunks/main-G357CS7U.js')
+    const { runTuiCli } = await import('../official/chunks/main-IAXUNU3B.js')
     await runTuiCli({
       runLogin: (selectedRegion, openBrowser) =>
         controlledLogin({

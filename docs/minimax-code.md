@@ -62,7 +62,7 @@ DSH 从该官方安装目录识别 `mcode`，无需在 DSH 中填写 MiniMax 地
 
 Windows 增强适配器在启动 mcode 前解析并实际执行 Git for Windows 的 Bash，随后通过进程级 `MCODE_SHELL_PATH` 固定 Shell。优先使用显式 `OPL_GIT_BASH_PATH`，否则查找 Git 安装目录和 PATH；显式路径错误时停止，不自动改用别的安装。ACP 初始化须返回 `_meta["minimax-code/shell"]`（version=1、type=bash、同一可执行文件和 `["-c"]` 参数），新建、跨进程恢复和每次发送前都核对。设置 `SHELL` 或工具名叫 `bash` 不能证明实际后端。
 
-当前候选以官方 npm `@minimax-ai/code@0.7.4` 为基础，逐文件保留官方分发物，使用其原生按会话 Git Bash 绑定。OPL 的独立 ACP 扩展提供 Shell 回读、仅对话历史的编辑及登录取消/超时，不修改官方 bundle，不重新实现 Agent 循环。候选仍通过执行引擎的 mcode 路径显式选择；官方安装、账号数据及用户全局 Shell 偏好保持原样。构建输入与校验方式见 [MiniMax 候选交付](minimax-bash-candidate.md)。未通过 Shell 回读的程序在发送任务前拒绝。
+当前候选以官方 npm `@minimax-ai/code@0.7.7` 为基础，逐文件保留官方分发物，使用其原生按会话 Git Bash 绑定。OPL 的独立 ACP 扩展提供 Shell 回读、仅对话历史的编辑及登录取消/超时，不修改官方 bundle，不重新实现 Agent 循环。候选仍通过执行引擎的 mcode 路径显式选择；官方安装、账号数据及用户全局 Shell 偏好保持原样。构建输入与校验方式见 [MiniMax 候选交付](minimax-bash-candidate.md)。未通过 Shell 回读的程序在发送任务前拒绝。
 
 固定 Git Bash 只决定命令解释器；下述完整访问和官方 mcode 审批限制仍然适用。
 
