@@ -34,7 +34,7 @@
 
 已派发工作须关联公开反馈返回的精确 `taskId` 与该指令原有 `operationId`。不要用展示标题替代反馈 taskId，不解析不透明 ID，不换 operation 重发结果不明的旧指令。项目固定主审 threadId 和 cwd；任务及通知只按显式关联对账。
 
-一个主对话只能有一个未完成项目。原生 `dispatch` 增加 `--coordinator-work implementation`，即可在发送提示词前把反馈 taskId 绑定到该计划已有的 implementation；未提供此参数时保持原派发行为。多个任务绑定各自 workId，共用同一个项目。重试同一身份幂等；改变 task/operation、未满足依赖、未知 workId、项目歧义或暂停都会拒绝绑定。外部任务取得公开 taskId 后，用 `bind --project <id> --work <workId> --task <反馈 taskId> --operation <原 operationId>` 关联；bind 校验当前 `CODEX_THREAD_ID`，不创建工作项。
+一个主对话只能有一个未完成项目。原生 `dispatch` 增加 `--coordinator-work implementation`，即可在发送提示词前把反馈 taskId 绑定到该计划已有的 implementation；未提供此参数时保持原派发行为。多个任务绑定各自 workId，共用同一个项目。使用同一 operation 重试时，须保留原有 `--coordinator-work`（或继续省略）；成功回执会重放，修改绑定会报冲突。改变 task/operation、未满足依赖、未知 workId、项目歧义或暂停都会拒绝绑定。外部任务取得公开 taskId 后，用 `bind --project <id> --work <workId> --task <反馈 taskId> --operation <原 operationId>` 关联；bind 校验当前 `CODEX_THREAD_ID`，不创建工作项。
 
 使用已安装 Skill 中的 CLI：
 
@@ -46,7 +46,7 @@ node '<Skill目录>/coordinator/cli.mjs' init --file /absolute/plan.json
 
 主审空闲时的通知直接复用 DSH「协作与自动化」中的通知桥。协调器每次需要发送时经公开 `coordination-status --no-autostart` 读取当前 wakeTransport、wakeExecution、wakeExecutable 和 wakeDistro；不另存 queue 配置，旧 settings.json 中的 queue 不再参与决策。DSH 未运行或设置不可读取时停止发送；未配置桥时保持 unconnected，不猜测 Codex 程序位置。
 
-计划可选的 `connection` 只指定公开 helper、变化信号目录和 watcher 启停方式：
+状态目录的第一个项目可用计划中的 `connection` 指定该目录共享的公开 helper、变化信号目录和初始 watcher 启停方式：
 
 ```json
 {
@@ -58,7 +58,7 @@ node '<Skill目录>/coordinator/cli.mjs' init --file /absolute/plan.json
 }
 ```
 
-省略 `controlPath` 时使用当前 Skill 的 `control.mjs`。配置只接受这些公开连接字段，不保存 token、环境变量或私人 IPC 绑定。未指定 `feedbackWatchPaths` 时，只从同安装 Skill 的 config.json 读取公开 home 路径，将已存在的 storages 目录作为变化信号；源码目录无安装配置时保持空，并在 `watchStatus` 报告缺少来源。显式空数组关闭此来源。反馈内容始终经公开 helper 查询，不读取存储文件的任务正文。
+首次登记时，省略 `controlPath` 默认使用当前 Skill 的 `control.mjs`。未指定 `feedbackWatchPaths` 时，只从同安装 Skill 的 config.json 读取公开 home 路径，将已存在的 storages 目录作为变化信号；源码目录无安装配置时保持空，并在 `watchStatus` 报告缺少来源。显式空数组关闭此来源。后续项目继承该目录的连接配置；若提供字段，须与当前设置一致，否则登记返回 `coordinator-connection-conflict`。切换监听模式使用 `start-watch` 或 `stop-watch`。配置只接受这些公开连接字段，不保存 token、环境变量或私人 IPC 绑定。反馈内容始终经公开 helper 查询，不读取存储文件的任务正文。
 
 ## 运行与暂停
 
@@ -77,7 +77,7 @@ node '<Skill目录>/coordinator/cli.mjs' init --file /absolute/plan.json
 | `apply --project <id> --file <event.json>`                     | 提交带 eventId、type、authorityEpoch 的协调事件或审查 checkpoint |
 | `review-action --project <id> --file <request.json>`           | 校验当前审查身份后登记外部验收或消费通知                         |
 | `hook`                                                         | 接收 Codex Hook 的 stdin 事件                                    |
-| `install-hooks --shell <shell> [--node <Node绝对路径>]`        | 兼容旧 shell 参数；安装七个 Hook 并备份原配置      |
+| `install-hooks --shell <shell> [--node <Node绝对路径>]`        | 兼容旧 shell 参数；安装七个 Hook 并备份原配置                    |
 | `setup [--shell <shell>] [--node <Node绝对路径>]`              | 显式验证真 Node、安装 Hook，并记录用户信任引导                   |
 | `remove-hooks`                                                 | 移除精确匹配的自有 Hook，保留用户后改内容                        |
 
@@ -96,7 +96,7 @@ node '<Skill目录>/coordinator/cli.mjs' install-hooks --shell git-bash
 node '<Skill目录>/coordinator/cli.mjs' start-watch --project example-project
 ```
 
-`watchMode` 默认为 auto：登记项目及已登记对话的 Hook 会确保唯一全局 watcher 运行。Windows 经现有 WMI 启动器创建独立 Node 进程，完整传入 root 和 codex-home，不依赖 Electron 或调用方进程树；`install-hooks --node` 保存精确 Node 路径。活 PID 或结果不明的启动不会重复派生。`stop-watch` 只写该实例的停止文件，不终止 Codex 后端；再次 `start-watch` 恢复 auto。部署由外部进程管理时，在计划中显式设置 `connection.watchMode: "manual"`，再用前台 `watch` 命令运行。
+`watchMode` 默认为 auto：登记项目及已登记对话的 Hook 会确保唯一全局 watcher 运行。Windows 经现有 WMI 启动器创建独立 Node 进程，完整传入 root 和 codex-home，不依赖 Electron 或调用方进程树；`install-hooks --node` 保存精确 Node 路径。活 PID 或结果不明的启动不会重复派生。`stop-watch` 只写该实例的停止文件，不终止 Codex 后端；再次 `start-watch` 恢复 auto。部署由外部进程管理时，在首个计划中设置 `connection.watchMode: "manual"`（已登记项目时用 `stop-watch`），再用前台 `watch` 命令运行。
 
 主审正常结束时，Stop 可在同一轮请求有界继续；首次任务完成通知只由 taskFeedback 发送。协调器不会为尚未领取的同一结果再发一条 queue；已领取但中断的审查、已消费仍未验收的工作或主审自身未完成项才可请求后续项目续作。Stop 与 queue 争取同一个持久意图，不各发一份项目提示。watcher 处理文件变化，必要的有限恢复只读取状态，不定时唤醒模型审计项目。没有运行中的 watcher 时，外部结果不会由该进程处理，下次启动或显式对账时恢复。
 

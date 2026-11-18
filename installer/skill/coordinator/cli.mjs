@@ -216,6 +216,7 @@ const diagnosticCodes = new Set([
   'ENOTDIR',
 ])
 const diagnosticMessages = new Set([
+  'coordinator-connection-conflict',
   'invalid-review-action',
   'review-external-session-required',
   'review-feedback-unavailable',
@@ -292,6 +293,21 @@ function withConnection(settings, connection) {
     next.feedbackWatchPaths = connection.feedbackWatchPaths
   if (Object.hasOwn(connection, 'watchMode')) next.watchMode = connection.watchMode
   return validateSettings(next, settings.codexHome)
+}
+
+async function withSettings(root, codexHome, action) {
+  const store = new ProjectStore({ root: join(root, 'projects') })
+  return store.transaction('__settings__', async () =>
+    action(await loadSettings(root, codexHome), store),
+  )
+}
+
+function sameConnection(left, right) {
+  return (
+    left.controlPath === right.controlPath &&
+    left.watchMode === right.watchMode &&
+    JSON.stringify(left.feedbackWatchPaths) === JSON.stringify(right.feedbackWatchPaths)
+  )
 }
 
 async function withHookLock(root, action) {
@@ -414,7 +430,12 @@ export async function resolveNodeRuntime({ nodePath, explicitPath, probe = probe
 
 /** Install owned Hooks with verified Node, or return a missing-runtime guide without changing them. */
 export async function setupCoordinator({ root, codexHome, flags, nodeProbe }) {
-  const settings = await loadSettings(root, codexHome)
+  return withSettings(root, codexHome, (settings) =>
+    configureHooks({ root, codexHome, flags, nodeProbe, settings }),
+  )
+}
+
+async function configureHooks({ root, codexHome, flags, nodeProbe, settings }) {
   settings.nodePath = await resolveNodeRuntime({
     nodePath: settings.nodePath,
     explicitPath: flags.node,
@@ -796,17 +817,19 @@ export async function main(
         JSON.stringify(value, (key, entry) => (privateFields.has(key) ? undefined : entry)) + '\n',
       )
     if (command === 'install-hooks') {
-      const settings = await loadSettings(root, codexHome)
-      settings.nodePath = await resolveNodeRuntime({
-        nodePath: settings.nodePath,
-        explicitPath: flags.node,
-        probe: nodeProbe,
+      const installed = await withSettings(root, codexHome, async (settings) => {
+        settings.nodePath = await resolveNodeRuntime({
+          nodePath: settings.nodePath,
+          explicitPath: flags.node,
+          probe: nodeProbe,
+        })
+        if (!settings.nodePath) fail()
+        flags.node = settings.nodePath
+        const result = await installHooks(parsed)
+        if (result.status !== 'needs-repair')
+          await atomicWrite(join(root, 'settings.json'), jsonText(settings))
+        return result
       })
-      if (!settings.nodePath) fail()
-      flags.node = settings.nodePath
-      const installed = await installHooks(parsed)
-      if (installed.status !== 'needs-repair')
-        await atomicWrite(join(root, 'settings.json'), jsonText(settings))
       emit(installed)
       return 0
     }
@@ -818,27 +841,67 @@ export async function main(
       emit(await removeHooks(parsed))
       return 0
     }
-    let settings = await loadSettings(root, codexHome),
-      spec
+    const Runtime = Coordinator ?? (await import('./runtime.mjs')).Coordinator
+    const makeCoordinator = (settings) =>
+      new Runtime({
+        root,
+        codexHome,
+        controlPath: settings.controlPath,
+        feedbackWatchPaths: settings.feedbackWatchPaths,
+      })
     if (command === 'init') {
       const plan = JSON.parse(await readText(resolve(flags.file)))
       if (!object(plan)) fail()
       const { connection, ...project } = plan
-      settings = withConnection(settings, connection)
-      if (
-        !Object.hasOwn(connection ?? {}, 'feedbackWatchPaths') &&
-        !settings.feedbackWatchPaths.length
-      )
-        settings.feedbackWatchPaths = await discoverFeedbackSource(skillConfigPath)
-      spec = project
+      const result = await withSettings(root, codexHome, async (current, store) => {
+        const settings = withConnection(current, connection)
+        const initialized = (await store.list()).length > 0
+        if (initialized && !sameConnection(current, settings))
+          throw new Error('coordinator-connection-conflict')
+        const settingsPath = join(root, 'settings.json')
+        let previousSettings
+        if (!initialized) {
+          if (
+            !Object.hasOwn(connection ?? {}, 'feedbackWatchPaths') &&
+            !settings.feedbackWatchPaths.length
+          )
+            settings.feedbackWatchPaths = await discoverFeedbackSource(skillConfigPath)
+          // Bind the feedback source before exposing a project to Hooks or watchers.
+          previousSettings = await readText(settingsPath, true)
+          await atomicWrite(settingsPath, jsonText(settings))
+        }
+        const coordinator = makeCoordinator(settings)
+        let registered
+        try {
+          registered = await coordinator.init(project)
+        } catch (error) {
+          if (!initialized && !(await store.list()).length) {
+            if (previousSettings === null) await unlink(settingsPath)
+            else await atomicWrite(settingsPath, previousSettings)
+          }
+          throw error
+        }
+        return {
+          ...registered,
+          watchStatus: settings.feedbackWatchPaths.length
+            ? 'metadata-source-configured'
+            : 'no-feedback-metadata-source',
+          watcher: await ensureWatcher({
+            root,
+            codexHome,
+            settings,
+            store: coordinator.store,
+            launch,
+            probe,
+            automatic: true,
+          }),
+        }
+      })
+      emit(result)
+      return 0
     }
-    const Runtime = Coordinator ?? (await import('./runtime.mjs')).Coordinator
-    const coordinator = new Runtime({
-      root,
-      codexHome,
-      controlPath: settings.controlPath,
-      feedbackWatchPaths: settings.feedbackWatchPaths,
-    })
+    const settings = await loadSettings(root, codexHome)
+    const coordinator = makeCoordinator(settings)
     if (command === 'hook') {
       const input = await readHookInput(stdin)
       if (!input.ok) return 0
@@ -869,25 +932,6 @@ export async function main(
     }
     let result
     switch (command) {
-      case 'init':
-        result = await coordinator.init(spec)
-        await atomicWrite(join(root, 'settings.json'), jsonText(settings))
-        result = {
-          ...result,
-          watchStatus: settings.feedbackWatchPaths.length
-            ? 'metadata-source-configured'
-            : 'no-feedback-metadata-source',
-          watcher: await ensureWatcher({
-            root,
-            codexHome,
-            settings,
-            store: coordinator.store,
-            launch,
-            probe,
-            automatic: true,
-          }),
-        }
-        break
       case 'bind': {
         const state = await coordinator.status(flags.project)
         if (state.threadId !== env.CODEX_THREAD_ID)
@@ -925,23 +969,22 @@ export async function main(
         )
         return 0
       case 'start-watch':
-        await coordinator.status(flags.project)
-        settings.watchMode = 'auto'
-        await atomicWrite(join(root, 'settings.json'), jsonText(settings))
-        result = await ensureWatcher({
-          root,
-          codexHome,
-          settings,
-          store: coordinator.store,
-          launch,
-          probe,
-        })
-        break
       case 'stop-watch':
         await coordinator.status(flags.project)
-        settings.watchMode = 'manual'
-        await atomicWrite(join(root, 'settings.json'), jsonText(settings))
-        result = await stopWatcher(root, codexHome)
+        result = await withSettings(root, codexHome, async (current) => {
+          current.watchMode = command === 'start-watch' ? 'auto' : 'manual'
+          await atomicWrite(join(root, 'settings.json'), jsonText(current))
+          return command === 'start-watch'
+            ? ensureWatcher({
+                root,
+                codexHome,
+                settings: current,
+                store: coordinator.store,
+                launch,
+                probe,
+              })
+            : stopWatcher(root, codexHome)
+        })
         break
       case 'pause':
         result = await coordinator.pause(flags.project, flags.reason ?? 'explicit-user-pause')

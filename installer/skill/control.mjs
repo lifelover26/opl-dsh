@@ -342,6 +342,9 @@ if (command === 'codex-runtime-select') {
   if (!['opl-gateway', 'opl-gateway-openai'].includes(provider))
     throw new Error('未知 Gateway 通道')
   const preset = args.preset
+  const coordinatorWork = args['coordinator-work']
+  if (coordinatorWork !== undefined && !coordinatorWork.trim())
+    throw Error('coordinator-work 必须为非空工作 ID')
   const configuredEffort = args['reasoning-effort'] ?? config.dispatchReasoningEffort ?? 'high'
   if (
     configuredEffort !== undefined &&
@@ -354,6 +357,7 @@ if (command === 'codex-runtime-select') {
     provider,
     ...(preset ? { preset } : {}),
     ...(args['reasoning-effort'] ? { reasoningEffort: args['reasoning-effort'] } : {}),
+    ...(coordinatorWork === undefined ? {} : { coordinatorWork }),
   })
   await mkdir(config.ledger, { recursive: true, mode: 0o700 })
   const file = join(config.ledger, requestId + '.json'),
@@ -425,18 +429,19 @@ if (command === 'codex-runtime-select') {
         'taskFeedback',
       )
       if (registered.task?.taskId !== taskId) throw new Error('任务反馈登记未确认，未发送提示词')
-      const coordinator = args['coordinator-work']
-        ? await (
-            await import('./coordinator/dispatch-registration.mjs')
-          ).registerDispatchTask({
-            codexHome: coordinatorHome,
-            threadId: thread,
-            cwd: args.cwd,
-            workId: args['coordinator-work'],
-            taskId,
-            operationId: args.operation,
-          })
-        : { status: 'skipped', reason: 'not-requested' }
+      const coordinator =
+        coordinatorWork !== undefined
+          ? await (
+              await import('./coordinator/dispatch-registration.mjs')
+            ).registerDispatchTask({
+              codexHome: coordinatorHome,
+              threadId: thread,
+              cwd: args.cwd,
+              workId: coordinatorWork,
+              taskId,
+              operationId: args.operation,
+            })
+          : { status: 'skipped', reason: 'not-requested' }
       const receipt = await rpc('prompt', {
         sessionId,
         requestId,
@@ -444,8 +449,9 @@ if (command === 'codex-runtime-select') {
         content: [{ type: 'text', text: prompt }],
       })
       if (receipt.accepted !== true) throw new Error('未确认接收，请沿用同一个 operation ID 重试')
-      await save({ ...record, accepted: true })
-      console.log(JSON.stringify({ ...record, accepted: true, coordinator }))
+      const accepted = { ...record, accepted: true, coordinator }
+      await save(accepted)
+      console.log(JSON.stringify(accepted))
     }
   } finally {
     await fd.close()

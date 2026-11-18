@@ -158,6 +158,103 @@ test('init keeps local metadata settings while DSH owns the queue configuration'
   assert.equal(Object.hasOwn(f.calls[0][1], 'queue'), false)
 })
 
+async function writePlan(f, projectId, connection) {
+  const file = join(f.base, projectId + '.json')
+  await writeFile(
+    file,
+    JSON.stringify({ ...f.plan, projectId, threadId: projectId + '-thread', connection }),
+  )
+  return file
+}
+
+async function runIsolatedCli(f, ...args) {
+  const filename = fileURLToPath(new URL('../installer/skill/coordinator/cli.mjs', import.meta.url))
+  try {
+    const result = await execFileAsync(
+      process.execPath,
+      [filename, ...args, '--root', f.root, '--codex-home', f.codexHome],
+      { encoding: 'utf8', timeout: 30000 },
+    )
+    return { ...result, code: 0 }
+  } catch (error) {
+    return { stdout: error.stdout, stderr: error.stderr, code: error.code }
+  }
+}
+
+test('concurrent first projects cannot both claim different connections for one state root', async (t) => {
+  const f = await fixture(t)
+  const plans = await Promise.all(
+    ['first', 'second'].map(async (projectId) => {
+      const connection = {
+        controlPath: join(f.base, projectId + '-control.mjs'),
+        feedbackWatchPaths: [join(f.base, projectId + '-feedback')],
+        watchMode: 'manual',
+      }
+      return { connection, projectId, file: await writePlan(f, projectId, connection) }
+    }),
+  )
+  const results = await Promise.all(
+    plans.map(async (plan) => ({
+      ...plan,
+      ...(await runIsolatedCli(f, 'init', '--file', plan.file)),
+    })),
+  )
+  assert.deepEqual(results.map(({ code }) => code).sort(), [0, 1])
+  const winner = results.find(({ code }) => code === 0)
+  const rejected = results.find(({ code }) => code === 1)
+  assert.equal(rejected.stdout, '')
+  assert.match(rejected.stderr, /connection-conflict/)
+  const store = new ProjectStore({ root: join(f.root, 'projects') })
+  assert.deepEqual(
+    (await store.list()).map(({ projectId }) => projectId),
+    [winner.projectId],
+  )
+  const saved = JSON.parse(await readFile(join(f.root, 'settings.json'), 'utf8'))
+  assert.equal(saved.controlPath, winner.connection.controlPath)
+  assert.deepEqual(saved.feedbackWatchPaths, winner.connection.feedbackWatchPaths)
+})
+
+test('later projects can share the existing connection without changing it or resuming the watcher', async (t) => {
+  const f = await fixture(t)
+  const connection = {
+    controlPath: join(f.base, 'shared-control.mjs'),
+    feedbackWatchPaths: [join(f.base, 'shared-feedback')],
+    watchMode: 'manual',
+  }
+  const run = (...args) => f.run(args, { Coordinator: undefined })
+  const init = async (projectId, options) =>
+    run('init', '--file', await writePlan(f, projectId, options))
+  assert.equal((await init('owner', connection)).code, 0)
+  assert.equal((await run('start-watch', '--project', 'owner')).code, 0)
+  assert.equal((await run('stop-watch', '--project', 'owner')).code, 0)
+  const settingsPath = join(f.root, 'settings.json')
+  const bytes = await readFile(settingsPath, 'utf8')
+  assert.equal(JSON.parse(bytes).watchMode, 'manual')
+  for (const [name, options] of [
+    ['different-control', { ...connection, controlPath: join(f.base, 'foreign-control.mjs') }],
+    ['different-source', { ...connection, feedbackWatchPaths: [join(f.base, 'foreign-feedback')] }],
+  ]) {
+    const rejected = await init(name, options)
+    assert.equal(rejected.code, 1)
+    assert.equal(rejected.stdout, '')
+    assert.match(rejected.stderr, /connection-conflict/)
+    assert.equal(await readFile(settingsPath, 'utf8'), bytes)
+  }
+  assert.equal((await init('inherited', undefined)).code, 0)
+  assert.equal((await init('matching', connection)).code, 0)
+  const attemptedResume = await init('resume-from-plan', { ...connection, watchMode: 'auto' })
+  assert.equal(attemptedResume.code, 1)
+  assert.match(attemptedResume.stderr, /connection-conflict/)
+  assert.equal(await readFile(settingsPath, 'utf8'), bytes)
+  assert.equal(f.launchCalls.length, 1)
+  const store = new ProjectStore({ root: join(f.root, 'projects') })
+  assert.deepEqual((await store.list()).map(({ projectId }) => projectId).sort(), [
+    'inherited',
+    'matching',
+    'owner',
+  ])
+})
+
 test('missing queue settings remain unconnected without discovering executables or credentials', async (t) => {
   const f = await fixture(t)
   assert.equal((await f.run(['init', '--file', f.planFile])).code, 0)
