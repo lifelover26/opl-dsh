@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
@@ -35,7 +35,7 @@ afterEach(async () => {
 })
 
 it('projects Qwen request deltas per native turn and excludes restored ACP usage', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'opl-qwen-harness-usage-'))
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'opl-qwen-harness-usage-')))
   roots.push(root)
   const home = join(root, 'host')
   const state = join(root, 'cli')

@@ -61,6 +61,8 @@ Kilo Ling 3.2 Flash（`inclusionai/ling-3.2-flash:free`）默认推荐 Kilo Code
 
 EAC 的 AMD 路由保留完整 `amd/` ID：`amd/DeepSeek-V4.1-Flash`、`amd/DeepSeek-V4-Flash` 推荐 DSH；`amd/MiMo-V2.6-Flash` 推荐 MiMo Code；`amd/GLM-5.3-Flash` 推荐 ZCode；`amd/Qwen3.8-27B`、`amd/MiniCPM-V-4.7-35B-A3B`、`amd/MiniCPM5-2B`、`amd/Gemma-4-31B-IT`、`amd/MiniCPM-V-4.7-1B` 推荐 Pi。均经 OFM 的 EAC Chat 转发，不与同名免费渠道合并。来源当前未声明这些路由的真实推理档位，外部 Harness 保留来源默认设置；DSH 来源菜单的 light、balanced、deep 控制输出预算。图片与上下文能力沿用来源实时声明，不根据模型名称补齐。
 
+`amd/Qwen3.8-27B` 也可以显式添加 Qwen Code 组合。该组合使用官方 Qwen Code 0.27.3 和 OFM 免费转发，只启用文本输入与完全访问；Windows 需要 Git Bash。已有执行组合及 Pi 推荐不变。
+
 OFM 的 Kilo 目录对 `liquid/lfm-3-1.7b:free` 声明 `low`、`medium`、`high` 三档推理强度，默认 `high`，且不提供关闭思考。当前 OPL 适配使用的官方 Kilo ACP 自定义 provider 没有可写的 effort 配置项，因此不把来源档位伪装成 Kilo 选项；显式档位请求会在发送前拒绝，未指定档位时保留上游默认设置。
 
 EAC 的 `opencode/nemotron-3.5-lightning-free`、`opencode/nemotron-3.5-super-vl-free` 和 `opencode/flint-40b-free` 保留完整 ID，使用 OFM 转发，不改成裸 ID 的 OpenCode 直连通道。Pi 的 `thinkingmachines/inkling:free` 与已有的 `thinkingmachines/inkling-small:free` 分开配置；Kilo 的 `thinkingmachines/inkling-2-small:free` 是独立的 Kilo Gateway 免费路由；`google/gemma-4-31b-it:free` 不提供推理档位菜单。EAC 的 `deepseek-ai/deepseek-v4.1-flash` 在新模型发现中推荐 DSH；其他未知模型不会因此变成推荐项，组合仍需用户选择添加。

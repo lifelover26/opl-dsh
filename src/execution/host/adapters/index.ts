@@ -59,7 +59,6 @@ export function nativeHarnessMatches(id: string, ref: ModelRef): boolean {
 export function automaticHarness(ref: ModelRef): string | undefined {
   if (isHiddenOfmSelection(ref)) return undefined
   if (antigravityAdapter.matches(ref)) return antigravityAdapter.id
-  if (qwenCodeAdapter.matches(ref)) return qwenCodeAdapter.id
   if (officialOpenCodeModel(ref) !== undefined) return 'opencode'
   if (
     ref.provider === OFM_PROVIDER &&
