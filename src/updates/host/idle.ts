@@ -53,6 +53,7 @@ export interface IdleUpdateOperations {
 export class IdleUpdateCoordinator {
   private timer: ReturnType<typeof setTimeout> | undefined
   private work: Promise<void> | undefined
+  private manual: Promise<void> | undefined
   private closed = false
   private epoch = 0
   private lastActivity = Date.now()
@@ -72,7 +73,7 @@ export class IdleUpdateCoordinator {
 
   /** A real user action restarts the complete idle interval. */
   activity(): void {
-    if (this.closed || this.handedOff || this.handingOff) return
+    if (this.closed || this.handedOff || this.handingOff || this.manual) return
     this.lastActivity = Date.now()
     this.dueAt = undefined
     this.operations.publish(undefined)
@@ -82,6 +83,10 @@ export class IdleUpdateCoordinator {
   /** Explicit postponement permits a later attempt after the complete idle interval. */
   postpone(): void {
     if (this.handedOff || this.handingOff) throw Error('Update handoff has already begun')
+    if (this.manual) {
+      this.cancel()
+      return
+    }
     this.failedVersion = undefined
     this.activity()
   }
@@ -108,6 +113,58 @@ export class IdleUpdateCoordinator {
     this.changed()
   }
 
+  /** One explicit attempt bypasses idle timing, never activity or version checks. */
+  applyNow(version: string): Promise<void> {
+    if (this.closed || this.handedOff || this.handingOff)
+      return Promise.reject(Error('Update handoff has already begun or the service is closed'))
+    if (this.manual) return this.manual
+    this.epoch++
+    const epoch = this.epoch
+    this.dueAt = undefined
+    this.failedVersion = version
+    this.operations.publish(undefined)
+    if (this.timer) clearTimeout(this.timer)
+    this.timer = undefined
+    const work = this.apply(version, epoch).finally(() => {
+      if (this.manual === work) this.manual = undefined
+    })
+    this.manual = work
+    return work
+  }
+
+  private async apply(version: string, epoch: number): Promise<void> {
+    await this.work?.catch(() => {})
+    if (!this.currentAttempt(version, epoch)) return
+    let reason: OplUpdateRestart['reason']
+    try {
+      reason = await this.operations.inspect()
+    } catch {
+      reason = 'activity-unknown'
+    }
+    if (!this.currentAttempt(version, epoch)) return
+    if (reason) {
+      this.operations.publish({ phase: 'blocked', dueAt: null, reason })
+      return
+    }
+    await this.handoff(version)
+  }
+
+  private currentAttempt(version: string, epoch: number): boolean {
+    const state = this.operations.status()
+    return (
+      !this.closed &&
+      !this.handedOff &&
+      !this.handingOff &&
+      !state.localCandidate &&
+      this.epoch === epoch &&
+      !state.preparing &&
+      !state.checking &&
+      state.pendingVersion === version &&
+      state.release?.version === version &&
+      state.release.compatibility === 'enhancement'
+    )
+  }
+
   /** A launcher that could not complete quit must leave the current Host usable. */
   handoffFailed(): void {
     if (this.closed) return
@@ -120,7 +177,7 @@ export class IdleUpdateCoordinator {
 
   private schedule(ms: number): void {
     if (this.timer) clearTimeout(this.timer)
-    if (this.closed || this.handedOff || this.handingOff) return
+    if (this.closed || this.handedOff || this.handingOff || this.manual) return
     this.timer = setTimeout(() => {
       this.timer = undefined
       if (this.work) {
@@ -160,14 +217,23 @@ export class IdleUpdateCoordinator {
       try {
         await this.operations.prepare()
       } catch {
-        if (!this.closed) this.fail(version)
+        if (!this.closed && epoch === this.epoch) this.fail(version)
         return
       }
-      if (!this.closed && this.operations.status().pendingVersion !== version) {
-        this.fail(version)
+      if (this.closed) return
+      if (this.operations.status().pendingVersion !== version) {
+        const current = this.operations.status()
+        if (
+          epoch === this.epoch ||
+          (this.failedVersion !== version &&
+            current.release?.version === version &&
+            current.policy?.mode === policy.mode &&
+            current.error)
+        )
+          this.fail(version)
         return
       }
-      if (this.closed || epoch !== this.epoch) return
+      if (epoch !== this.epoch) return
     }
     if (policy.mode !== 'idle') return
     let reason: OplUpdateRestart['reason']
@@ -176,7 +242,7 @@ export class IdleUpdateCoordinator {
     } catch {
       reason = 'activity-unknown'
     }
-    if (this.closed || epoch !== this.epoch) return
+    if (!this.currentAttempt(version, epoch)) return
     if (reason) {
       this.dueAt = undefined
       this.lastActivity = Date.now()
@@ -200,6 +266,10 @@ export class IdleUpdateCoordinator {
       this.schedule(this.dueAt - Date.now())
       return
     }
+    await this.handoff(version)
+  }
+
+  private async handoff(version: string): Promise<void> {
     this.handingOff = true
     this.operations.publish({ phase: 'handoff', dueAt: null, reason: null })
     try {
@@ -222,6 +292,6 @@ export class IdleUpdateCoordinator {
     this.closed = true
     this.epoch++
     if (this.timer) clearTimeout(this.timer)
-    await this.work?.catch(() => {})
+    await Promise.allSettled([this.work, this.manual])
   }
 }

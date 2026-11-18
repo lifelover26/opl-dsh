@@ -20,7 +20,7 @@ export const zh = {
   timingRange: '请输入整数：未操作时间为 1–120 分钟，倒计时为 15–300 秒。',
   saveTiming: '保存等待时间',
   savingPolicy: '正在保存更新方式…',
-  localCandidate: '当前为本地候选版本，不会自动替换。你可选择“准备自动更新”来准备发布版。',
+  localCandidate: '当前为本地候选版本，不会自动替换。请从发布页下载并运行完整安装器更新。',
   check: '检查更新',
   refreshStatus: '重新读取状态',
   checking: '正在检查更新…',
@@ -39,8 +39,17 @@ export const zh = {
     '此版本需要手动安装完整套件。自动更新仅适用于兼容的 OPL 增强层，请下载并按发布说明更新。',
   download: '下载完整套件',
   prepare: '准备自动更新',
+  applyNow: '立即更新',
+  applying: '正在检查任务并准备重启…',
+  updateBlockedTitle: '暂时无法更新',
+  updateBusyBody:
+    '仍有任务正在运行，本次不会退出或重启。请先完成或手动停止任务，再点击“立即更新”。',
+  later: '稍后再试',
   preparing: '正在下载并准备更新…',
-  pending: '已准备版本 {version}。退出应用后自动安装，下次打开生效。',
+  pending: '已准备版本 {version}，可点击“立即更新”；退出应用后也会自动安装。',
+  pendingUnchecked: '已准备版本 {version}，检查更新后可立即安装。',
+  pendingInstaller: '已准备版本 {version}；当前候选版本请使用完整安装器更新。',
+  restartBlocked: '已准备版本 {version}，本次未重启。',
   restartWaiting: '已准备版本 {version}，正在等待空闲后重启。',
   restartCountdown: '已准备版本 {version}，将在 {seconds} 秒后重启更新。',
   restartHandoff: '正在重启以应用版本 {version}…',
@@ -61,6 +70,7 @@ export const zh = {
   'policy-failed': '无法确认更新方式是否保存，请重新读取状态后再操作。',
   'postpone-failed': '无法确认重启是否延后，请重新读取状态后再操作。',
   'prepare-failed': '未能确认更新已准备完成，请检查更新后再操作。',
+  'apply-failed': '无法确认立即更新是否已开始，请重新读取状态后再操作。',
   'prepare-network-failed': '更新包下载失败，通常是网络或代理连接中断。请检查网络后重试。',
   'prepare-proxy-failed': '更新包下载失败，代理连接未建立。请检查代理地址和网络后重试。',
   'prepare-timeout': '更新包下载超时，请检查网络或代理后重试。',
@@ -73,7 +83,7 @@ export const zh = {
   noticeShort: '更新',
   noticeAvailable: 'OPL 更新可用：{version}。在通用设置的“更新”中查看。',
   noticeFullSuite: '完整套件更新可用：{version}。在通用设置的“更新”中查看。',
-  noticePending: '已准备 OPL {version}。退出应用后自动安装，下次打开生效。',
+  noticePending: '已准备 OPL {version}，可在通用设置中立即更新。',
   noticeWaiting: '已准备 OPL {version}，正在等待空闲后重启。',
   noticeCountdown: 'OPL {version} 将在 {seconds} 秒后重启更新，可在通用设置中延后。',
   noticeCountdownShort: '重启 {seconds} 秒',
@@ -104,7 +114,7 @@ export const en: Record<UpdateLocaleKey, string> = {
   saveTiming: 'Save waiting times',
   savingPolicy: 'Saving update behavior…',
   localCandidate:
-    'This local candidate build is not replaced automatically. Choose “Prepare automatic update” to prepare a release.',
+    'This local candidate build is not replaced automatically. Download and run the full installer from the release page.',
   check: 'Check for updates',
   refreshStatus: 'Read status again',
   checking: 'Checking for updates…',
@@ -123,9 +133,18 @@ export const en: Record<UpdateLocaleKey, string> = {
     'Install the full suite manually for this release. Automatic updates apply only to compatible OPL enhancements. Download the installer and follow the release notes.',
   download: 'Download full suite',
   prepare: 'Prepare automatic update',
+  applyNow: 'Update now',
+  applying: 'Checking tasks and preparing to restart…',
+  updateBlockedTitle: 'Update cannot start yet',
+  updateBusyBody:
+    'Tasks are still running. The app will not exit or restart. Finish or stop those tasks yourself, then choose “Update now” again.',
+  later: 'Try later',
   preparing: 'Downloading and preparing update…',
-  pending:
-    'Version {version} is prepared. It installs after exit and applies next time the app opens.',
+  pending: 'Version {version} is prepared. Choose “Update now” or exit the app to install it.',
+  pendingUnchecked: 'Version {version} is prepared. Check for updates before applying it now.',
+  pendingInstaller:
+    'Version {version} is prepared. Use the full installer to update this candidate build.',
+  restartBlocked: 'Version {version} is prepared. The app has not restarted.',
   restartWaiting: 'Version {version} is prepared. Waiting until idle to restart.',
   restartCountdown: 'Version {version} is prepared. Restarting to update in {seconds} seconds.',
   restartHandoff: 'Restarting to apply version {version}…',
@@ -152,6 +171,8 @@ export const en: Record<UpdateLocaleKey, string> = {
     'Could not confirm that the restart was postponed. Read status again before making another change.',
   'prepare-failed':
     'Could not confirm update preparation. Check for updates before making another change.',
+  'apply-failed':
+    'Could not confirm whether the update started. Read status again before trying another action.',
   'prepare-network-failed':
     'The update download failed because the network or proxy connection was interrupted.',
   'prepare-proxy-failed':
@@ -171,7 +192,7 @@ export const en: Record<UpdateLocaleKey, string> = {
   noticeShort: 'Update',
   noticeAvailable: 'OPL update available: {version}. See Updates in General settings.',
   noticeFullSuite: 'Full suite update available: {version}. See Updates in General settings.',
-  noticePending: 'OPL {version} is prepared for automatic installation after exit.',
+  noticePending: 'OPL {version} is prepared. Apply it now in General settings.',
   noticeWaiting: 'OPL {version} is prepared. Waiting until idle to restart.',
   noticeCountdown:
     'OPL {version} restarts to update in {seconds} seconds. Postpone in General settings.',

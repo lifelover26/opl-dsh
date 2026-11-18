@@ -164,7 +164,10 @@ function remote(t, value, override) {
   return calls
 }
 
-async function fixture(t, { localCandidate = false, originalPatch = {} } = {}) {
+async function fixture(
+  t,
+  { localCandidate = false, originalPatch = {}, customLauncher = false } = {},
+) {
   // Simulate a supported target for installer logic on Linux-only unit-test hosts.
   if (!(
     (process.platform === 'win32' && process.arch === 'x64') ||
@@ -203,6 +206,8 @@ async function fixture(t, { localCandidate = false, originalPatch = {} } = {}) {
     suiteSha256: old.artifact.suiteSha256,
     enhancementSha256: old.artifact.sha256,
     localCandidate,
+    compatibilityLauncher: join(root, 'launch.vbs'),
+    launcher: join(root, customLauncher ? 'private-launcher.vbs' : 'launch.vbs'),
     skillDir: join(root, 'codex/skills/opl-dsh-official'),
     installedAt: '2026-11-06T00:00:00Z',
   }
@@ -212,6 +217,7 @@ async function fixture(t, { localCandidate = false, originalPatch = {} } = {}) {
   const state = {
     officialVersion,
     installs: [],
+    installLaunchers: [],
     failNew: false,
     failRollback: false,
     unconfirmed: false,
@@ -241,6 +247,7 @@ async function fixture(t, { localCandidate = false, originalPatch = {} } = {}) {
     assert.ok(args.includes('--no-launch'))
     assert.ok(args.includes('--update-if-stopped'))
     state.installs.push(args)
+    state.installLaunchers.push(options.env.OPL_DESKTOP_LAUNCHER)
     const source = args[3],
       rollback = source === release
     if (rollback && state.failRollback) return { status: 2 }
@@ -277,6 +284,28 @@ test('ordinary startup never checks, downloads or executes an updater without a 
   assert.equal(await readFile(join(value.root, 'installation.json'), 'utf8'), value.originalBytes)
   assert.equal(await readPreparedUpdate(value.root), null)
   await assert.rejects(readFile(join(value.root, 'enhancement-update.lock')), { code: 'ENOENT' })
+})
+
+test('updates preserve custom launchers and regenerate only the Suite entry point', async (t) => {
+  for (const customLauncher of [false, true]) {
+    await t.test(customLauncher ? 'custom entry point' : 'Suite entry point', async (t) => {
+      const value = await fixture(t, { customLauncher })
+      remote(t, releaseFixture())
+      await prepareUpdate(value.root, value.application)
+      await refreshEnhancements(value.root, value.application)
+      assert.deepEqual(value.state.installLaunchers, [
+        customLauncher ? value.receipt.launcher : undefined,
+      ])
+    })
+  }
+  await t.test('rollback preserves the custom entry point', async (t) => {
+    const value = await fixture(t, { customLauncher: true })
+    remote(t, releaseFixture())
+    await prepareUpdate(value.root, value.application)
+    value.state.failNew = true
+    await refreshEnhancements(value.root, value.application)
+    assert.deepEqual(value.state.installLaunchers, [value.receipt.launcher, value.receipt.launcher])
+  })
 })
 
 test('a candidate is replaced only after explicit prepare and a later stopped startup', async (t) => {

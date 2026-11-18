@@ -1,12 +1,12 @@
 /** Shared update projection for General settings and the resident sidebar notice. */
-import type { OplUpdatePolicy, OplUpdateStatus } from '../contracts.ts'
+import type { OplUpdatePolicy, OplUpdateRestart, OplUpdateStatus } from '../contracts.ts'
 import type { Config } from './config.ts'
 import { observeUpdateActivity } from './activity.ts'
 import { updatePolicy, validUpdatePolicy } from './policy.ts'
 
 /** One foreground request owns the accepted status until it completes or is superseded. */
 export type UpdateOperation =
-  'status' | 'check' | 'automatic' | 'policy' | 'prepare' | 'cancel' | 'postpone'
+  'status' | 'check' | 'automatic' | 'policy' | 'prepare' | 'apply' | 'cancel' | 'postpone'
 export type UpdateFailure = `${UpdateOperation}-failed`
 
 /** Accepted Host facts and the current Client request. */
@@ -147,6 +147,25 @@ export class UpdateController {
     await this.run('prepare', () => this.config.api.prepare())
   }
 
+  /** @returns A blocking reason only for an accepted response on this connection. */
+  async applyNow(): Promise<Exclude<OplUpdateRestart['reason'], null> | undefined> {
+    if (
+      !this.writable() ||
+      this.view.status!.localCandidate ||
+      this.view.status!.release?.compatibility !== 'enhancement'
+    )
+      return
+    const epoch = this.epoch
+    await this.run('apply', () => this.config.api.applyNow())
+    if (
+      this.active &&
+      epoch === this.epoch &&
+      !this.view.failure &&
+      this.view.status?.restart?.phase === 'blocked'
+    )
+      return this.view.status.restart.reason ?? 'activity-unknown'
+  }
+
   /** @returns Whether a download or prepared update can be cancelled now. */
   canCancel(): boolean {
     return (
@@ -157,9 +176,11 @@ export class UpdateController {
       this.view.status?.restart?.phase !== 'handoff' &&
       (this.view.operation === null ||
         this.view.operation === 'prepare' ||
+        this.view.operation === 'apply' ||
         (this.view.operation === 'status' &&
           Boolean(this.view.status?.preparing || this.view.status?.pendingVersion))) &&
       (this.view.operation === 'prepare' ||
+        this.view.operation === 'apply' ||
         Boolean(this.view.status?.preparing) ||
         Boolean(this.view.status?.pendingVersion))
     )
