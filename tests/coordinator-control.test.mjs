@@ -52,7 +52,12 @@ test('real helper requests only the public wake configuration and never prints o
   )
   await writeFile(
     join(root, 'config.json'),
-    JSON.stringify({ home: root, profile, autoStart: true, launcher: join(root, 'must-not-launch') }),
+    JSON.stringify({
+      home: root,
+      profile,
+      autoStart: true,
+      launcher: join(root, 'must-not-launch'),
+    }),
   )
   const result = await readWakeSettings({ controlPath: join(root, 'control.mjs') })
   assert.equal(result.status, 'available')

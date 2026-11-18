@@ -262,7 +262,8 @@ export function CoordinationSection({
         <section className={css.collaborationGroup}>
           <h3 className={css.name}>清理 DSH 会话</h3>
           <p className={css.muted}>
-            在 Windows 上打开 Codex，输入“使用 $opl-dsh-session-cleanup，把 DSH 已归档的会话移到回收站，保留未归档会话”。也可以指定某个会话。
+            在 Windows 上打开 Codex，输入“使用 $opl-dsh-session-cleanup，把 DSH
+            已归档的会话移到回收站，保留未归档会话”。也可以指定某个会话。
           </p>
         </section>
       )}
