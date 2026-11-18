@@ -29,6 +29,8 @@ export interface CombinationDefinition {
   autoEnabled?: boolean
   /** The user turned automatic readiness management off; readiness must not re-enable it. */
   autoEnabledDisabled?: boolean
+  /** The user explicitly chose another default for this model. */
+  defaultDisabled?: boolean
 }
 export type OfmDiscoveryStatus =
   | { kind: 'official'; harness: string; label: string }

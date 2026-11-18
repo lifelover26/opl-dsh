@@ -74,7 +74,7 @@ function observable<T>(initial: T) {
 function settings(mode: 'current' | 'history' = 'current') {
   const store = observable<ConfigFormSnapshot<StatisticsSettings>>({
     status: 'ready',
-    value: { conversationStats: mode },
+    value: { conversationStats: mode, enhancedConversationStats: true },
     base: {},
     user: {},
     revision: 4,
@@ -83,7 +83,7 @@ function settings(mode: 'current' | 'history' = 'current') {
   const set = vi.fn(async (_field: string, value: unknown) => {
     store.publish({
       ...store.getSnapshot(),
-      value: { conversationStats: value as 'current' | 'history' },
+      value: { conversationStats: value as 'current' | 'history', enhancedConversationStats: true },
       revision: 5,
     })
     return true
@@ -101,6 +101,15 @@ function settings(mode: 'current' | 'history' = 'current') {
     mutate: vi.fn(),
   }
   return { form, store, set }
+}
+
+function disabledSettings() {
+  const value = settings()
+  value.store.publish({
+    ...value.store.getSnapshot(),
+    value: { conversationStats: 'current', enhancedConversationStats: false },
+  })
+  return value
 }
 
 function render(element: Parameters<Root['render']>[0]) {
@@ -197,7 +206,7 @@ describe('activity count scope', () => {
     act(() =>
       f.preference.store.publish({
         ...f.preference.store.getSnapshot(),
-        value: { conversationStats: 'history' },
+        value: { conversationStats: 'history', enhancedConversationStats: true },
       }),
     )
     expect(f.container.textContent).toBe('4/9')
@@ -205,7 +214,7 @@ describe('activity count scope', () => {
     act(() =>
       f.preference.store.publish({
         ...f.preference.store.getSnapshot(),
-        value: { conversationStats: 'current' },
+        value: { conversationStats: 'current', enhancedConversationStats: true },
       }),
     )
     act(() =>
@@ -215,6 +224,19 @@ describe('activity count scope', () => {
       }),
     )
     expect(f.container.textContent).toBe('2/4')
+  })
+
+  it('preserves official counts until enhanced statistics is explicitly enabled', () => {
+    const f = fixture()
+    for (const enhancedConversationStats of [false, true, false]) {
+      act(() =>
+        f.preference.store.publish({
+          ...f.preference.store.getSnapshot(),
+          value: { conversationStats: 'current', enhancedConversationStats },
+        }),
+      )
+      expect(f.container.textContent).toBe(enhancedConversationStats ? '2/3' : '4/9')
+    }
   })
 
   it('uses native statistics while the current-history projection is absent', () => {
@@ -272,6 +294,26 @@ describe('Host-backed count preference', () => {
     }
     return { ...value, ...view, button, choose }
   }
+
+  it('hides the scope selector while enhanced statistics is disabled', () => {
+    const value = disabledSettings()
+    const view = render(
+      createElement(StatisticsPreferenceRow, {
+        form: value.form,
+        t: (key: keyof typeof zh) => zh[key],
+      }),
+    )
+    expect(view.container.querySelector('[data-opl-preference="conversation-counts"]')).toBeNull()
+    act(() =>
+      value.store.publish({
+        ...value.store.getSnapshot(),
+        value: { conversationStats: 'current', enhancedConversationStats: true },
+      }),
+    )
+    expect(
+      view.container.querySelector('[data-opl-preference="conversation-counts"]'),
+    ).not.toBeNull()
+  })
 
   it('saves a choice through the existing settings form and reflects accepted Host state', async () => {
     const f = fixture()

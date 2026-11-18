@@ -158,6 +158,55 @@ it('requires the OFM lane to be enabled before its listed model can enable a com
   })
 })
 
+it.each([undefined, true])(
+  'projects a saved official pairing with defaultDisabled=%s',
+  async (defaultDisabled) => {
+    const ref = { provider: 'our-free-model', model: 'moonshotai/kimi-k3' }
+    const store = new ExecutionCatalogStore(await workspace())
+    const catalog = defaultExecutionCatalog()
+    catalog.combinations.push({
+      id: 'auto:' + JSON.stringify([ref.provider, ref.model]),
+      name: 'Kimi K3 + Kimi Code',
+      modelRef: ref,
+      harnessRef: 'kimi-code',
+      permissionPolicy: 'workspace',
+      isDefault: false,
+      enabled: true,
+      autoEnabled: false,
+      autoEnabledDisabled: true,
+      ...(defaultDisabled === undefined ? {} : { defaultDisabled }),
+    })
+    await store.set(catalog)
+    const ctx = {
+      get: () => undefined,
+      llm: {
+        listProviders: () => [{ id: ref.provider, name: 'OFM' }],
+        listConfigurableProviders: () => [],
+        listModels: async () => [{ id: ref.model }],
+      },
+    }
+    const resolved = await new ExecutionModelResolver(ctx as never, store, undefined, async () => ({
+      catalog: [{ id: ref.model, route: ref.provider }],
+      membership: { [ref.provider]: [ref.model] },
+      settings: { enabled: true, forward: { enabled: true, running: true } },
+    })).resolve()
+    expect(resolved.combinations.filter((item) => item.modelRef.model === ref.model)).toEqual([
+      expect.objectContaining({
+        id: 'auto:' + JSON.stringify([ref.provider, ref.model]),
+        harnessRef: 'kimi-code',
+        isDefault: defaultDisabled !== true,
+      }),
+    ])
+    expect(JSON.parse(await readFile(store.filename, 'utf8')).combinations).toContainEqual(
+      expect.objectContaining({
+        id: 'auto:' + JSON.stringify([ref.provider, ref.model]),
+        isDefault: defaultDisabled !== true,
+      }),
+    )
+    await store.dispose()
+  },
+)
+
 it('disables persisted automatic combinations whose vendor model is no longer ready', async () => {
   const ready = { provider: 'our-free-model', model: 'moonshotai/kimi-k3' }
   const stopped = { provider: 'our-free-model', model: 'moonshotai/kimi-k2.6' }
@@ -343,7 +392,7 @@ it('keeps Kilo-channel Nemotron 3 Super on Kilo instead of OpenCode', () => {
   expect(adapterFor('opencode', ref)).toBeUndefined()
 })
 
-it('migrates a saved Nemotron OpenCode pairing to Kilo', async () => {
+it('preserves saved manual Nemotron OpenCode pairings', async () => {
   const catalog = defaultExecutionCatalog()
   catalog.combinations.push({
     id: 'legacy-nemotron-opencode',
@@ -353,6 +402,18 @@ it('migrates a saved Nemotron OpenCode pairing to Kilo', async () => {
     permissionPolicy: 'workspace',
     isDefault: false,
     enabled: true,
+  })
+  catalog.combinations.push({
+    id: 'user-nemotron-opencode',
+    name: 'My Nemotron route',
+    modelRef: { provider: 'our-free-model', model: 'nvidia/nemotron-3-super-120b-a12b:free' },
+    harnessRef: 'opencode',
+    permissionPolicy: 'full-access',
+    isDefault: false,
+    enabled: true,
+    generated: false,
+    autoEnabled: false,
+    autoEnabledDisabled: true,
   })
   const store = {
     get: async () => catalog,
@@ -371,15 +432,24 @@ it('migrates a saved Nemotron OpenCode pairing to Kilo', async () => {
   expect(resolved.combinations).toContainEqual(
     expect.objectContaining({
       id: 'legacy-nemotron-opencode',
-      name: 'Kilo Nemotron 3 Super + Kilo Code',
-      harnessRef: 'kilo',
+      name: 'Nemotron 3 Super + OpenCode',
+      harnessRef: 'opencode',
+    }),
+  )
+  expect(resolved.combinations).toContainEqual(
+    expect.objectContaining({
+      id: 'user-nemotron-opencode',
+      name: 'My Nemotron route',
+      harnessRef: 'opencode',
+      permissionPolicy: 'full-access',
+      generated: false,
     }),
   )
 })
 
-it('removes retired Gateway Gemini pairings after route retirement', async () => {
+it('preserves manual Gateway Gemini pairings when automatic routes change', async () => {
   const catalog = defaultExecutionCatalog()
-  const retired = [
+  const saved = [
     {
       id: 'legacy-gemini-31-opencode',
       name: 'Gemini 3.1 Pro + OpenCode',
@@ -405,11 +475,22 @@ it('removes retired Gateway Gemini pairings after route retirement', async () =>
       harnessRef: 'antigravity',
       permissionPolicy: 'read-only' as const,
       isDefault: true,
-      enabled: true,
-      generated: true,
+      enabled: false,
+      autoEnabled: false,
+      autoEnabledDisabled: true,
     },
   ]
-  catalog.combinations.push(...retired)
+  const stale = {
+    ...saved[2]!,
+    id: 'auto:["opl-gateway","gemini::gemini-3.1-pro"]',
+    name: 'Gemini 3.1 Pro + Antigravity CLI',
+    modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' },
+    enabled: true,
+    autoEnabled: true,
+    autoEnabledDisabled: false,
+    generated: true,
+  }
+  catalog.combinations.push(...saved, stale)
   const store = {
     get: async () => catalog,
     cleanLegacyCombinations: async (
@@ -423,21 +504,21 @@ it('removes retired Gateway Gemini pairings after route retirement', async () =>
   const ctx = {
     get: () => undefined,
     llm: {
-      listProviders: () => [],
+      listProviders: () => [{ id: 'opl-gateway', name: 'OPL Gateway' }],
       listConfigurableProviders: () => [],
-      listModels: async () => [],
+      listModels: async () => [{ id: 'gemini::gemini-4-argon' }],
     },
   }
   const resolved = await new ExecutionModelResolver(ctx as never, store as never).resolve()
-  for (const item of retired) {
-    expect(resolved.combinations).not.toContainEqual(expect.objectContaining({ id: item.id }))
-    expect(catalog.combinations).not.toContainEqual(expect.objectContaining({ id: item.id }))
-  }
+  expect(resolved.combinations).toEqual(expect.arrayContaining(saved))
+  expect(resolved.combinations.some((item) => item.id === stale.id)).toBe(false)
+  expect(catalog.combinations).toEqual(expect.arrayContaining(saved))
+  expect(catalog.combinations.some((item) => item.id === stale.id)).toBe(false)
 })
 
 const QUALIFICATION_AUTO = 'auto:["our-free-model","opl-qualification-free"]'
 
-it('hides rejected OFM lanes and saved combinations after legacy cleanup, without hiding other sources', async () => {
+it('hides OFM lanes rejected by the required official client', async () => {
   const stored = defaultExecutionCatalog()
   stored.combinations[0]!.name = 'DeepSeek + DSH'
   for (const provider of ['our-free-model', 'our-free-model-region'])
@@ -1246,6 +1327,38 @@ it('retains live model projections and automatic ownership when pruning persiste
     expect(
       (await store.get()).combinations.some((item) => item.modelRef.model === stale.model),
     ).toBe(false)
+  } finally {
+    await store.dispose()
+  }
+})
+
+it('preserves explicit manual ownership after a disk round trip without stop markers', async () => {
+  const store = new ExecutionCatalogStore(await workspace())
+  const saved = {
+    id: BIG_PICKLE_AUTO,
+    name: 'My explicit DSH route',
+    modelRef: BIG_PICKLE,
+    harnessRef: 'dsh',
+    permissionPolicy: 'workspace' as const,
+    isDefault: true,
+    enabled: false,
+    generated: false,
+  }
+  try {
+    const catalog = defaultExecutionCatalog()
+    catalog.combinations.push(saved)
+    await store.set(catalog)
+    const ctx = {
+      get: () => undefined,
+      llm: {
+        listProviders: () => [{ id: 'our-free-model', name: 'OFM' }],
+        listConfigurableProviders: () => [],
+        listModels: async () => [{ id: BIG_PICKLE.model }],
+      },
+    }
+    const result = await new ExecutionModelResolver(ctx as never, store).resolve()
+    expect(result.combinations.find((item) => item.id === saved.id)).toEqual(saved)
+    expect((await store.get()).combinations.find((item) => item.id === saved.id)).toEqual(saved)
   } finally {
     await store.dispose()
   }

@@ -15,6 +15,7 @@ import type {
   GatewayRememberedLogin,
 } from '../contracts/account.ts'
 import { notifyAccountChanged } from './account-changes.ts'
+import { gatewayGroupNotGranted } from '../contracts/account.ts'
 import { splitProxyHint, summarizeDiscoveryErrors } from './discovery-errors.ts'
 import settingsCss from '../../shared/client/SettingsSection.module.css'
 import loginCss from './LoginForm.module.css'
@@ -423,15 +424,18 @@ export function OplGatewaySection(
                 const syncHint = state.modelSyncError
                   ? splitProxyHint(state.modelSyncError.message).hint
                   : undefined
+                const visibleGroups = (state.groups ?? []).filter(
+                  (group) => !gatewayGroupNotGranted(group),
+                )
                 const groupHints = summarizeDiscoveryErrors(
-                  (state.groups ?? [])
+                  visibleGroups
                     .filter((group) => group.enabled !== false && group.catalog?.diagnostic)
                     .map((group) => group.catalog!.diagnostic!.message),
                 ).hints.filter((hint) => hint !== syncHint)
                 return (
                   <>
                     <div className={css.modelRows}>
-                      {state.groups?.map((group) => (
+                      {visibleGroups.map((group) => (
                         <div key={group.id} className={css.modelRow}>
                           <div>
                             <strong>{group.name}</strong>

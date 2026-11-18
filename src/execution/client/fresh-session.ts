@@ -82,11 +82,10 @@ export function protectEditBranchesFromNewSession(
 }
 
 /**
- * Keep the global New Conversation action usable when no Workspace is selected.
+ * Provide explicit projectless navigation through the ungrouped Workspace key.
  *
- * Workspace-group actions still call the official implementation with an explicit id. The
- * no-argument shortcut creates an unattached Session through the public `cwd`-optional API and
- * opens it directly, so it appears in the official Ungrouped group without inventing a project.
+ * Untargeted New Session and the empty Workspace key create an unattached Session
+ * through the existing Host owner.
  * @param workspace - official navigation service.
  * @param createProjectless - create and catalogue an unattached ordinary Session.
  * @returns disposer restoring the original start action.
@@ -98,19 +97,19 @@ export function allowProjectlessSessions(
   const original = workspace.startSession
   let disposed = false
   const start: UiWorkspace['startSession'] = (workspaceId, options) => {
-    // Both the global action and the ungrouped group's plus button have no
-    // Workspace target. They may differ in `clearPreviousDraft`, but neither
-    // should be routed through the official workspace-only resolver. A prompt
-    // already attached to the call is the only case that must keep the
-    // official path, because it carries an explicit draft target.
-    const projectless = workspaceId === undefined && options?.prompt === undefined
+    const projectless =
+      (workspaceId === '' || workspaceId === undefined) &&
+      options?.prompt === undefined &&
+      options?.agentPreset === undefined
     if (!projectless) {
       original.call(workspace, workspaceId, options)
       return
     }
     void createProjectless()
       .then((sessionId) => {
-        if (!disposed) workspace.openSession(sessionId)
+        if (!disposed) {
+          workspace.openSession(sessionId)
+        }
       })
       .catch((error) => {
         if (!disposed) console.warn('projectless Session creation failed:', error)

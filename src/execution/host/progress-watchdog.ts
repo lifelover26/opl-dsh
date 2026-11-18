@@ -21,8 +21,15 @@ export class ProgressWatchdog {
     limits: ProgressWatchdogLimits,
     private readonly onExpire: (reason: ProgressExpiryReason) => void,
   ) {
-    this.limits = { firstProgressMs: limits.firstProgressMs, idleProgressMs: limits.idleProgressMs }
-    for (const [name, value] of Object.entries(this.limits)) {
+    this.limits = {
+      enabled: limits.enabled,
+      firstProgressMs: limits.firstProgressMs,
+      idleProgressMs: limits.idleProgressMs,
+    }
+    for (const [name, value] of Object.entries({
+      firstProgressMs: limits.firstProgressMs,
+      idleProgressMs: limits.idleProgressMs,
+    })) {
       if (!Number.isInteger(value) || value <= 0 || value > 2_147_483_647)
         throw new RangeError(`${name} must be a positive integer timer duration`)
     }
@@ -30,7 +37,7 @@ export class ProgressWatchdog {
 
   /** Starts the first-progress deadline when execution begins. Repeated calls do nothing. */
   start(): void {
-    if (this.started || this.disposed) return
+    if (this.started || this.disposed || !this.limits.enabled) return
     this.started = true
     this.progressRemaining = this.limits.firstProgressMs
     this.arm()

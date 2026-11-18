@@ -236,6 +236,17 @@ export async function verifyOfficialCapabilities({
   officialVersion,
   readTools,
 }) {
+  const initialBundles = await wire('pluginManager/listBundles')
+  assert.equal(
+    initialBundles.find((bundle) => bundle.name === autoReviewBundle)?.enabled,
+    false,
+    'Fresh official Auto Review must be disabled',
+  )
+  const autoReviewChange = await wire('pluginManager/setBundleEnabled', {
+    name: autoReviewBundle,
+    enabled: true,
+  })
+  assert.equal(autoReviewChange.application, 'applied', 'Official Auto Review was not enabled')
   const inventory = officialCapabilityInventory(
     await wire('pluginManager/listBundles'),
     await wire('agentPresets/list'),
@@ -310,6 +321,7 @@ export async function verifyOfficialCapabilities({
   )
   inventory.autoReview = {
     ...inventory.autoReview,
+    defaultEnabled: false,
     selectablePreset: 'auto',
     defaultSelectable: false,
   }

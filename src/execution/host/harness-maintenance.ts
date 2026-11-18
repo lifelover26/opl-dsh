@@ -127,6 +127,7 @@ const PINNED_COMPATIBLE_RELEASES = {
   opencode: '1.19.0',
   kilo: '7.8.8',
   pi: '1.2.0',
+  'qwen-code': '0.27.3',
 } as const
 
 /** Quote fixed installer arguments before they enter the Bash command string. */
@@ -207,6 +208,12 @@ export function maintenancePlan(item: HarnessInstallation): MaintenancePlan {
       `@earendil-works/pi-coding-agent@${PINNED_COMPATIBLE_RELEASES.pi}`,
       ['--ignore-scripts'],
       PINNED_COMPATIBLE_RELEASES.pi,
+    )
+  if (['install', 'update'].includes(item.maintenanceAction) && item.id === 'qwen-code')
+    return npmGlobalInstall(
+      `@qwen-code/qwen-code@${PINNED_COMPATIBLE_RELEASES['qwen-code']}`,
+      [],
+      PINNED_COMPATIBLE_RELEASES['qwen-code'],
     )
   throw Error('此 Harness 没有自动更新入口')
 }

@@ -15,6 +15,7 @@ const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
 const teamBundle = '@deepseek-ai/dsh-experimental-agent-team-profile'
 const autoReviewBundle = '@deepseek-ai/dsh-experimental-auto-review'
 const officialBundles = [teamBundle, autoReviewBundle]
+const autoEnabledBundles = [teamBundle]
 const officialVersion = '0.2.2-rc.1'
 
 async function runtime(
@@ -227,14 +228,14 @@ for (const owner of ['app-boot', 'official-bundles'])
   test(`profile installation reads the official web template from ${owner}`, async (t) => {
     const result = await runtime(t, owner)
     assert.deepEqual(result.template, bundles)
-    assert.deepEqual(result.manifest.dsh.profile.bundles, [...bundles, ...officialBundles])
+    assert.deepEqual(result.manifest.dsh.profile.bundles, [...bundles, ...autoEnabledBundles])
     assert.deepEqual(result.install, { profile: 'desktop', args: ['add', result.archive] })
   })
 
 test('CLI installation uses the requested custom profile with the web template', async (t) => {
   const result = await runtime(t, 'app-boot', undefined, { cliProfile: 'opl-linux' })
   assert.deepEqual(result.template, bundles)
-  assert.deepEqual(result.manifest.dsh.profile.bundles, [...bundles, ...officialBundles])
+  assert.deepEqual(result.manifest.dsh.profile.bundles, [...bundles, ...autoEnabledBundles])
   assert.deepEqual(result.install, { profile: 'opl-linux', args: ['add', result.archive] })
 })
 
@@ -242,7 +243,7 @@ test('feature installation restores suite execution collaboration dependency ord
   const result = await runtime(t, 'app-boot', undefined, { featurePlugins: true })
   assert.deepEqual(result.manifest.dsh.profile.bundles, [
     ...bundles,
-    ...officialBundles,
+    ...autoEnabledBundles,
     '@one-person-lab/dsh-opl',
     '@one-person-lab/dsh-execution',
     '@one-person-lab/dsh-collaboration',
@@ -270,7 +271,7 @@ test('official Team selection precedes OPL and preserves unrelated profile field
     dsh: {
       profile: {
         ...existing.dsh.profile,
-        bundles: [...bundles, ...officialBundles, '@one-person-lab/dsh-opl'],
+        bundles: [...bundles, ...autoEnabledBundles, '@one-person-lab/dsh-opl'],
       },
     },
   })
@@ -288,8 +289,9 @@ test('first migration places already enabled official bundles before the enhance
   const result = await runtime(t, 'official-bundles', existing)
   assert.deepEqual(result.manifest.dsh.profile.bundles, [
     ...bundles,
-    ...officialBundles,
+    teamBundle,
     '@one-person-lab/dsh-opl',
+    autoReviewBundle,
   ])
 })
 
@@ -309,9 +311,9 @@ test('Team activation refuses a package outside the actual official desktop coho
   )
 })
 
-test('a desktop with built-in Team selects only the remaining official optional bundle', async (t) => {
+test('a desktop with built-in Team keeps experimental Auto Review disabled by default', async (t) => {
   const result = await runtime(t, 'official-bundles', undefined, { promotedTeam: true })
-  assert.deepEqual(result.manifest.dsh.profile.bundles, [...bundles, autoReviewBundle])
+  assert.deepEqual(result.manifest.dsh.profile.bundles, bundles)
   assert.equal(result.retirement.bin, 'dsh')
   assert.deepEqual(result.retirement.options, { userLayer: false })
   assert(
@@ -362,4 +364,12 @@ test('Team promotion preserves a previously disabled Auto Review bundle', async 
   })
   assert.deepEqual(result.manifest.dependencies, existing.dependencies)
   assert.deepEqual(result.manifest.dsh.profile.bundles, [...bundles, '@one-person-lab/dsh-opl'])
+})
+
+test('installation preserves an explicitly enabled Auto Review without enabling it on a new profile', async (t) => {
+  const existing = {
+    dsh: { profile: { bundles: [...bundles, autoReviewBundle, '@one-person-lab/dsh-opl'] } },
+  }
+  const result = await runtime(t, 'official-bundles', existing, { promotedTeam: true })
+  assert.deepEqual(result.manifest, existing)
 })

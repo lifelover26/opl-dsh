@@ -29,10 +29,13 @@ import z from '@deepseek-ai/schemastery'
 
 export interface Config {
   executionLimits: ProgressWatchdogLimits
+  /** Opt in to remembering native permission selections for future Sessions. */
+  rememberPermissionPreset: boolean
   ofmConnectionTimeoutMs: number
 }
 export const Config = z.object({
   executionLimits: executionLimitsSchema,
+  rememberPermissionPreset: z.boolean().default(false),
   ofmConnectionTimeoutMs: z.number().step(1).min(100).max(120_000).default(10_000),
 })
 
@@ -58,7 +61,7 @@ export const inject = [
  * @returns once execution consumers are ready.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
-  ctx.effect(() => installPermissionMemory(ctx))
+  ctx.effect(() => installPermissionMemory(ctx, config.rememberPermissionPreset))
   const ofmOwner = createOfmOwnerApiReader(ctx, config.ofmConnectionTimeoutMs)
   const harness = createHarnessService(ctx, {
     readOfm: () => ofmOwner.read('/summary'),
@@ -73,8 +76,14 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   applyOfmModelSource(ctx, {
     providers: [OFM_PROVIDER],
     connection: createOfmApiConnection(async (request) => {
-      if (request.url !== '/api/our-free-model/clients') throw Error('OFM 连接读取路径无效')
-      return { status: 200, body: await ofmOwner.read('/clients') }
+      const path =
+        request.url === '/api/our-free-model/clients'
+          ? '/clients'
+          : request.url === '/api/our-free-model/summary'
+            ? '/summary'
+            : undefined
+      if (!path) throw Error('OFM 连接读取路径无效')
+      return { status: 200, body: await ofmOwner.read(path) }
     }, ''),
   })
   const reviewerMaintenance: AutoReviewMaintenance = {
@@ -102,6 +111,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     ctx,
     () => harness.executionLimits(),
     (options) => !options.purpose,
+    () => harness.executionLimits().enabled,
   )
   // Register the official MiniMax Code account models through the public LLM extension
   // point. Without this the two models exist in the execution catalog but the official

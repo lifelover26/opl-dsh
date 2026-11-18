@@ -6,7 +6,6 @@ import { UpdateService } from '../updates/host/index.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import * as gateway from '../gateway/host/index.ts'
 import * as nativeModelProviders from '../compat/host/model-providers.ts'
-import * as gitBash from '../shell/host/git-bash.ts'
 import * as conversationStats from '../conversation-stats/host/index.ts'
 import * as mcpApps from '../mcp-apps/host/index.ts'
 import * as suiteControl from '../shared/host/suite-control.ts'
@@ -31,9 +30,10 @@ export const inject = [
 
 /** Mount account services and publish the authenticated local control binding.
  * @param ctx - Official Host context.
+ * @param config - Suite settings from the profile.
+ * @returns Once local control and update services have started.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
-  if (process.platform === 'win32') await ctx.plugin(gitBash, {})
   await ctx.plugin(gateway, structuredClone(config.gateway.get()) as gateway.OplGatewayConfig)
   await ctx.plugin(conversationStats)
   await ctx.plugin(mcpApps)

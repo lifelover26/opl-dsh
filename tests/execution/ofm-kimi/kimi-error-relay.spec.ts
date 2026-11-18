@@ -61,6 +61,35 @@ describe('Kimi request error observation', () => {
     relay.begin()
     expect(relay.end()).toBeUndefined()
   })
+  it('preserves provider retry hints and accepts a successful CLI retry', async () => {
+    let attempts = 0
+    const { relay, call, count } = await setup((res) => {
+      if (++attempts === 1) {
+        res.writeHead(429, {
+          'content-type': 'application/json',
+          'retry-after': '2',
+          'retry-after-ms': '1500',
+          'x-should-retry': 'true',
+        })
+        res.end('{"error":{"message":"temporary quota"}}')
+      } else {
+        res.writeHead(200, { 'content-type': 'text/event-stream' })
+        res.end('data: {"type":"message_stop"}\n\n')
+      }
+    })
+    relay.begin()
+    const first = await call()
+    expect(first.status).toBe(429)
+    expect(first.headers.get('retry-after')).toBe('2')
+    expect(first.headers.get('retry-after-ms')).toBe('1500')
+    expect(first.headers.get('x-should-retry')).toBe('true')
+    await first.text()
+    const recovered = await call()
+    expect(recovered.status).toBe(200)
+    await recovered.text()
+    expect(count()).toBe(2)
+    expect(relay.end()).toBeUndefined()
+  })
   it('retains a failure after streamed answer text', async () => {
     const { relay, call } = await setup((res) => {
       res.writeHead(200, { 'content-type': 'text/event-stream' })

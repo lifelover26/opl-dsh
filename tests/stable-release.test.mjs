@@ -52,6 +52,7 @@ function evidence(platform = 'darwin') {
           autoReview: {
             owner: 'official',
             mounted: true,
+            defaultEnabled: false,
             selectablePreset: 'auto',
             defaultSelectable: false,
           },
@@ -85,8 +86,15 @@ test('release requires official capability ownership and a completed native Team
       autoReview: {
         owner: 'official',
         mounted: true,
+        defaultEnabled: false,
         selectablePreset: 'auto',
         defaultSelectable: true,
+      },
+    },
+    {
+      autoReview: {
+        ...evidence().checks.runtime.officialCapabilities.autoReview,
+        defaultEnabled: true,
       },
     },
     { oneShotProviders: [] },

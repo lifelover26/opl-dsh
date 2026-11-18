@@ -11,6 +11,13 @@ import type { ModelRef } from '../../../src/contracts/catalog.ts'
 import type { ExternalModelRoute } from '../../../src/execution/host/model-sources.ts'
 import type { HarnessSession } from '../../../src/execution/contracts/sessions.ts'
 
+const fourGeminiModels = [
+  'gemini-4-carbon',
+  'gemini-4-hydrogen',
+  'gemini-4-argon',
+  'gemini-3.8-flash',
+]
+
 const route: ExternalModelRoute = {
   baseURL: 'https://gateway.example.test/v1',
   model: 'gemini-4-carbon',
@@ -19,22 +26,17 @@ const route: ExternalModelRoute = {
 }
 
 describe('OpenCode OPL Gateway Gemini pairing', () => {
-  it('matches only the two supported Gateway Gemini model references', () => {
-    const supported: ModelRef[] = [
-      { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' },
-      { provider: 'opl-gateway', model: 'gemini::gemini-4-hydrogen' },
-    ]
+  it('matches only the four supported Gateway Gemini model references', () => {
+    const supported: ModelRef[] = fourGeminiModels.map((model) => ({
+      provider: 'opl-gateway',
+      model: `gemini::${model}`,
+    }))
     for (const ref of supported) {
       expect(isOpenCodeGatewayGeminiModel(ref)).toBe(true)
       expect(adapterFor(OPENCODE_HARNESS, ref)?.id).toBe(OPENCODE_HARNESS)
       expect(defaultHarness(ref)).toBe('antigravity')
     }
-    for (const retired of [
-      'gemini-4-argon',
-      'gemini-3.8-flash',
-      'gemini-3.1-pro',
-      'gemini-3.7-flash',
-    ]) {
+    for (const retired of ['gemini-3.1-pro', 'gemini-3.7-flash']) {
       expect(
         isOpenCodeGatewayGeminiModel({ provider: 'opl-gateway', model: `gemini::${retired}` }),
       ).toBe(false)
@@ -68,18 +70,16 @@ describe('OpenCode OPL Gateway Gemini pairing', () => {
     ).toThrow(/模型来源返回的模型/)
   })
 
-  it('prepares an OPL Gateway route without registering an OFM source', async () => {
-    const resolve = vi.fn(async () => route)
-    const launch = await adapterFor(OPENCODE_HARNESS, {
-      provider: 'opl-gateway',
-      model: 'gemini::gemini-4-carbon',
-    })!.prepare!(
+  it.each(fourGeminiModels)('prepares the exact Gateway Chat route for %s', async (model) => {
+    const modelRef = { provider: 'opl-gateway', model: `gemini::${model}` }
+    const resolve = vi.fn(async () => ({ ...route, model }))
+    const launch = await adapterFor(OPENCODE_HARNESS, modelRef)!.prepare!(
       {} as never,
       {
         id: 'gemini-opencode',
-        combination: 'opencode/gemini::gemini-4-carbon',
+        combination: `opencode/${modelRef.model}`,
         harnessRef: OPENCODE_HARNESS,
-        modelRef: { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' },
+        modelRef,
         cwd: process.cwd(),
         acpSessionId: '',
         origin: { kind: 'harness', sessionId: 'gemini-opencode' },
@@ -97,16 +97,12 @@ describe('OpenCode OPL Gateway Gemini pairing', () => {
         nativeBridgePath: 'bridge.js',
       },
     )
-    expect(resolve).toHaveBeenCalledWith(
-      OPENCODE_HARNESS,
-      { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' },
-      'chat',
-    )
+    expect(resolve).toHaveBeenCalledWith(OPENCODE_HARNESS, modelRef, 'chat')
     const content = JSON.parse(launch.env.OPENCODE_CONFIG_CONTENT!) as {
       provider: { oplopencode: { models: Record<string, unknown> } }
     }
     expect(content.provider.oplopencode.models).toEqual({
-      'gemini-4-carbon': { name: 'gemini-4-carbon' },
+      [model]: { name: model },
     })
   })
 })

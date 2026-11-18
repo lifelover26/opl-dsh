@@ -370,7 +370,13 @@ test('Team model fixture rejects failed or malformed task results', () => {
   assert.throws(() => officialTeamProbeResponse(body), /tool failed/)
 })
 
-function capabilityProbe({ changeProjection = () => {}, ignoreEnable = false, tools } = {}) {
+function capabilityProbe({
+  changeProjection = () => {},
+  ignoreEnable = false,
+  autoReviewEnabled = false,
+  autoReviewApplication = 'applied',
+  tools,
+} = {}) {
   let enabled = false
   let prompted = false
   const calls = []
@@ -405,7 +411,20 @@ function capabilityProbe({ changeProjection = () => {}, ignoreEnable = false, to
         },
         wire: async (method, args) => {
           calls.push({ method, args })
-          if (method === 'pluginManager/listBundles') return promotedBundles()
+          if (method === 'pluginManager/listBundles')
+            return promotedBundles().map((bundle) =>
+              bundle.name === '@deepseek-ai/dsh-experimental-auto-review' && !autoReviewEnabled
+                ? { ...bundle, enabled: false, rows: [] }
+                : bundle,
+            )
+          if (method === 'pluginManager/setBundleEnabled') {
+            assert.deepEqual(args, {
+              name: '@deepseek-ai/dsh-experimental-auto-review',
+              enabled: true,
+            })
+            autoReviewEnabled = autoReviewApplication === 'applied'
+            return { application: autoReviewApplication }
+          }
           if (method === 'agentPresets/list') return { presets: [] }
           if (method === 'agentTeams/setEnabled') {
             assert.equal(args.agentId, 'lead-session')
@@ -473,10 +492,20 @@ test('promoted Team qualification saves mode before prompting and verifies durab
   assert.equal(result.agentTeams.taskBoard, true)
   assert.equal(result.agentTeams.taskId, 'task-1')
   assert.equal(result.agentTeams.childSessionId, 'child-session')
+  assert.equal(result.autoReview.defaultEnabled, false)
+  assert.equal(result.autoReview.mounted, true)
   assert.deepEqual(probe.calls.find((item) => item.method === 'agentTeams/setEnabled').args, {
     agentId: 'lead-session',
     enabled: true,
   })
+})
+
+test('official qualification rejects Auto Review enabled at startup or an unapplied activation', async () => {
+  await assert.rejects(capabilityProbe({ autoReviewEnabled: true }).run(), /must be disabled/)
+  await assert.rejects(
+    capabilityProbe({ autoReviewApplication: 'restart-required' }).run(),
+    /was not enabled/,
+  )
 })
 
 test('promoted Team qualification rejects unsaved mode, missing children and incomplete or misowned boards', async () => {

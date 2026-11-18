@@ -4,6 +4,8 @@ import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { setupStatus, finishSetup } from './state.ts'
 import type { SetupStatus, LoginChoice } from '../contracts.ts'
+import { nativeShellStatus, selectNativeShell } from '../../shell/host/selection.ts'
+import type { NativeShellStatus } from '../../shell/contracts/selection.ts'
 declare module '@deepseek-ai/cordis' {
   interface Context {
     oplSetup: SetupService
@@ -21,6 +23,14 @@ export class SetupService extends TypertRemoteService {
   ]
   constructor(ctx: Context) {
     super(ctx, 'oplSetup')
+  }
+  @Remote('native-shell')
+  nativeShell(): NativeShellStatus {
+    return nativeShellStatus(this.ctx)
+  }
+  @Remote('select-native-shell')
+  selectNativeShell(enabled: boolean): Promise<NativeShellStatus> {
+    return selectNativeShell(this.ctx, enabled)
   }
   @Remote('status')
   status(): Promise<SetupStatus> {

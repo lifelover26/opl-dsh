@@ -43,6 +43,15 @@ const hostBuild = await bundle({
   outfile: join(output, 'package/lib/index.js'),
 })
 await buildNativeBridge(root, output)
+await bundle({
+  entryPoints: [join(root, 'src/shell/host/git-bash.ts')],
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node24',
+  packages: 'external',
+  outfile: join(output, 'package/lib/git-bash.js'),
+})
 for (const [entry, name] of [
   ['bridge-entry', 'antigravity-bridge'],
   ['shell-hook', 'antigravity-shell-hook'],
@@ -136,6 +145,7 @@ await writeFile(
       main: './lib/index.js',
       exports: {
         '.': './lib/index.js',
+        './git-bash': './lib/git-bash.js',
         './client': './lib/client.js',
         './typert': './lib/typert.host.js',
         './package.json': './package.json',
@@ -226,6 +236,7 @@ for (const file of [
   'official-pnpm.cjs',
   'migrate.cjs',
   'setup.mjs',
+  'native-shell-pending.cjs',
   'superagent.mjs',
   'desktop-platform.mjs',
   'update.mjs',

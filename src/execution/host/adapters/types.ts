@@ -20,6 +20,8 @@ export interface AdapterLaunch {
   command: string
   args: string[]
   env: NodeJS.ProcessEnv
+  /** Native path spelling required by the CLI's project identity; never changes the DSH workspace. */
+  acpCwd?: string
   /** Resolved source explicitly supports image input; absence refuses image prompts. */
   promptImageSupport?: boolean
   /** Private bridge requests explicitly bound by this adapter, never a generic credential API. */
@@ -113,6 +115,8 @@ export interface HarnessAdapter {
     acp: AcpRequestSurface,
     record: HarnessSession,
     snapshot: AcpSessionSnapshot,
+    /** Actual connection launch, for checking the CLI's effective endpoint against its source. */
+    launch?: AdapterLaunch,
   ): Promise<AcpSessionConfigureResult | void>
   /**
    * Re-check the pinned parameters against the latest advertised options without

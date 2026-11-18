@@ -660,6 +660,23 @@ try {
     desktopPipe,
     evidenceFile.replace(/\.json$/, '') + '-plugins',
   )
+  if (process.platform === 'win32') {
+    const verifier = join(repo, 'scripts/verify-official-runtime.mjs')
+    evidence.checks.nativeShellSelection = JSON.parse(
+      await run(process.execPath, [verifier, root, '--select-git-bash']),
+    )
+    await stopDesktop()
+    const { release } = JSON.parse(await readFile(join(suite, 'installation.json'), 'utf8'))
+    await run(executable(), [join(release, 'native-shell-pending.cjs'), app, profile], {
+      env: { ...environment, ELECTRON_RUN_AS_NODE: '1' },
+      timeout: 30000,
+    })
+    await startDesktop()
+    Object.assign(
+      evidence.checks.runtime,
+      JSON.parse(await run(process.execPath, [verifier, root, '--verify-git-bash'])),
+    )
+  }
   await stopDesktop()
   if (process.platform === 'darwin' && artifact.superagent) {
     const { verifySuperagent } = await import('./qualification-superagent.mjs')

@@ -3,16 +3,19 @@ import * as execution from './execution.ts'
 import AutoReviewService from '../auto-review/host/index.ts'
 import { Config } from '../execution/host/plugin-config.ts'
 export { Config }
-export const inject = execution.inject
+export const inject = [...new Set([...execution.inject, ...AutoReviewService.inject])]
 export const name = 'opl-execution'
+
+/** Mount the execution runtime before the reviewer adapter that uses its binding port.
+ * @param ctx - Official Host context.
+ * @param config - Execution settings from the profile.
+ * @returns Once the runtime and reviewer adapter have started.
+ */
 export async function apply(ctx: Context, config: Config): Promise<void> {
-  const runtime = await ctx.plugin(execution, { executionLimits: config.executionLimits })
-  const missing = Object.keys(runtime.inject).filter(
-    (service) => runtime.ctx.get(service) === undefined,
-  )
-  if (missing.length) throw new Error(`执行服务缺少依赖：${missing.join(', ')}`)
-  await ctx.plugin(AutoReviewService, config.toolAutoReview.get())
-  ctx.inject(['settings'], (child) => {
-    child.effect(() => child.settings.configure({ auto: false }, ctx.fiber))
+  await ctx.plugin(execution, {
+    executionLimits: config.executionLimits.get(),
+    rememberPermissionPreset: config.rememberPermissionPreset.get(),
   })
+  await ctx.plugin(AutoReviewService, config.toolAutoReview.get())
+  ctx.effect(() => ctx.settings.configure({ auto: false }, ctx.fiber))
 }

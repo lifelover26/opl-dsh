@@ -48,6 +48,63 @@ test('split settings preserve expressions, unknown fields and explicit destinati
   }
 })
 
+const permissionMigrations = [
+  {
+    name: 'moves the split execution default even without an opl-suite row',
+    original: '- id: opl-execution\n  config:\n    lastPermissionPreset: read-only\n',
+    expected: [
+      { id: 'opl-execution', config: {} },
+      { id: 'permission', config: { defaultPreset: 'read-only' } },
+    ],
+  },
+  {
+    name: 'migrates an old monolithic settings row',
+    original: '- id: opl-suite\n  config:\n    lastPermissionPreset: workspace-write\n',
+    expected: [
+      { id: 'opl-suite', config: {} },
+      { id: 'permission', config: { defaultPreset: 'workspace-write' } },
+    ],
+  },
+  {
+    name: 'preserves a user-set official default amid both old settings rows',
+    original:
+      '- id: opl-suite\n  config:\n    lastPermissionPreset: workspace-write\n- id: opl-execution\n  config:\n    lastPermissionPreset: danger-full-access\n    rememberPermissionPreset: false\n- id: permission\n  config:\n    defaultPreset: read-only\n',
+    expected: [
+      { id: 'opl-suite', config: {} },
+      { id: 'opl-execution', config: { rememberPermissionPreset: false } },
+      { id: 'permission', config: { defaultPreset: 'read-only' } },
+    ],
+  },
+  {
+    name: 'never passes an invalid legacy preset into the official permission service',
+    original: '- id: opl-execution\n  config:\n    lastPermissionPreset: auto\n',
+    expected: [{ id: 'opl-execution', config: { lastPermissionPreset: 'auto' } }],
+  },
+]
+
+for (const { name, original, expected } of permissionMigrations)
+  test(name, async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'opl-split-permission-test-'))
+    const file = join(dir, 'cordis.patch.yml')
+    await writeFile(file, original)
+    const options = {
+      dir,
+      yaml,
+      withFileLock: async (_file, operation) => operation(),
+      writeFileAtomic: writeFile,
+      stopped: async () => {},
+    }
+    try {
+      await split.migrateSplitSettings(options)
+      const migrated = await readFile(file, 'utf8')
+      assert.deepEqual(yaml.parse(migrated, { logLevel: 'silent' }), expected)
+      await split.migrateSplitSettings(options)
+      assert.equal(await readFile(file, 'utf8'), migrated)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
 test('split updates retain independent and legacy disabled choices', () => {
   const names = [
     '@one-person-lab/dsh-opl',

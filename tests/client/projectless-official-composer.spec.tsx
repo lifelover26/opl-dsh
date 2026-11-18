@@ -8,6 +8,7 @@ import type { ComposerBarProps } from '@deepseek-ai/dsh-client-ui-conversation/c
 import {
   installProjectlessOfficialComposer,
   installProjectlessUngroupedPlus,
+  installProjectlessWorkspaceChoice,
 } from '../../src/execution/client/ProjectlessOfficialComposer.tsx'
 import { markProjectlessSession } from '../../src/execution/client/fresh-session.ts'
 
@@ -113,6 +114,7 @@ describe('official projectless composer adapter', () => {
       disabled: false,
     })
     expect(render(f, restored).props.onRequestWorkspace).toBeUndefined()
+    expect(render(f, regular).props).toEqual({ ...liveProps, ...regular })
     const id = 'session-projectless-restricted'
     markProjectlessSession(id)
     const restricted = { sessionId: id as never, variant: 'composer' as const, disabled: true }
@@ -278,7 +280,7 @@ describe('official ungrouped sidebar action adapter', () => {
       preventDefault,
       stopPropagation,
     })
-    expect(startSession).toHaveBeenCalledExactlyOnceWith(undefined, {
+    expect(startSession).toHaveBeenCalledExactlyOnceWith('', {
       clearPreviousDraft: true,
     })
     expect(preventDefault).toHaveBeenCalledOnce()

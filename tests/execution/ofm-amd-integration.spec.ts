@@ -60,6 +60,16 @@ describe('EAC AMD route integration', () => {
           name: 'EAC MiMo V2.6 Flash（AMD） + MiMo Code',
         }),
       )
+      const qwen = ref('amd/Qwen3.8-27B')
+      expect(resolved.recommendations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ modelRef: qwen, harnessRef: 'pi' }),
+          expect.objectContaining({ modelRef: qwen, harnessRef: 'qwen-code' }),
+        ]),
+      )
+      expect(resolved.combinations).not.toContainEqual(
+        expect.objectContaining({ modelRef: qwen, harnessRef: 'qwen-code' }),
+      )
     }
   })
 

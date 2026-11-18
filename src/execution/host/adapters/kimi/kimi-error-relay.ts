@@ -146,9 +146,23 @@ export async function startKimiErrorRelay(target: {
               /* Non-JSON SSE fields and malformed provider diagnostics carry no trusted detail. */
             }
           }
-          if (status >= 400) turn.failure = kimiProviderFailure(status, {}) ?? 'HARNESS_PROVIDER'
+          // A successful model retry replaces the preceding failure in this prompt.
+          if (
+            current === turn &&
+            !turn.cancelled &&
+            !path?.split('?')[0].endsWith('/count_tokens')
+          ) {
+            if (status >= 400) turn.failure = kimiProviderFailure(status, {}) ?? 'HARNESS_PROVIDER'
+            else delete turn.failure
+          }
           res.writeHead(status, {
             'content-type': response.headers['content-type'] ?? 'application/json',
+            ...(response.headers['retry-after']
+              ? { 'retry-after': response.headers['retry-after'] }
+              : {}),
+            ...(response.headers['retry-after-ms']
+              ? { 'retry-after-ms': response.headers['retry-after-ms'] }
+              : {}),
             ...(response.headers['x-should-retry']
               ? { 'x-should-retry': response.headers['x-should-retry'] }
               : {}),

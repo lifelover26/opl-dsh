@@ -118,9 +118,9 @@ function preferredGroup(
   const definition = GATEWAY_GROUPS.find((group) => group.name === name)
   const labels = new Set([name, ...(definition?.aliases ?? [])].map((value) => value.toLowerCase()))
   const matches = groups.filter((group) => labels.has(group.label.trim().toLowerCase()))
-  if (matches.length !== 1) {
+  if (matches.length > 1) {
     throw new GatewayControlError(
-      'group_selection_required',
+      'ambiguous_group',
       `This account needs one available ${name} key group`,
     )
   }

@@ -49,6 +49,7 @@ export const defaultExecutionCatalog = (): ExecutionCatalog => ({
         command: 'muse',
         adapter: 'muse-protocol-v1',
       },
+      { id: 'qwen-code', name: 'Qwen Code', kind: 'acp', command: 'qwen', adapter: 'acp-v1' },
       { id: 'pi', name: 'Pi Coding Agent', kind: 'acp', command: 'pi', adapter: 'pi-rpc-v1' },
       { id: 'kilo', name: 'Kilo Code', kind: 'acp', command: 'kilo', adapter: 'acp-v1' },
       { id: 'vibe', name: 'Mistral Vibe', kind: 'acp', command: 'vibe-acp', adapter: 'acp-v1' },
@@ -187,10 +188,12 @@ export function normalizeCatalog(value: unknown): ExecutionCatalog {
         permissionPolicy,
         isDefault: x.isDefault === true,
         enabled: x.enabled !== false,
+        ...(x.generated === undefined ? {} : { generated: x.generated === true }),
         ...(x.autoEnabled === undefined ? {} : { autoEnabled: x.autoEnabled === true }),
         ...(x.autoEnabledDisabled === undefined
           ? {}
           : { autoEnabledDisabled: x.autoEnabledDisabled === true }),
+        ...(x.defaultDisabled === undefined ? {} : { defaultDisabled: x.defaultDisabled === true }),
       }
     })
   if (input.version !== 2)

@@ -115,6 +115,7 @@ import {
   parseMiniMaxContextUsage,
   parseMiniMaxTurnUsage,
 } from './usage-account.ts'
+import { QwenTurnUsage } from './adapters/qwen/usage.ts'
 import type { HarnessContextReading } from '../contracts/usage.ts'
 export type { HarnessStartRequest } from '../../contracts/types.ts'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
@@ -292,6 +293,7 @@ interface Active {
   contextUsage?: import('../contracts/usage.ts').HarnessContextUsage
   contextWindowRecorded?: number
   vibeUsage?: VibeTurnUsageTracker
+  qwenUsage?: QwenTurnUsage
   watchdog?: ProgressWatchdog
   deadlineError?: string
   deadlineCleanup?: Promise<void>
@@ -395,6 +397,7 @@ export class HarnessService {
     this.progressLimits = {
       firstProgressMs: limits.firstProgressMs,
       idleProgressMs: limits.idleProgressMs,
+      enabled: limits.enabled,
     }
   }
   /** Return the limits used when the next turn starts. */
@@ -1644,7 +1647,7 @@ export class HarnessService {
       const session = object(
         await acp.request(record.acpSessionId ? 'session/load' : 'session/new', {
           ...(record.acpSessionId ? { sessionId: record.acpSessionId } : {}),
-          cwd: record.cwd,
+          cwd: launch.acpCwd ?? record.cwd,
           mcpServers: servers,
         }),
       )
@@ -1675,11 +1678,16 @@ export class HarnessService {
       active.sessionInfo = session
       let model = object(session.models).currentModelId
       if (adapter.configureSession) {
-        const configured = await adapter.configureSession(acp, record, {
-          agent: init,
-          session,
-          configOptions: active.configOptions,
-        })
+        const configured = await adapter.configureSession(
+          acp,
+          record,
+          {
+            agent: init,
+            session,
+            configOptions: active.configOptions,
+          },
+          launch,
+        )
         if (configured && 'configOptions' in configured)
           active.configOptions = configured.configOptions
         if (configured?.modelId !== undefined) model = configured.modelId
@@ -1784,6 +1792,7 @@ export class HarnessService {
     }
     if (!active.turn || active.deadlineError || active.inputReceiptError) return
     const turn = active.turn
+    active.qwenUsage?.observe(u)
     if (
       (['agent_message_chunk', 'agent_thought_chunk'].includes(u.sessionUpdate) &&
         typeof u.content?.text === 'string' &&
@@ -2247,7 +2256,12 @@ export class HarnessService {
     }
     const selectedRecord = effort === undefined ? record : { ...record, reasoningEffort: effort }
     if (adapter.configureSession) {
-      const configured = await adapter.configureSession(acp, selectedRecord, snapshot)
+      const configured = await adapter.configureSession(
+        acp,
+        selectedRecord,
+        snapshot,
+        active.editLaunch,
+      )
       if (configured && 'configOptions' in configured) {
         active.configOptions = configured.configOptions
         snapshot.configOptions = configured.configOptions
@@ -2287,6 +2301,7 @@ export class HarnessService {
   private async run(record: HarnessSession, active: Active, turn: HarnessTurn) {
     const settled = Promise.withResolvers<void>()
     let editBefore: Pick<ExternalEditHistory, 'sessionId' | 'boundaries'> | undefined
+    if (record.harnessRef === 'qwen-code') active.qwenUsage = new QwenTurnUsage()
     try {
       delete active.deadlineError
       delete active.deadlineCleanup
@@ -2328,9 +2343,6 @@ export class HarnessService {
               ? { sessionId: record.acpSessionId, boundaries: [] }
               : await this.observeEditHistory(record))
         const adapter = adapterFor(record.harnessRef, record.modelRef, this.modelSources)
-        const firstProgressTimeoutMs = this.progressLimits
-          ? undefined
-          : adapter?.promptProgressTimeoutMs
         const edit = record.nativeSessionId
           ? this.externalMessageEdits.intent(record.nativeSessionId)
           : undefined
@@ -2404,9 +2416,8 @@ export class HarnessService {
               },
             },
             24 * 60 * 60 * 1000,
-            firstProgressTimeoutMs || record.harnessRef === 'opencode'
+            record.harnessRef === 'opencode'
               ? {
-                  ...(firstProgressTimeoutMs === undefined ? {} : { firstProgressTimeoutMs }),
                   stderrFailure:
                     record.harnessRef === 'opencode'
                       ? (line) => openCodeStreamFailure(line, record.acpSessionId ?? '')
@@ -2599,6 +2610,9 @@ export class HarnessService {
           ? error.message
           : '执行未完成，请检查 Harness 安装、所选渠道和模型。原任务未自动重发。')
     } finally {
+      const qwenUsage = active.qwenUsage?.value()
+      if (qwenUsage && !turn.usage) turn.usage = qwenUsage
+      delete active.qwenUsage
       const partial = active.vibeUsage?.finishTurn()
       if (partial?.usage && !turn.usage) turn.usage = partial.usage
       if (partial?.contextUsage && !turn.contextUsage) turn.contextUsage = partial.contextUsage
@@ -2960,7 +2974,7 @@ export class HarnessService {
             'session/load',
             {
               sessionId: record.acpSessionId,
-              cwd: record.cwd,
+              cwd: current.editLaunch?.acpCwd ?? record.cwd,
               mcpServers: current.mcpServers ?? [],
             },
             30_000,
@@ -3583,7 +3597,7 @@ export class HarnessService {
             current.sessionInfo = object(
               await current.acp.request('session/load', {
                 sessionId: result.sessionId,
-                cwd: record.cwd,
+                cwd: current.editLaunch?.acpCwd ?? record.cwd,
                 mcpServers: current.mcpServers ?? [],
               }),
             )
@@ -4002,7 +4016,9 @@ export class HarnessService {
     await this.native('selectModel', { sessionId, ...selected })
     const permissions = this.ctx.get('permissionPresets')
     if (!permissions) throw new StopEditError('rewind-failed', '官方权限服务不可用')
-    permissions.set(session, permissions.current(previous))
+    withoutRememberingPermission(session, () =>
+      permissions.set(session, permissions.current(previous)),
+    )
     // 分支标题沿用原会话，用户在普通会话列表里才找得到；带上“编辑分支”便于分辨。
     // 官方标题由未公开的 sessionTitle 服务持有，Host 读不到；因此分支沿用本套件的
     // 记录标题，没有记录时用被编辑消息的开头，保证在会话列表里可辨认而不是一串 id。

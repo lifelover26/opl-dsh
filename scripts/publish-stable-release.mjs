@@ -78,6 +78,7 @@ export function assertQualification(evidence, artifact, manifest, platform, arch
     capabilities.agentTeams?.modelFacingTools !== true ||
     capabilities.autoReview?.owner !== 'official' ||
     capabilities.autoReview?.mounted !== true ||
+    capabilities.autoReview?.defaultEnabled !== false ||
     capabilities.autoReview?.selectablePreset !== 'auto' ||
     capabilities.autoReview?.defaultSelectable !== false ||
     capabilities.agentPresets?.owner !== 'official' ||

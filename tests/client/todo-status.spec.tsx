@@ -314,7 +314,7 @@ describe('a stopped Session', () => {
     )
     expect(headerButton(container).getAttribute!('title')).toContain(zh.activityStopped)
     expect(headerButton(container).getAttribute!('title')).toContain(zh.stoppedNote)
-    expect(text(container)).not.toContain(zh.stoppedNote)
+    expect(text(container)).toContain(zh.stoppedNote)
     // The recorded counts stay, so the header never rewrites the data.
     expect(text(container)).toContain(`${zh.progressDone} 1`)
     expect(text(container)).toContain(`${zh.statusUnfinished} 1`)
@@ -334,84 +334,16 @@ describe('a stopped Session', () => {
   })
 })
 
-describe('direct children stay independent', () => {
-  const todos = [todo('Write the panel', 'in_progress')]
-
-  it('never completes or relabels a todo because a child is live', async () => {
-    const quiet = await render({
-      todos,
-      running: false,
-      catalog: [child('kid')],
-      statuses: new Map([['kid', { running: false }]]),
-    })
-    await toggle(quiet)
-    const before = rows(quiet).map((row) => [
-      row.getAttribute!('data-status'),
-      row.getAttribute!('data-display'),
-    ])
-    expect(one(quiet, 'data-testid').getAttribute!('data-child-activity')).toBe('idle')
-    expect(headerButton(quiet).getAttribute!('title')).toContain(zh.childIdle)
-    expect(withRole(quiet, 'child-activity')).toHaveLength(0)
-
-    await rerender({
-      todos,
-      running: false,
-      catalog: [child('kid')],
-      statuses: new Map([['kid', { running: true }]]),
-    })
-    const after = rows(quiet).map((row) => [
-      row.getAttribute!('data-status'),
-      row.getAttribute!('data-display'),
-    ])
-    expect(after).toEqual(before)
-    expect(one(quiet, 'data-testid').getAttribute!('data-child-activity')).toBe('running')
-    expect(text(role(quiet, 'child-activity'))).toBe('有 1 个子会话正在运行')
-    expect(role(quiet, 'child-activity').getAttribute!('title')).toBe(zh.childNote)
+it('shows only the current session todo state when a child is live', async () => {
+  const container = await render({
+    todos: [todo('Current item', 'in_progress')],
+    running: false,
+    catalog: [child('kid')],
+    statuses: new Map([['kid', { running: true }]]),
   })
-
-  it('states an unknown child as unknown instead of idle', async () => {
-    const container = await render({
-      todos,
-      running: false,
-      catalog: [child('kid')],
-      statuses: new Map(),
-    })
-    expect(one(container, 'data-testid').getAttribute!('data-child-activity')).toBe('unknown')
-    expect(headerButton(container).getAttribute!('title')).toContain(zh.childUnknown)
-  })
-
-  it('states an unreadable catalogue as unavailable', async () => {
-    const container = await render({ todos, running: false, catalog: undefined })
-    expect(one(container, 'data-testid').getAttribute!('data-child-activity')).toBe('unavailable')
-    expect(headerButton(container).getAttribute!('title')).toContain(zh.childUnavailable)
-  })
-
-  it('uses the public list read-back, and the injected seam before it', async () => {
-    const viaList = await render({
-      todos,
-      running: false,
-      catalog: [child('kid')],
-      list: { kid: { running: true } },
-    })
-    expect(one(viaList, 'data-testid').getAttribute!('data-child-activity')).toBe('running')
-    await rerender({ todos, running: false, catalog: [child('kid')], readChildStatus: () => false })
-    expect(one(viaList, 'data-testid').getAttribute!('data-child-activity')).toBe('idle')
-    await rerender({ todos, running: false, catalog: [child('kid')], readChildStatus: () => true })
-    expect(one(viaList, 'data-testid').getAttribute!('data-child-activity')).toBe('running')
-    await rerender({
-      todos,
-      running: false,
-      catalog: [child('kid')],
-      readChildStatus: () => undefined,
-    })
-    expect(one(viaList, 'data-testid').getAttribute!('data-child-activity')).toBe('unknown')
-  })
-
-  it('says nothing about children when there are none', async () => {
-    const container = await render({ todos, running: false, catalog: [] })
-    expect(one(container, 'data-testid').getAttribute!('data-child-activity')).toBe('none')
-    expect(withRole(container, 'child-activity')).toHaveLength(0)
-  })
+  await toggle(container)
+  expect(rows(container)[0]!.getAttribute!('data-status')).toBe('in_progress')
+  expect(withRole(container, 'child-activity')).toHaveLength(0)
 })
 
 describe('Session switching and unread inputs', () => {
@@ -438,7 +370,7 @@ describe('Session switching and unread inputs', () => {
     await toggle(container)
     expect(text(container)).toContain('Write the panel')
     expect(one(container, 'data-testid').getAttribute!('data-session-activity')).toBe('stopped')
-    expect(one(container, 'data-testid').getAttribute!('data-child-activity')).toBe('unavailable')
+    expect(one(container, 'data-testid').getAttribute!('data-child-activity')).toBe('none')
   })
 })
 

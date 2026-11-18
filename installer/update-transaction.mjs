@@ -94,11 +94,24 @@ async function withGate(root, action) {
   const path = join(root, 'enhancement-suite-gate.lock')
   const owner = { id: randomUUID(), nonce: randomUUID(), pid: process.pid }
   const deadline = Date.now() + 5000
+  let retryWindowsPublication = process.platform === 'win32'
   while (true) {
     try {
       await write(path, owner, true)
       break
     } catch (error) {
+      // Retry a Windows access denial on this gate link once. Only a successful
+      // atomic publication acquires ownership.
+      if (
+        retryWindowsPublication &&
+        error.code === 'EPERM' &&
+        error.syscall === 'link' &&
+        error.dest === path
+      ) {
+        retryWindowsPublication = false
+        await new Promise((done) => setTimeout(done, 20))
+        continue
+      }
       if (error.code !== 'EEXIST') throw error
       const previous = await json(path, true)
       if (previous === null) continue

@@ -50,7 +50,7 @@ export interface HarnessPromptRequest {
   sessionId: string
   text: string
   operationId: string
-  /** Files/directories owned by this operation; omitted means exclusive project writes. */
+  /** Explicit shared write paths; omitted scopes do not reserve the working directory. */
   writeScope?: string[]
 }
 /** Remote 读取普通侧栏会话的停止后编辑入口状态。 */
@@ -111,3 +111,4 @@ export type {
 export type * from '../execution/contracts/codex-runtime.ts'
 export type * from '../execution/contracts/capabilities.ts'
 export type { RoleExecutionCatalog } from '../collaboration/contracts/roles.ts'
+export type { NativeShellStatus } from '../shell/contracts/selection.ts'

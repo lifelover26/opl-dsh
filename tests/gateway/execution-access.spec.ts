@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
+import { defaultExecutionCatalog } from '../../src/execution/host/catalog.ts'
+import { ExecutionModelResolver } from '../../src/execution/host/execution-models.ts'
 import {
   resolveGatewayExecution,
   resolveGatewayGeminiExecution,
@@ -31,39 +33,95 @@ function fixture(models: unknown[] = [{ id: 'custom' }]) {
 }
 
 describe('Gateway route metadata for external engines', () => {
+  it('keeps a custom Gemini Chat route and its saved combinations on upgrade', async () => {
+    const argon = { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' }
+    const flash = { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' }
+    const profile = {
+      api: 'openai-completions',
+      baseURL: 'https://custom.invalid/v1',
+      models: [{ id: 'gemini-4-argon' }, { id: 'gemini-3.8-flash' }],
+    }
+    const settings = {
+      describe: () => [
+        { ns: 'llm-pi-ai', value: { providers: { 'opl-gateway-gemini': profile } } },
+      ],
+    }
+    const ctx = {
+      get: (name: string) =>
+        name === 'settings'
+          ? settings
+          : name === 'oplGatewayAccount'
+            ? { status: async () => ({ groups: [{ id: 'gemini', state: 'ready' }] }) }
+            : undefined,
+      credentials: { resolve: async () => ({ value: 'fixture-key' }) },
+    } as unknown as Context
+    const catalog = defaultExecutionCatalog()
+    const saved = {
+      id: 'my-flash',
+      name: 'My Flash',
+      modelRef: flash,
+      harnessRef: 'opencode',
+      permissionPolicy: 'workspace' as const,
+      enabled: true,
+      isDefault: true,
+    }
+    catalog.combinations.push(saved)
+    const resolver = new ExecutionModelResolver(ctx, {
+      get: async () => structuredClone(catalog),
+    } as never)
+
+    const custom = await resolver.resolve()
+    expect(custom.models).toContainEqual(expect.objectContaining({ ref: argon, available: true }))
+    expect(custom.combinations.filter((item) => item.modelRef.model === argon.model)).toEqual([])
+    expect(custom.combinations.find((item) => item.id === saved.id)).toEqual(saved)
+    expect(await resolveGatewayExecution(ctx, argon)).toMatchObject({ baseURL: profile.baseURL })
+    await expect(resolveGatewayGeminiExecution(ctx, argon)).rejects.toThrow('自定义 Gemini 地址')
+
+    profile.baseURL = 'https://gateway.medopl.com/v1/'
+    const bundle = await resolver.resolve()
+    expect(bundle.combinations).toContainEqual(
+      expect.objectContaining({ modelRef: argon, harnessRef: 'antigravity', isDefault: true }),
+    )
+    expect(bundle.combinations.find((item) => item.id === saved.id)).toEqual(saved)
+  })
+
   it('uses the Gemini group credential and its declared native endpoint independently of Chat', async () => {
     const resolve = vi.fn(async () => ({ value: 'native-fixture-key' }))
     const ctx = { get: () => undefined, credentials: { resolve } } as unknown as Context
-    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' }
-    expect(await resolveGatewayGeminiExecution(ctx, ref)).toMatchObject({
-      baseURL: 'https://gateway.medopl.com',
-      api: 'gemini-native',
-      model: 'gemini-4-carbon',
-      credential: 'OPL_GATEWAY_GEMINI_API_KEY',
-      apiKey: 'native-fixture-key',
-    })
-    expect(
-      await resolveGatewayGeminiExecution(ctx, {
-        provider: 'opl-gateway',
-        model: 'gemini::gemini-4-hydrogen',
-      }),
-    ).toMatchObject({
-      baseURL: 'https://gateway.medopl.com',
-      api: 'gemini-native',
-      model: 'gemini-4-hydrogen',
-    })
-    expect(resolve).toHaveBeenCalledTimes(2)
+    for (const model of [
+      'gemini-4-carbon',
+      'gemini-4-hydrogen',
+      'gemini-4-argon',
+      'gemini-3.8-flash',
+    ]) {
+      expect(
+        await resolveGatewayGeminiExecution(ctx, {
+          provider: 'opl-gateway',
+          model: `gemini::${model}`,
+        }),
+      ).toMatchObject({
+        baseURL: 'https://gateway.medopl.com',
+        api: 'gemini-native',
+        model,
+        credential: 'OPL_GATEWAY_GEMINI_API_KEY',
+        apiKey: 'native-fixture-key',
+      })
+    }
+    expect(resolve).toHaveBeenCalledTimes(4)
     expect(resolve).toHaveBeenCalledWith('OPL_GATEWAY_GEMINI_API_KEY')
-    expect((await resolveGatewayExecution(ctx, ref)).api).toBe('openai-completions')
+    expect(
+      (
+        await resolveGatewayExecution(ctx, {
+          provider: 'opl-gateway',
+          model: 'gemini::gemini-4-carbon',
+        })
+      ).api,
+    ).toBe('openai-completions')
   })
 
   it('refuses unknown native routes and custom Chat addresses without rewriting them', async () => {
     const f = fixture()
-    for (const retired of [
-      'gemini::gemini-3.1-pro',
-      'gemini::gemini-4-argon',
-      'gemini::gemini-3.8-flash',
-    ]) {
+    for (const retired of ['gemini::gemini-3.1-pro', 'gemini::gemini-3.7-flash']) {
       await expect(
         resolveGatewayGeminiExecution(f.ctx, {
           provider: 'opl-gateway',

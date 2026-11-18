@@ -102,7 +102,12 @@ describe('Antigravity model and thinking pinning', () => {
   })
 
   it('matches only native Gemini models in the OPL Gemini group', () => {
-    for (const model of ['gemini-4-carbon', 'gemini-4-hydrogen']) {
+    for (const model of [
+      'gemini-4-carbon',
+      'gemini-4-hydrogen',
+      'gemini-4-argon',
+      'gemini-3.8-flash',
+    ]) {
       const ref = { provider: 'opl-gateway', model: `gemini::${model}` }
       expect(antigravityAdapter.matches(ref)).toBe(true)
       expect(antigravityWireModel(ref)).toBe(model)
@@ -112,8 +117,6 @@ describe('Antigravity model and thinking pinning', () => {
       { provider: 'opl-gateway', model: 'gemini-4-carbon' },
       { provider: 'opl-gateway', model: 'codex::gemini-4-carbon' },
       { provider: 'opl-gateway', model: 'gemini::gemini-3.1-pro' },
-      { provider: 'opl-gateway', model: 'gemini::gemini-4-argon' },
-      { provider: 'opl-gateway', model: 'gemini::gemini-3.8-flash' },
       { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon-high' },
     ])
       expect(antigravityAdapter.matches(ref)).toBe(false)

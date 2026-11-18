@@ -12,6 +12,8 @@ const MODEL_THINKING_LEVELS: Record<
   string,
   readonly (typeof ANTIGRAVITY_THINKING_LEVELS)[number][]
 > = {
+  'gemini-4-argon': ['low', 'medium', 'high'],
+  'gemini-3.8-flash': ['low', 'medium', 'high'],
   'gemini-4-carbon': ['low', 'medium', 'high'],
   'gemini-4-hydrogen': ['low', 'medium', 'high', 'xhigh'],
 }
@@ -29,7 +31,7 @@ export function antigravityWireModel(ref: ModelRef): string | undefined {
   return ANTIGRAVITY_GATEWAY_MODELS.includes(model) ? model : undefined
 }
 
-/** True only for the two explicit provider/model references supported by this adapter. */
+/** Test whether this adapter can select the exact Gateway model reference. */
 export function isAntigravityGatewayModel(ref: ModelRef): boolean {
   return antigravityWireModel(ref) !== undefined
 }

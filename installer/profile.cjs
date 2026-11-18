@@ -11,10 +11,7 @@ const flags = options.filter((option) => option.startsWith('--'))
 const plugins = flags
   .filter((flag) => flag.startsWith('--plugin='))
   .map((flag) => resolve(flag.slice(9)))
-const optionalBundles = [
-  '@deepseek-ai/dsh-experimental-agent-team-profile',
-  '@deepseek-ai/dsh-experimental-auto-review',
-]
+const teamBundle = '@deepseek-ai/dsh-experimental-agent-team-profile'
 const cliProfile = process.env.OPL_DSH_CLI_PROFILE
 if (
   cliProfile !== undefined &&
@@ -35,14 +32,13 @@ async function main() {
   const official = JSON.parse(
     readFileSync(requireRuntime.resolve('@deepseek-ai/dsh/package.json'), 'utf8'),
   )
-  const teamBundle = optionalBundles[0]
   const retiredTeam = !official.dependencies?.[teamBundle]
   if (
     retiredTeam &&
     !(await load('@deepseek-ai/dsh-official-bundles')).RETIRED_BUNDLES?.has(teamBundle)
   )
     throw new Error('官方桌面缺少 Team 插件且未声明迁移，未改动插件选择')
-  const officialBundles = optionalBundles.filter((bundle) => !retiredTeam || bundle !== teamBundle)
+  const officialBundles = retiredTeam ? [] : [teamBundle]
   process.env.DSH_HOME = home
   const boot = await load('@deepseek-ai/dsh-app-boot')
   const { initProfile } = boot

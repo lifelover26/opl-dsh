@@ -45,10 +45,13 @@ export function installActivityCounts(options: ActivityCountOptions): () => void
       const historical = read('sessionStats') as { turns: number; steps: number } | undefined
       const projected = useMemo(
         () =>
-          mode === 'current' && counts && historical
+          preference.value?.enhancedConversationStats === true &&
+          mode === 'current' &&
+          counts &&
+          historical
             ? { ...historical, turns: counts.turns, steps: counts.steps }
             : historical,
-        [mode, counts, historical],
+        [preference.value?.enhancedConversationStats, mode, counts, historical],
       )
       const useProjection = useMemo(
         () =>
