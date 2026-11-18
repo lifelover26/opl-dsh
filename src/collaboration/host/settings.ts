@@ -1,4 +1,5 @@
 import { featureSettings } from '../../shared/host/feature-settings.ts'
+import { coordinatorHooks } from './hook-settings.ts'
 /** Manage the installed collaboration Skill without changing the desktop profile. */
 import { readFile, writeFile, rename } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -20,6 +21,12 @@ export async function coordinationAction(
   payload: unknown,
 ): Promise<unknown> {
   const installed = await installation()
+  if (
+    action === 'coordinator-hooks' &&
+    (payload === 'status' || payload === 'install' || payload === 'remove')
+  ) {
+    return coordinatorHooks(installed.skillDir, payload)
+  }
   if (action === 'coordination-status') {
     const config = JSON.parse(
       await readFile(join(installed.skillDir, 'config.json'), 'utf8').catch(() => '{}'),
@@ -39,6 +46,7 @@ export async function coordinationAction(
       autoStart: config.autoStart !== false,
       version: process.env.OPL_OFFICIAL_VERSION ?? installed.officialVersion ?? 'unknown',
       enhancementVersion: installed.suiteVersion ?? 'unknown',
+      sessionRecycleSupported: process.platform === 'win32',
       superagentSupported: process.platform === 'darwin' || process.platform === 'linux',
       update: { ...JSON.parse(state), checkTrigger: 'maintenance-launcher' },
       paths: {

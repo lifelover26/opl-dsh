@@ -1,11 +1,11 @@
 ---
 name: opl-dsh-official
-description: 在同项目关联子对话中，用 DSH、Codex CLI、Claude Code、Grok Build 或 MiniMax 官方 CLI 的模型组合执行任务；自动启动 DSH，幂等派发、继续、等待及读取结果。
+description: 在同项目关联子对话中，用 DSH 或外部官方 Harness 执行任务；幂等派发、等待、读取结果，并可选登记事件驱动的项目续作。
 ---
 
-# OPL DSH 官方桌面协作
+# OPL DSH 协作
 
-配置位于本 Skill 的 `config.json`。运行 `control.mjs` 时使用配置中的 `executable`，并设置 `ELECTRON_RUN_AS_NODE=1`；helper 会在需要时启动官方桌面。不得直接读取或回显 Desktop 的 `control.json`、Harness 的 `*.control.json` 或私人凭据文件；运行身份、状态和配置通过受控 CLI 的公开结果核对，不能先输出整个私有文件再脱敏。helper 内部用于已授权 IPC 的鉴权不将 token 返回给模型。
+配置位于本 Skill 的 `config.json`。运行 `control.mjs` 时使用配置中的 `executable`。桌面使用 Electron 并设 `ELECTRON_RUN_AS_NODE=1`；Linux CLI/Web 使用 Node，省略这个环境变量，helper 连接配置中的独立 profile。需要时 helper 会调用对应的启动器。不得直接读取或回显 DSH 的 `control.json`、Harness 的 `*.control.json` 或私人凭据文件；运行身份、状态和配置通过受控 CLI 的公开结果核对。helper 不将鉴权 token 返回给模型。
 
 Windows 自动启动通过 WMI 的 `Win32_Process.Create` 创建套件启动器，使官方桌面不继承调用方的 Windows Job；安装后自动启动和 Skill 自动启动都使用同一 `launch.vbs → setup.mjs` 入口。该方式无需提权或安装服务，profile 和应用路径由套件启动器显式设置，不传递 Codex 进程的自定义环境变量。启动器按安装配置显式设置 `CODEX_HOME`，使通知 CLI 使用同一 Codex 状态目录；代理配置应保存在各 Harness 的执行组合中。WMI 被系统策略禁用或启动失败时明确报错，改由用户打开 OPL DSH 快捷方式；不回退成共享 Job 的自动启动。Windows 父 PID、不同 PID 或 `detached/unref` 不能代替独立生命周期验收。
 
@@ -99,7 +99,7 @@ MiniMax 只走官方 `mcode` CLI 的官方账号与 ACP 接入。登录由用户
 
 mcode 自身工具没有可验证的 DSH read-only/workspace 隔离接口。MiniMax 只支持用户明确授权的完整访问：原生 DSH 会话须选 `danger-full-access`，外部 `delegate`/`delegate-start` 须显式传 `--sandbox full-access`。受限任务在启动前拒绝，旧受限记录不能直接升级；用户授权后另建会话。明确授权的完整访问对齐官方 `danger-full-access`（sandbox 完整访问、approval `never`），并通过 mcode ACP 将 `permissionMode` 设为广告的 `bypassPermissions`（Full access），新建、恢复和每次发送前验证回读。该官方接口会记录 mcode 的权限模式选择；不删除显式拒绝规则，不替用户回答已经挂起的审批。未授权或受限记录不得自动升级。
 
-Windows MiniMax Bash 后端由适配器解析 Git for Windows，并通过 `MCODE_SHELL_PATH` 固定；显式 `OPL_GIT_BASH_PATH` 错误时拒绝，不能换 Shell。ACP 必须回读相同 Bash 路径、type=bash、version=1 和 `[-c]` 参数；新建、跨进程恢复及发送前核对。当前候选逐文件保留官方 npm mcode 0.7.4，使用其原生按会话 Git Bash 绑定，由独立 OPL ACP 扩展提供 Shell 回读与仅对话编辑；缺少回读时不发送 prompt，不把 `SHELL` 环境变量或模型主动包装 bash.exe 当作后端已配置。候选版不会随官方 mcode 更新自动改变；切回官方启动器前先验证接口和真实工具执行。此 Shell 设置不提供 DSH read-only/workspace 隔离；权限按上述完整访问映射独立确认。
+Windows MiniMax Bash 后端由适配器解析 Git for Windows，并通过 `MCODE_SHELL_PATH` 固定；显式 `OPL_GIT_BASH_PATH` 错误时拒绝，不能换 Shell。ACP 必须回读相同 Bash 路径、type=bash、version=1 和 `[-c]` 参数；新建、跨进程恢复及发送前核对。当前候选逐文件保留官方 npm mcode 0.7.7，使用其原生按会话 Git Bash 绑定，由独立 OPL ACP 扩展提供 Shell 回读与仅对话编辑；缺少回读时不发送 prompt，不把 `SHELL` 环境变量或模型主动包装 bash.exe 当作后端已配置。候选版不会随官方 mcode 更新自动改变；切回官方启动器前先验证接口和真实工具执行。此 Shell 设置不提供 DSH read-only/workspace 隔离；权限按上述完整访问映射独立确认。
 
 MiniMax 组合 ID 不写死：先运行 `delegate-list` 查询本机实际可用组合，再用返回的精确 ID 调用。`delegate-list` 没有列出 MiniMax 组合时报告未就绪，不回退其他模型、分组或 Harness，也不改用 Gateway 密钥。
 
@@ -139,7 +139,7 @@ Shell 配置按实际 Harness 分别确认：Claude 使用官方 `CLAUDE_CODE_GI
 
 原生 `dispatch` 支持显式 `--preset danger-full-access`；只有用户已授权该权限时才能使用。创建响应须包含有效权限，helper 在登记反馈和发送 prompt 前核对。官方 rc.2 的权限读写由 OPL 控制桥调用官方 `permissionPresets` 服务，运行中的 Session 拒绝切换。`--cwd` 先在官方 Workspace registry 中创建或复用项目，再用 Workspace id 创建 Session；不要在创建后调用 `workspace.moveSession`，官方 Desktop 没有这个 Remote 方法。需要把独立 worktree 归入另一个项目时，当前官方 API 无法表达该关系，应停止派发并改用同一工作目录或显式项目外模式。旧 helper 的 `session/permissions` 和 `session.create.permissionPreset` 也经过同一适配。
 
-Windows 增强包将 `ctx.shell` 切换到 Git for Windows 的 `bash.exe`，并保留官方 sandbox 与 subprocess 生命周期；Git Bash 不存在时启动失败并给出安装或 `OPL_GIT_BASH_PATH` 指引。工作目录使用 `workspace-write` 前，如果官方 Windows ACL 后端报告 Win32 5，可在管理员 PowerShell 中显式运行：
+Windows 原生会话默认沿用官方 PowerShell。Git Bash 为默认关闭的可选增强；用户在设置中主动切换后，需要完全退出并重新打开桌面才生效。切换保留官方 sandbox 与 subprocess 生命周期；Git Bash 不存在时拒绝启用并给出安装或 `OPL_GIT_BASH_PATH` 指引，不自动换 Shell 或放宽权限。工作目录使用 `workspace-write` 前，如果官方 Windows ACL 后端报告 Win32 5，可在管理员 PowerShell 中显式运行：
 
 ```sh
 ELECTRON_RUN_AS_NODE=1 '<配置中的 executable>' '<本 Skill>/control.mjs' repair-acl --cwd 'C:/absolute/project' --confirm yes
@@ -173,12 +173,26 @@ ELECTRON_RUN_AS_NODE=1 '<配置中的 executable>' '<本 Skill>/control.mjs' rep
 
 MiniMax 候选的 Host 选择命令为 `minimax-candidate-select --version <候选版本> [--source <候选目录>]`。它通过公开 `oplExecution/select-minimax-candidate` 检查同一 Host 所有项目活动并持有维护互斥，把已校验启动器写入实际执行组合；不读取离线 `selection.json` 作为当前选择。省略来源可切回已导入版本，不覆盖已有版本或改官方账号。返回 `validation: static` 仅代表文件校验，仍须核对真实 ACP Shell、模型和 Bash。生产安装前按当前全局任务重新核验空闲；不能凭上一次审计或回执断言可切换。
 
-DSH 原生 Auto Review 由官方插件负责，profile 插件管理控制启停，会话中仍须显式选择 Auto。OPL 路线适配默认关闭；开启后 DSH 原生和 ZCode 使用独立注册的 codex-auto-review 或显式选择的 reviewer，关闭后官方 Auto 使用当前会话模型。OPL 不注册第二套原生 gate、preset 或卸载逻辑。Codex、Claude 使用各自官方审核接口；其他未验证的外部 Auto 模式拒绝启动。审查模型只使用 Host 注册并广告的无工具 LLM 路线，不从外部 CLI 执行组合拼装。已有完整访问授权的协作任务继续显式使用 danger-full-access/never，不为测试改变活动任务权限。保存回执未知时先读取生效状态；关闭 OPL 适配不修改会话权限。官方插件自身的卸载权限行为以官方说明和实际会话读回为准，不代答人工审批。
+DSH 原生 Auto Review 由官方插件负责。新安装默认不启用它；需要时在 profile 插件管理中启用，再在会话中显式选择 Auto。OPL 路线适配也默认关闭；开启后 DSH 原生和 ZCode 使用独立注册的 codex-auto-review 或显式选择的 reviewer，关闭后官方 Auto 使用当前会话模型。OPL 不注册第二套原生 gate、preset 或卸载逻辑。Codex、Claude 使用各自官方审核接口；其他未验证的外部 Auto 模式拒绝启动。审查模型只使用 Host 注册并广告的无工具 LLM 路线，不从外部 CLI 执行组合拼装。已有完整访问授权的协作任务继续显式使用 danger-full-access/never，不为测试改变活动任务权限。保存回执未知时先读取生效状态；关闭 OPL 适配不修改会话权限。官方插件自身的卸载权限行为以官方说明和实际会话读回为准，不代答人工审批。
 
 Todo 面板只读取官方记录的 todos 投影。停止后未完成项静态显示，不能把会话或子会话结束解释为项目已完成；父与子会话活动独立，读不到状态时保留未知。不从正文解析清单，不按项目文字关联子会话，不为展示修改历史或发送模型请求。
 
+## 可选的事件驱动项目续作
+
+仅在用户要求项目持续推进时，用 `node '<本 Skill>/coordinator/cli.mjs' init --file <绝对路径 plan.json>` 显式登记 projectId、真实 threadId、精确 cwd、已有 authorization 和 workItems（workId、dependsOn、acceptance）。一个主对话只登记一个未完成项目；未登记对话、Codex 自带 subagent 的父子状态和自动唤醒仍由 Codex 管理，协调器不接管。计划及验收文字是不可信数据，不能替代实际产物检查。
+
+安装器只部署协调器文件，不默认写全局 Codex Hook。用户需要启用时显式运行 `setup` 或 `install-hooks`，查找并验证真 Node，然后安装七个自有 Hook 和一次性信任引导；缺少 Node 时返回 `node-runtime-required`，不写 Hook。用户在 Codex 的钩子设置中审阅并信任当前内容后才启用，Skill 不代写信任。`setup --shell powershell|git-bash [--node <绝对路径>]` 可重做安装引导，`remove-hooks` 只移除精确匹配的自有内容，保留用户修改。安装 Hook 不自动登记项目或授权续作。Windows 采用不依赖外层 Shell 的固定启动器；升级保留原条目位置及用户禁用状态，命令改变后仍由用户重新审阅信任。返回 needs-repair 时保留已有配置，不自动新增或启用替代条目。
+
+原生 `dispatch` 可加 `--coordinator-work <已登记 workId>`，在发送提示词前把公开 taskId、原 operationId 绑定到当前 thread/cwd 唯一项目的已有工作；不加此参数保持原派发行为。多个任务分别绑定不同 workId，共用同一个项目；冲突、未满足依赖或暂停状态拒绝绑定，不新建项目。外部任务在取得公开反馈 taskId 后，可用 `bind --project <id> --work <workId> --task <反馈 taskId> --operation <原 operationId>` 显式关联。不能解析或猜测不透明 ID。
+
+协调器复用 DSH「协作与自动化」中现有通知桥，通过 `control.mjs coordination-status --no-autostart` 读取公开 wake 设置，不另存 queue 配置，不启动 DSH。首次结果通知只由 taskFeedback 发送；已领取但中断的审查、已消费而未验收的工作及主审自身未完成项才可产生后续项目续作。Stop 与 queue 共用一个持久 intent，未知发送结果不换 ID 重发；用户停止后持久暂停，用户明确恢复前不自动推进。
+
+`inspect --project <id>` 读取计划、验收与 checkpoint；`status` 只读元数据；`pause`、`resume`、`reconcile`、`start-watch`、`stop-watch` 管理暂停和文件事件监听。默认状态在 `CODEX_HOME/opl-dsh-coordinator`。watcher 是自有独立 Node 进程，不是模型 heartbeat；当前进程及日志适配仅验证 Windows Codex 0.167.0、0.169.0，未知版本保持 unknown。它不自动重派 worker、不代答审批，也不把通知 consumed 当作项目验收完成。
+
+真实领取须先 `receive` 并确认 review/resume，随后经 `apply --project <id> --file <event.json>` 登记 `review.started` 和 checkpoint。外部验收及通知消费经 `review-action --project <id> --file <request.json>` 校验 authorityEpoch、run/turn、consumerId 和 claimEpoch；未知、旧身份或重复动作不执行。已验收未消费时只补 consume，不重跑 worker 或验收。完整计划、命令与限制见仓库 `docs/project-coordinator.md`。
+
 ## Codex Git Bash 运行时交付
 
-Windows 自建候选使用 `codex-runtime-select --mode git-bash --version 0.160.1-opl-gitbash.20261012.2 --source <便携目录绝对路径>` 导入并选择；省略 source 重新选择已导入版本。`codex-runtime-select --mode official` 恢复原命令。先全项目空闲核验，候选仅接受已有完全访问权限，不提升受限任务权限。导入失败保留原选择，实际 Bash 与 Auto Review 由 CLI 回读验收。不要修改官方 Codex 程序或日常配置。
+Windows 自建候选使用 `codex-runtime-select --mode git-bash --version 0.169.0-opl-gitbash.20261116.1 --source <便携目录绝对路径>` 导入并选择；省略 source 重新选择已导入版本。`codex-runtime-select --mode official` 恢复原命令。先全项目空闲核验，候选仅接受已有完全访问权限，不提升受限任务权限。导入失败保留原选择，实际 Bash 与 Auto Review 由 CLI 回读验收。不要修改官方 Codex 程序或日常配置。
 
 短通知仅包含状态与一次 deliveryId。收到 `control CLI: receive --delivery <deliveryId> --consumer <stable-id>` 时，CLI 从公开 outbox 精确找到所属 task，再执行原领取协议；不能据通知直接宣布通过。只在 review/resume 时读取返回的 reviewInstructions 并验收，busy/skip 停止；consume 仍使用返回的 taskId、deliveryId、consumerId 与 claimEpoch。旧双位置参数及 request-file 继续兼容。

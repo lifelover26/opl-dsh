@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
+import { ExecutableBrowser } from '../../shared/client/ExecutableBrowser.tsx'
 import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import css from '../../shared/client/SettingsSection.module.css'
 import type { CoordinationStatus as Status } from '../../contracts/types.ts'
 import { useCooperationSettings } from './use-cooperation-settings.ts'
 import { RoleExecutions } from './RoleExecutions.tsx'
+import { CoordinatorHooks, useCoordinatorHooks } from './CoordinatorHooks.tsx'
 import type { RoleExecutionCall } from '../../shared/client/remote-call.ts'
 import type { CoordinationCall, ExecutionCall } from '../../shared/client/remote-call.ts'
 export function CoordinationSection({
@@ -22,10 +24,19 @@ export function CoordinationSection({
     loading: cooperationLoading,
     save: saveCooperation,
   } = useCooperationSettings(executionCall)
+  const hooks = useCoordinatorHooks(call)
+  const executableId = useId()
   const [status, setStatus] = useState<Status>(),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState('')
-  const load = async () => setStatus(await call('coordination-status'))
+  const [notificationConfigured, setNotificationConfigured] = useState<boolean>()
+  const load = async () => {
+    const saved = await call('coordination-status')
+    setStatus(saved)
+    setNotificationConfigured(
+      saved.wakeTransport === 'codex-queue' && !!saved.wakeExecutable.trim(),
+    )
+  }
   useEffect(() => {
     void load().catch(() => setNotice('无法读取外部接入的安装信息。'))
   }, [call])
@@ -49,16 +60,8 @@ export function CoordinationSection({
       aria-busy={busy || cooperationBusy || cooperationLoading || (!status && !notice)}
     >
       <h2 className={css.title}>协作与自动化</h2>
-      <RoleExecutions {...(roleCall ? { call: roleCall } : {})} />
-      <p className={css.intro}>
-        在当前项目委派其他执行组合。子任务独立执行，发起对话负责监督和验收。
-      </p>
-      <div className={css.card}>
-        <h3 className={css.name}>项目内协作</h3>
-        <p className={css.muted}>
-          直接在对话中说明“请另一模型完成这项任务”。可查看子任务、处理授权、验收交付或继续修改。普通会话可以并行；只有双方显式声明且范围重叠的写入才互斥，并行
-          Git 写任务优先使用 worktree。
-        </p>
+      <section className={css.collaborationGroup}>
+        <h3 className={css.name}>DSH 内协作</h3>
         {!executionCall && (
           <p className={css.muted}>项目执行服务暂不可用，外部接入设置仍可管理。</p>
         )}
@@ -91,40 +94,14 @@ export function CoordinationSection({
             </label>
           </>
         )}
-        <p className={css.muted}>
-          执行完成后仍需核验实际产物。权限或问题等待由你处理；失败和重启中断不会自动重派。
-        </p>
+        <details className={css.details}>
+          <summary>角色默认组合</summary>
+          <RoleExecutions {...(roleCall ? { call: roleCall } : {})} />
+        </details>
         {cooperationError && <p role="alert">{cooperationError}</p>}
-      </div>
-      <div className={css.card}>
-        <h3 className={css.name}>SuperAgent 仓库协作</h3>
-        <p className={css.muted}>
-          从 GitHub 或飞书接收请求，按授权策略创建工单、分配工作目录并执行、回传结果。
-          在独立窗口中管理仓库、机器人账号、授权名单、提示词和执行设置。
-        </p>
-        <Button
-          variant="outline"
-          disabled={busy || !status?.superagentSupported}
-          onClick={() =>
-            void act(async () => {
-              const result = await call('superagent-open')
-              if (result.state === 'running')
-                throw new Error(
-                  'SuperAgent 正在启动，请稍后重试；独立 Host 已在运行时不会重复安装。',
-                )
-            }, '已打开 SuperAgent 独立页面。首次请完成模型、仓库与机器人账号设置。')
-          }
-        >
-          打开 SuperAgent
-        </Button>
-        <p className={css.muted}>
-          {status?.superagentSupported
-            ? '首次打开需准备插件。使用独立的登录、会话和数据目录；再次点击会重新打开页面，更新请先退出独立 Host。'
-            : '本版 SuperAgent 原型支持 macOS 和 Linux；其账户与执行命令需要 POSIX 环境。'}
-        </p>
-      </div>
-      <details className={css.details}>
-        <summary>外部 Codex 接入</summary>
+      </section>
+      <section className={css.collaborationGroup}>
+        <h3 className={css.name}>Codex 任务委派</h3>
         <div className={css.detailsBody}>
           {cooperation && (
             <div className={css.row}>
@@ -139,39 +116,47 @@ export function CoordinationSection({
               />
             </div>
           )}
-          <p className={css.muted}>此开关不影响项目内 Codex CLI 执行组合。</p>
-          <div className={css.card}>
-            <h3 className={css.name}>
-              {!status
-                ? '正在读取协作状态…'
-                : status.installed
-                  ? '协作 Skill 已就绪'
-                  : '协作 Skill 未安装'}
-            </h3>
-            <p className={css.muted}>支持自动启动、连续任务、权限等待、持久化反馈与结果验收。</p>
-            <Button
-              variant="outline"
-              disabled={busy || !status}
-              onClick={() => {
-                void act(() => call('skill-install'))
-              }}
-            >
-              {status?.installed ? '更新 / 修复 Skill' : '安装 Skill'}
-            </Button>
-            <div className={css.row}>
-              <span>Codex 派发任务时自动启动 DSH</span>
-              <Switch
-                label="Codex 派发任务时自动启动 DSH"
-                checked={status?.autoStart ?? true}
-                disabled={busy || !status}
-                onChange={(value) => {
-                  void act(() => call('auto-start', value))
-                }}
-              />
-            </div>
-          </div>
           <details className={css.details}>
-            <summary>任务完成通知</summary>
+            <summary>
+              协作 Skill
+              <span className={css.coordinationSummary}>
+                {!status ? '状态未知' : status.installed ? '已安装' : '未安装'}
+              </span>
+            </summary>
+            <div className={css.detailsBody}>
+              <Button
+                variant="outline"
+                disabled={busy || !status}
+                onClick={() => {
+                  void act(() => call('skill-install'))
+                }}
+              >
+                {status?.installed ? '更新 / 修复 Skill' : '安装 Skill'}
+              </Button>
+              <div className={css.row}>
+                <span>Codex 派发任务时自动启动 DSH</span>
+                <Switch
+                  label="Codex 派发任务时自动启动 DSH"
+                  checked={status?.autoStart ?? true}
+                  disabled={busy || !status}
+                  onChange={(value) => {
+                    void act(() => call('auto-start', value))
+                  }}
+                />
+              </div>
+            </div>
+          </details>
+          <details className={css.details}>
+            <summary>
+              任务完成通知
+              <span className={css.coordinationSummary}>
+                {notificationConfigured === undefined
+                  ? '状态未知'
+                  : notificationConfigured
+                    ? '已配置'
+                    : '未配置'}
+              </span>
+            </summary>
             <div className={css.detailsBody}>
               <p className={css.muted}>
                 任务反馈始终保存在本机。主动唤醒 Codex 需要可用的队列桥；未配置时可在 Codex
@@ -216,15 +201,26 @@ export function CoordinationSection({
                           <option value="wsl">WSL</option>
                         </select>
                       </label>
-                      <label className={css.field}>
-                        <span>队列桥可执行文件</span>
-                        <input
-                          disabled={busy}
-                          className={css.input}
-                          value={status.wakeExecutable}
-                          onChange={(e) => setStatus({ ...status, wakeExecutable: e.target.value })}
-                        />
-                      </label>
+                      <div className={css.field}>
+                        <label htmlFor={executableId}>队列桥可执行文件</label>
+                        <div className={css.pathInputRow}>
+                          <input
+                            id={executableId}
+                            disabled={busy}
+                            className={css.input}
+                            value={status.wakeExecutable}
+                            onChange={(e) =>
+                              setStatus({ ...status, wakeExecutable: e.target.value })
+                            }
+                          />
+                          {status.wakeExecution !== 'wsl' && (
+                            <ExecutableBrowser
+                              disabled={busy}
+                              onPick={(path) => setStatus({ ...status, wakeExecutable: path })}
+                            />
+                          )}
+                        </div>
+                      </div>
                       {status.wakeExecution === 'wsl' && (
                         <label className={css.field}>
                           <span>WSL 发行版</span>
@@ -254,8 +250,47 @@ export function CoordinationSection({
               )}
             </div>
           </details>
+          <details className={css.details}>
+            <summary>
+              项目续作<span className={css.coordinationSummary}>{hooks.summary}</span>
+            </summary>
+            <CoordinatorHooks {...hooks} />
+          </details>
         </div>
-      </details>
+      </section>
+      {status?.sessionRecycleSupported && (
+        <section className={css.collaborationGroup}>
+          <h3 className={css.name}>清理 DSH 会话</h3>
+          <p className={css.muted}>
+            在 Windows 上打开 Codex，输入“使用 $opl-dsh-session-cleanup，把 DSH 已归档的会话移到回收站，保留未归档会话”。也可以指定某个会话。
+          </p>
+        </section>
+      )}
+      <section className={css.collaborationGroup}>
+        <div className={css.row}>
+          <h3 className={css.name}>仓库自动化 · SuperAgent</h3>
+          {status?.superagentSupported ? (
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() =>
+                void act(async () => {
+                  const result = await call('superagent-open')
+                  if (result.state === 'running')
+                    throw new Error('SuperAgent 正在启动，请稍后重试。')
+                }, '已打开 SuperAgent 独立页面。')
+              }
+            >
+              打开 SuperAgent
+            </Button>
+          ) : (
+            <span className={css.muted}>{status ? '当前平台不支持' : '正在检查…'}</span>
+          )}
+        </div>
+        {status?.superagentSupported && (
+          <p className={css.muted}>在独立窗口管理 GitHub 仓库、飞书机器人和授权名单。</p>
+        )}
+      </section>
       {notice && (
         <p className={css.notice} role={status ? 'status' : 'alert'}>
           {notice}

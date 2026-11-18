@@ -169,6 +169,7 @@ const _one_person_lab_dsh_opl_oplCoordination_coordination_status_result$schema 
   'autoStart': z.boolean(),
   'version': z.string(),
   'enhancementVersion': z.string(),
+  'sessionRecycleSupported': z.boolean().optional(),
   'superagentSupported': z.boolean().optional(),
   'update': z.object({
   'state': z.string().optional(),
@@ -185,6 +186,17 @@ const _one_person_lab_dsh_opl_oplCoordination_coordination_status_result$schema 
   'wakeExecution': z.union([z.literal("native"), z.literal("wsl")]),
   'wakeExecutable': z.string(),
   'wakeDistro': z.string(),
+}))
+let _one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_parameter_0$schema$value
+const _one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_parameter_0$schema = () => (_one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_parameter_0$schema$value ??= z.string())
+let _one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_result$schema$value
+const _one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_result$schema = () => (_one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_result$schema$value ??= z.object({
+  'installed': z.boolean(),
+  'total': z.number(),
+  'registered': z.number(),
+  'verified': z.number(),
+  'trusted': z.number(),
+  'disabled': z.number(),
 }))
 let _one_person_lab_dsh_opl_oplCoordination_skill_install_result$schema$value
 const _one_person_lab_dsh_opl_oplCoordination_skill_install_result$schema = () => (_one_person_lab_dsh_opl_oplCoordination_skill_install_result$schema$value ??= z.literal(null))
@@ -4624,6 +4636,8 @@ const _one_person_lab_dsh_opl_oplAutoReview_save_parameter_0_strict$schema = () 
 }))
 let _one_person_lab_dsh_opl_oplCoordination_auto_start_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_oplCoordination_auto_start_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplCoordination_auto_start_parameter_0_strict$schema$value ??= z.boolean())
+let _one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_parameter_0_strict$schema$value
+const _one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_parameter_0_strict$schema$value ??= z.string())
 let _one_person_lab_dsh_opl_oplCoordination_wake_settings_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_oplCoordination_wake_settings_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplCoordination_wake_settings_parameter_0_strict$schema$value ??= z.strictObject({
   'wakeTransport': z.union([z.literal("unconnected"), z.literal("codex-queue")]),
@@ -5151,7 +5165,7 @@ const $remote = createTypertRemoteInfo({
         create: _one_person_lab_dsh_opl_oplCoordination_auto_start_result$schema,
         jsonSchema: {"type":"null","const":null},
       },
-      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":34,"column":9},
+      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":46,"column":9},
     },
     'oplCoordination/coordination-status': {
       service: 'oplCoordination',
@@ -5163,9 +5177,39 @@ const $remote = createTypertRemoteInfo({
         mode: 'strict',
         typeSymbol: '@one-person-lab/dsh-opl/types#CoordinationStatus',
         create: _one_person_lab_dsh_opl_oplCoordination_coordination_status_result$schema,
-        jsonSchema: {"type":"object","properties":{"installed":{"type":"boolean"},"autoStart":{"type":"boolean"},"version":{"type":"string"},"enhancementVersion":{"type":"string"},"superagentSupported":{"type":"boolean"},"update":{"type":"object","properties":{"state":{"type":"string"},"checkedAt":{"type":"string"},"message":{"type":"string"},"checkTrigger":{"type":"string"}},"required":["checkTrigger"],"additionalProperties":true},"paths":{"type":"object","properties":{"suiteRoot":{"type":"string"},"profileHome":{"type":"string"},"skillDir":{"type":"string"}},"required":["suiteRoot","profileHome","skillDir"],"additionalProperties":true},"wakeTransport":{"type":"string","enum":["unconnected","codex-queue"]},"wakeExecution":{"type":"string","enum":["native","wsl"]},"wakeExecutable":{"type":"string"},"wakeDistro":{"type":"string"}},"required":["installed","autoStart","version","enhancementVersion","update","paths","wakeTransport","wakeExecution","wakeExecutable","wakeDistro"],"additionalProperties":true},
+        jsonSchema: {"type":"object","properties":{"installed":{"type":"boolean"},"autoStart":{"type":"boolean"},"version":{"type":"string"},"enhancementVersion":{"type":"string"},"sessionRecycleSupported":{"type":"boolean"},"superagentSupported":{"type":"boolean"},"update":{"type":"object","properties":{"state":{"type":"string"},"checkedAt":{"type":"string"},"message":{"type":"string"},"checkTrigger":{"type":"string"}},"required":["checkTrigger"],"additionalProperties":true},"paths":{"type":"object","properties":{"suiteRoot":{"type":"string"},"profileHome":{"type":"string"},"skillDir":{"type":"string"}},"required":["suiteRoot","profileHome","skillDir"],"additionalProperties":true},"wakeTransport":{"type":"string","enum":["unconnected","codex-queue"]},"wakeExecution":{"type":"string","enum":["native","wsl"]},"wakeExecutable":{"type":"string"},"wakeDistro":{"type":"string"}},"required":["installed","autoStart","version","enhancementVersion","update","paths","wakeTransport","wakeExecution","wakeExecutable","wakeDistro"],"additionalProperties":true},
       },
-      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":17,"column":9},
+      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":21,"column":9},
+    },
+    'oplCoordination/coordinator-hooks': {
+      service: 'oplCoordination',
+      implementation: 'hooks',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'action',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@one-person-lab/dsh-opl#oplCoordination/coordinator-hooks:action',
+            create: _one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_parameter_0$schema,
+            jsonSchema: {"type":"string"},
+          },
+          strictCodec: {
+            mode: 'strict',
+            typeSymbol: '@one-person-lab/dsh-opl#oplCoordination/coordinator-hooks:action',
+            create: _one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_parameter_0_strict$schema,
+            jsonSchema: {"type":"string"},
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#CoordinatorHooksStatus',
+        create: _one_person_lab_dsh_opl_oplCoordination_coordinator_hooks_result$schema,
+        jsonSchema: {"type":"object","properties":{"installed":{"type":"boolean"},"total":{"type":"number"},"registered":{"type":"number"},"verified":{"type":"number"},"trusted":{"type":"number"},"disabled":{"type":"number"}},"required":["installed","total","registered","verified","trusted","disabled"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":34,"column":9},
     },
     'oplCoordination/skill-install': {
       service: 'oplCoordination',
@@ -5179,7 +5223,7 @@ const $remote = createTypertRemoteInfo({
         create: _one_person_lab_dsh_opl_oplCoordination_skill_install_result$schema,
         jsonSchema: {"type":"null","const":null},
       },
-      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":25,"column":9},
+      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":29,"column":9},
     },
     'oplCoordination/superagent-open': {
       service: 'oplCoordination',
@@ -5193,7 +5237,7 @@ const $remote = createTypertRemoteInfo({
         create: _one_person_lab_dsh_opl_oplCoordination_superagent_open_result$schema,
         jsonSchema: {"type":"object","properties":{"state":{"type":"string"}},"required":["state"],"additionalProperties":true},
       },
-      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":30,"column":9},
+      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":42,"column":9},
     },
     'oplCoordination/wake-settings': {
       service: 'oplCoordination',
@@ -5223,7 +5267,7 @@ const $remote = createTypertRemoteInfo({
         create: _one_person_lab_dsh_opl_oplCoordination_wake_settings_result$schema,
         jsonSchema: {"type":"null","const":null},
       },
-      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":39,"column":9},
+      sourceLocation: {"file":"src/collaboration/host/settings-service.ts","line":51,"column":9},
     },
     'oplExecution/answer': {
       service: 'oplExecution',

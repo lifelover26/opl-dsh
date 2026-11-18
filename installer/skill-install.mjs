@@ -62,14 +62,7 @@ export function installSkill({
     { mode: 0o600 },
   )
   const files = Object.fromEntries(
-    [
-      'SKILL.md',
-      'control.mjs',
-      'harness-mcp.mjs',
-      'windows-acl.mjs',
-      'windows-lifecycle.mjs',
-      'config.json',
-    ].map((file) => [file, digest(readFileSync(join(skillStage, file)))]),
+    listSkillFiles(skillStage).map((file) => [file, digest(readFileSync(join(skillStage, file)))]),
   )
   writeFileSync(
     join(skillStage, '.opl-install.json'),
@@ -79,7 +72,8 @@ export function installSkill({
   if (
     existsSync(skillDir) &&
     Object.entries(files).every(
-      ([file, hash]) => digest(readFileSync(join(skillDir, file))) === hash,
+      ([file, hash]) =>
+        existsSync(join(skillDir, file)) && digest(readFileSync(join(skillDir, file))) === hash,
     )
   ) {
     rmSync(skillStage, { recursive: true })
@@ -189,7 +183,7 @@ export function verifySkill(skillDir) {
     const previous = JSON.parse(readFileSync(skillManifest, 'utf8'))
     if (
       previous.owner !== 'opl-dsh-suite' ||
-      readdirSync(skillDir).some(
+      listSkillFiles(skillDir).some(
         (file) => file !== '.opl-install.json' && !Object.hasOwn(previous.files, file),
       ) ||
       Object.entries(previous.files).some(

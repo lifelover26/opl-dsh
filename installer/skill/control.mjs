@@ -1,6 +1,7 @@
 /** Stable dispatch identities over the official DSH Session API. */
 import { readFile, mkdir, open, rename, unlink } from 'node:fs/promises'
 import { join, isAbsolute } from 'node:path'
+import { homedir } from 'node:os'
 import { createHash, randomUUID } from 'node:crypto'
 import { execFile as execFileCallback } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -12,7 +13,10 @@ const requestedCommand = rawArgs.shift()
 const noAutostart = rawArgs.includes('--no-autostart')
 const argv = rawArgs.filter((value) => value !== '--no-autostart')
 const command = requestedCommand === 'resume-failed' ? 'resumeFailed' : requestedCommand
-if (noAutostart && !['tasks', 'outbox', 'receipts', 'flush'].includes(command))
+if (
+  noAutostart &&
+  !['tasks', 'outbox', 'receipts', 'flush', 'coordination-status'].includes(command)
+)
   throw new Error('--no-autostart 仅用于只读状态查询')
 const feedbackRequestCommands = ['task', 'receive', 'consume', 'resumeFailed']
 const args = {}
@@ -106,6 +110,8 @@ if (command === 'repair-acl') {
   process.exit(0)
 }
 const hash = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
+const coordinatorHome =
+  process.env.OPL_CODEX_HOME ?? process.env.CODEX_HOME ?? join(homedir(), '.codex')
 let binding
 async function connected() {
   try {
@@ -419,6 +425,18 @@ if (command === 'codex-runtime-select') {
         'taskFeedback',
       )
       if (registered.task?.taskId !== taskId) throw new Error('任务反馈登记未确认，未发送提示词')
+      const coordinator = args['coordinator-work']
+        ? await (
+            await import('./coordinator/dispatch-registration.mjs')
+          ).registerDispatchTask({
+            codexHome: coordinatorHome,
+            threadId: thread,
+            cwd: args.cwd,
+            workId: args['coordinator-work'],
+            taskId,
+            operationId: args.operation,
+          })
+        : { status: 'skipped', reason: 'not-requested' }
       const receipt = await rpc('prompt', {
         sessionId,
         requestId,
@@ -427,7 +445,7 @@ if (command === 'codex-runtime-select') {
       })
       if (receipt.accepted !== true) throw new Error('未确认接收，请沿用同一个 operation ID 重试')
       await save({ ...record, accepted: true })
-      console.log(JSON.stringify({ ...record, accepted: true }))
+      console.log(JSON.stringify({ ...record, accepted: true, coordinator }))
     }
   } finally {
     await fd.close()
@@ -463,6 +481,30 @@ if (command === 'codex-runtime-select') {
         command === 'wait' ? Number(args.timeout ?? 150000) : 150000,
       ),
     ),
+  )
+} else if (command === 'coordination-status') {
+  if (Object.keys(args).length) throw Error('coordination-status 不接受参数')
+  const response = await fetch(binding.endpoint, {
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + binding.token, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      namespace: 'oplCoordination',
+      method: 'coordination-status',
+      args: {},
+      timeoutMs: 15000,
+    }),
+    signal: AbortSignal.timeout(20000),
+  })
+  const result = await response.json()
+  if (!result.ok) throw Error(result.error)
+  const status = result.value
+  console.log(
+    JSON.stringify({
+      wakeTransport: status.wakeTransport,
+      wakeExecution: status.wakeExecution,
+      wakeExecutable: status.wakeExecutable,
+      wakeDistro: status.wakeDistro,
+    }),
   )
 } else if (['tasks', 'outbox', 'wake', 'receipts', 'flush'].includes(command)) {
   console.log(JSON.stringify(await rpc(command, {}, 150000, 'taskFeedback')))
