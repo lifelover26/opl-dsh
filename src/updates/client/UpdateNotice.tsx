@@ -27,7 +27,11 @@ export function UpdateNotice({ controller, navigation, openSettings, wide, t }: 
   const version = status.pendingVersion ?? status.release!.version
   const label = t(
     status.localCandidate
-      ? 'noticeFullSuite'
+      ? status.pendingVersion
+        ? 'candidatePending'
+        : status.release?.compatibility === 'full-suite'
+          ? 'noticeFullSuite'
+          : 'noticeAvailable'
       : status.pendingVersion
         ? restart?.phase === 'handoff'
           ? 'noticeHandoff'
