@@ -1,7 +1,7 @@
 /** Exercise the shipped helper against an authenticated Session API. */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, writeFile, mkdir, cp, rm } from 'node:fs/promises'
+import { mkdtemp, writeFile, mkdir, cp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createServer } from 'node:http'
@@ -98,10 +98,11 @@ test('a retry sends one prompt; changed content under the same operation is refu
   assert.equal(prompts, 1)
 })
 
-test('coordinator work is part of dispatch identity and replays its binding receipt', async (t) => {
+test('dispatch preserves coordinator bindings on replay and rejects invalid new bindings', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'opl-dispatch-coordinator-'))
   t.after(() => rm(root, { recursive: true, force: true }))
-  let requests = []
+  const requests = []
+  let onCreate
   const server = createServer(async (req, res) => {
     assert.equal(req.headers.authorization, 'Bearer test-only')
     let body = ''
@@ -109,6 +110,14 @@ test('coordinator work is part of dispatch identity and replays its binding rece
     const data = JSON.parse(body)
     requests.push(data.method)
     res.setHeader('content-type', 'application/json')
+    if (data.method === 'create' && onCreate) {
+      try {
+        await onCreate()
+      } catch (error) {
+        res.end(JSON.stringify({ ok: false, error: error.message }))
+        return
+      }
+    }
     res.end(
       JSON.stringify({
         ok: true,
@@ -162,10 +171,11 @@ test('coordinator work is part of dispatch identity and replays its binding rece
     authorization: 'test authorization',
     workItems: [
       { workId: 'first', dependsOn: [], acceptance: 'first acceptance' },
-      { workId: 'second', dependsOn: [], acceptance: 'second acceptance' },
+      { workId: 'second', dependsOn: ['first'], acceptance: 'second acceptance' },
+      { workId: 'third', dependsOn: [], acceptance: 'third acceptance' },
     ],
   })
-  const run = (work) =>
+  const run = (work, operation = 'initial') =>
     new Promise((resolve) => {
       const args = [
         join(root, 'control.mjs'),
@@ -173,7 +183,7 @@ test('coordinator work is part of dispatch identity and replays its binding rece
         '--task',
         'test',
         '--operation',
-        'initial',
+        operation,
         '--cwd',
         root,
         '--prompt-file',
@@ -229,8 +239,51 @@ test('coordinator work is part of dispatch identity and replays its binding rece
         operationId: 'initial',
       },
       { workId: 'second' },
+      { workId: 'third' },
     ],
   )
+
+  const ledger = join(root, 'ledger')
+  assert.deepEqual(await readdir(ledger), [`${firstReceipt.requestId}.json`])
+  for (const [work, operation, error] of [
+    ['missing', 'missing-work', /work item is not registered/],
+    ['second', 'blocked-work', /task cannot bind to this registered work item/],
+  ]) {
+    const denied = await run(work, operation)
+    assert.notEqual(denied.code, 0)
+    assert.match(denied.stderr, error)
+    assert.equal(denied.stdout, '')
+    assert.deepEqual(requests, ['create', 'selectModel', 'register', 'prompt'])
+    assert.deepEqual(await readdir(ledger), [`${firstReceipt.requestId}.json`])
+    assert.deepEqual(await store.get('coordinator-project'), state)
+  }
+
+  onCreate = async () => {
+    const paused = await store.apply('coordinator-project', {
+      eventId: 'pause-during-dispatch',
+      type: 'project.pause',
+      reason: 'test pause during dispatch',
+      authorityEpoch: state.authorityEpoch,
+    })
+    await store.apply('coordinator-project', {
+      eventId: 'resume-during-dispatch',
+      type: 'project.resume',
+      reason: 'test resume during dispatch',
+      authorityEpoch: paused.authorityEpoch,
+    })
+  }
+  const requestCount = requests.length
+  const stale = await run('third', 'stale-authority')
+  assert.notEqual(stale.code, 0)
+  assert.match(stale.stderr, /project authorization epoch has changed/)
+  assert.equal(stale.stdout, '')
+  const staleRequests = requests.slice(requestCount)
+  assert.equal(staleRequests[0], 'create')
+  assert.equal(staleRequests.includes('prompt'), false)
+  const resumed = await store.get('coordinator-project')
+  assert.equal(resumed.mode, 'active')
+  assert.equal(resumed.authorityEpoch, state.authorityEpoch + 2)
+  assert.deepEqual(resumed.workItems, state.workItems)
 })
 
 test('delegate-wait returns the persisted snapshot when the control deadline expires', async (t) => {

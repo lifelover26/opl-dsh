@@ -34,7 +34,7 @@
 
 已派发工作须关联公开反馈返回的精确 `taskId` 与该指令原有 `operationId`。不要用展示标题替代反馈 taskId，不解析不透明 ID，不换 operation 重发结果不明的旧指令。项目固定主审 threadId 和 cwd；任务及通知只按显式关联对账。
 
-一个主对话只能有一个未完成项目。原生 `dispatch` 增加 `--coordinator-work implementation`，即可在发送提示词前把反馈 taskId 绑定到该计划已有的 implementation；未提供此参数时保持原派发行为。多个任务绑定各自 workId，共用同一个项目。使用同一 operation 重试时，须保留原有 `--coordinator-work`（或继续省略）；成功回执会重放，修改绑定会报冲突。改变 task/operation、未满足依赖、未知 workId、项目歧义或暂停都会拒绝绑定。外部任务取得公开 taskId 后，用 `bind --project <id> --work <workId> --task <反馈 taskId> --operation <原 operationId>` 关联；bind 校验当前 `CODEX_THREAD_ID`，不创建工作项。
+一个主对话只能有一个未完成项目。原生 `dispatch` 增加 `--coordinator-work implementation`，会在创建会话前校验该计划已有的 implementation，并在发送提示词前把反馈 taskId 绑定到对应工作。未提供此参数时保持原派发行为。多个任务绑定各自 workId，共用同一个项目。使用同一 operation 重试时，须保留原有 `--coordinator-work`（或继续省略）；成功回执会重放，修改绑定会报冲突。改变 task/operation、未满足依赖、未知 workId、项目歧义或暂停都会拒绝绑定。外部任务取得公开 taskId 后，用 `bind --project <id> --work <workId> --task <反馈 taskId> --operation <原 operationId>` 关联；bind 校验当前 `CODEX_THREAD_ID`，不创建工作项。
 
 使用已安装 Skill 中的 CLI：
 

@@ -136,6 +136,27 @@ function work(state, id) {
   if (!item) fail('NOT_FOUND', 'work item is not registered')
   return item
 }
+
+/** Check the binding against one project snapshot without changing it. */
+export function checkWorkBinding(state, event) {
+  if (state.mode !== 'active') fail('PAUSED', 'paused project cannot bind a task')
+  const item = work(state, event.workId)
+  const taskId = string(event.taskId, 'taskId', 256)
+  const operationId = string(event.operationId, 'operationId', 256)
+  if (item.taskId !== undefined || item.operationId !== undefined) {
+    if (item.taskId !== taskId || item.operationId !== operationId)
+      fail('CONFLICT', 'registered work already belongs to another task operation')
+    return item
+  }
+  if (
+    item.status !== 'ready' ||
+    item.dependsOn.some((id) => work(state, id).status !== 'accepted') ||
+    state.workItems.some((other) => other.workId !== item.workId && other.taskId === taskId)
+  )
+    fail('CONFLICT', 'task cannot bind to this registered work item')
+  return item
+}
+
 function runtime(state, event) {
   if (string(event.runId, 'runId', 256) !== state.runtime.runId)
     fail('STALE_RUN', 'runtime run is not current')
@@ -701,6 +722,10 @@ export class ProjectStore {
     return this.transaction(projectId, async (path) => {
       const state = await this.read(path)
       identity(state, event)
+      // A binding replay must still carry current authority before dispatch may send its prompt.
+      const currentEpoch = event.authorityEpoch === state.authorityEpoch
+      if (event.type === 'work.bound' && !currentEpoch)
+        fail('STALE_EPOCH', 'project authorization epoch has changed')
       const fingerprint = digest(event),
         seen = state.seenEvents.find((item) => item.eventId === event.eventId)
       if (seen) {
@@ -708,8 +733,7 @@ export class ProjectStore {
           fail('CONFLICT', 'event id was reused with different fields')
         return state
       }
-      if (event.authorityEpoch !== state.authorityEpoch)
-        fail('STALE_EPOCH', 'project authorization epoch has changed')
+      if (!currentEpoch) fail('STALE_EPOCH', 'project authorization epoch has changed')
       if (state.seenEvents.length >= MAX_EVENTS) fail('LIMIT', 'project event budget is exhausted')
       const progressBefore = progress(state)
       this.reduce(state, event)
@@ -888,23 +912,9 @@ export class ProjectStore {
         return
       }
       case 'work.bound': {
-        if (state.mode !== 'active') fail('PAUSED', 'paused project cannot bind a task')
-        const item = work(state, event.workId)
-        const taskId = string(event.taskId, 'taskId', 256)
-        const operationId = string(event.operationId, 'operationId', 256)
-        if (item.taskId !== undefined || item.operationId !== undefined) {
-          if (item.taskId !== taskId || item.operationId !== operationId)
-            fail('CONFLICT', 'registered work already belongs to another task operation')
-          return
-        }
-        if (
-          item.status !== 'ready' ||
-          item.dependsOn.some((id) => work(state, id).status !== 'accepted') ||
-          state.workItems.some((other) => other.workId !== item.workId && other.taskId === taskId)
-        )
-          fail('CONFLICT', 'task cannot bind to this registered work item')
-        item.taskId = taskId
-        item.operationId = operationId
+        const item = checkWorkBinding(state, event)
+        item.taskId = event.taskId
+        item.operationId = event.operationId
         return
       }
       case 'work.observed': {

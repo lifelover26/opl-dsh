@@ -377,6 +377,19 @@ if (command === 'codex-runtime-select') {
       process.exitCode = 0
     } else {
       const taskId = requestId
+      const coordinatorInput = {
+        codexHome: coordinatorHome,
+        threadId: thread,
+        cwd: args.cwd,
+        workId: coordinatorWork,
+        taskId,
+        operationId: args.operation,
+      }
+      const registration =
+        coordinatorWork === undefined
+          ? null
+          : await import('./coordinator/dispatch-registration.mjs')
+      const admission = registration && (await registration.preflightDispatchTask(coordinatorInput))
       // A retry keeps the effort resolved for its first attempt, including older operations
       // that left selection to the profile. A changed local default applies to new operations.
       const reasoningEffort = previous ? previous.reasoningEffort : configuredEffort
@@ -429,19 +442,9 @@ if (command === 'codex-runtime-select') {
         'taskFeedback',
       )
       if (registered.task?.taskId !== taskId) throw new Error('任务反馈登记未确认，未发送提示词')
-      const coordinator =
-        coordinatorWork !== undefined
-          ? await (
-              await import('./coordinator/dispatch-registration.mjs')
-            ).registerDispatchTask({
-              codexHome: coordinatorHome,
-              threadId: thread,
-              cwd: args.cwd,
-              workId: coordinatorWork,
-              taskId,
-              operationId: args.operation,
-            })
-          : { status: 'skipped', reason: 'not-requested' }
+      const coordinator = registration
+        ? await registration.registerDispatchTask({ ...coordinatorInput, ...admission })
+        : { status: 'skipped', reason: 'not-requested' }
       const receipt = await rpc('prompt', {
         sessionId,
         requestId,
