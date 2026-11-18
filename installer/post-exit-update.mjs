@@ -7,7 +7,11 @@ import { fileURLToPath } from 'node:url'
 import { installationPaths } from './installation-paths.mjs'
 import { launchIndependent, quoteWindowsArgument } from './windows-lifecycle.mjs'
 import { readPreparedUpdate, refreshEnhancements } from './update.mjs'
-import { updateProcessAlive } from './update-transaction.mjs'
+import {
+  acquireSuiteMaintenance,
+  readUpdateTransaction,
+  updateProcessAlive,
+} from './update-transaction.mjs'
 
 const script = fileURLToPath(import.meta.url)
 const pause = (ms) => new Promise((done) => setTimeout(done, ms))
@@ -206,20 +210,46 @@ export async function runPostExitUpdate(
   const processes = options.processes ?? desktopProcesses
   const wait = options.wait ?? pause
   const apply = options.apply ?? refreshEnhancements
-  const lock = options.lock ?? profileLock
+  // A manual transaction excludes new watcher reservations before its restart.
+  const lock =
+    options.lock ??
+    (async (home) => {
+      const access = await acquireSuiteMaintenance(root)
+      try {
+        return await profileLock(home)
+      } finally {
+        await access.release()
+      }
+    })
   let release
+  const handedOff = async () => {
+    const transaction = await readUpdateTransaction(root)
+    return (
+      transaction?.targetPendingSha256 === expected &&
+      !['failed', 'cancelled', 'succeeded'].includes(transaction.stage) &&
+      alive(transaction.ownerPid)
+    )
+  }
 
   // Reserve the next official Desktop initialization before waiting for exit.
   // A quick relaunch must not run the old profile between this watcher and the
   // installed update. A crashed watcher leaves only its PID for the official
   // app's normal stale-lock recovery.
   while (!release) {
-    release = await lock(profileHome)
+    if ((await pendingDigest(root)) !== expected) return 'changed'
+    if (await handedOff()) return 'handoff'
+    try {
+      release = await lock(profileHome)
+    } catch (error) {
+      if (await handedOff()) return 'handoff'
+      throw error
+    }
     if (!release) await wait(1000)
   }
 
   try {
     while ((await pendingDigest(root)) === expected) {
+      if (await handedOff()) return 'handoff'
       if (alive(hostPid) || alive(desktopPid) || (await processes(application)).length) {
         await wait(1000)
         continue

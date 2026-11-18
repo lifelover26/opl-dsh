@@ -220,6 +220,8 @@ export class UpdateController implements OplUpdateApi {
   private checking: Promise<OplUpdateStatus> | undefined
   private preparing: Promise<OplUpdateStatus> | undefined
   private cancelling: Promise<OplUpdateStatus> | undefined
+  private applying: Promise<OplUpdateStatus> | undefined
+  private applyEpoch = 0
   private checkAbort: AbortController | undefined
   private prepareAbort: AbortController | undefined
   private timer: ReturnType<typeof setTimeout> | undefined
@@ -351,8 +353,11 @@ export class UpdateController implements OplUpdateApi {
 
   async check(): Promise<OplUpdateStatus> {
     await this.initialize()
-    if (this.closed) throw Error('Update service is closed')
+    if (this.closed || this.value.restart?.phase === 'handoff')
+      throw Error('Update service is closing')
     if (this.checking) return this.checking
+    this.applyEpoch++
+    this.idle.changed()
     const abort = (this.checkAbort = new AbortController())
     const work = (async () => {
       let succeeded = false
@@ -418,10 +423,10 @@ export class UpdateController implements OplUpdateApi {
 
   async prepare(): Promise<OplUpdateStatus> {
     await this.initialize()
-    if (this.closed) throw Error('Update service is closed')
+    this.assertOpen()
     if (this.preparing) return this.preparing
     if (this.cancelling) await this.cancelling
-    if (this.closed) throw Error('Update service is closed')
+    this.assertOpen()
     if (this.preparing) return this.preparing
     if (this.value.release?.compatibility !== 'enhancement')
       throw Error('A full Suite installer is required')
@@ -469,11 +474,70 @@ export class UpdateController implements OplUpdateApi {
     }
   }
 
+  private assertOpen(): void {
+    if (this.closed || this.value.restart?.phase === 'handoff')
+      throw Error('Update service is closing')
+  }
+
+  /** Prepare the displayed version and request one immediate, idle-only restart. */
+  async applyNow(): Promise<OplUpdateStatus> {
+    await this.initialize()
+    if (this.closed || this.value.restart?.phase === 'handoff')
+      throw Error('Update service is closing')
+    if (this.value.localCandidate)
+      throw Error('Local candidate builds require a full Suite installer')
+    if (this.applying) return this.applying
+    const work = (async () => {
+      // Discovery and cancellation are owned lifecycle operations. Join them before
+      // selecting a release instead of rejecting a concurrent explicit request.
+      await this.checking
+      await this.cancelling
+      if (this.closed || this.value.restart?.phase === 'handoff')
+        throw Error('Update service is closing')
+      if (this.value.release?.compatibility !== 'enhancement')
+        throw Error('A full Suite installer is required')
+      const version = this.value.release.version
+      const epoch = ++this.applyEpoch
+      if (this.value.pendingVersion && this.value.pendingVersion !== version) {
+        this.value.error = 'prepare-integrity-failed'
+        this.value.failure = { stage: 'confirm', reason: 'release-changed' }
+        await this.persist().catch(() => {})
+        this.publish()
+        return structuredClone(this.value)
+      }
+      if (this.value.pendingVersion !== version) await this.prepare()
+      if (this.closed || this.applyEpoch !== epoch) return structuredClone(this.value)
+      if (this.value.pendingVersion !== version) {
+        this.value.error ??= 'prepare-failed'
+        this.value.failure ??= { stage: 'confirm', reason: 'unknown' }
+        await this.persist().catch(() => {})
+        this.publish()
+        return structuredClone(this.value)
+      }
+      if (
+        this.checking ||
+        this.cancelling ||
+        this.value.release?.version !== version ||
+        this.value.release.compatibility !== 'enhancement'
+      )
+        return structuredClone(this.value)
+      await this.idle.applyNow(version)
+      return structuredClone(this.value)
+    })()
+    this.applying = work
+    try {
+      return await work
+    } finally {
+      if (this.applying === work) this.applying = undefined
+    }
+  }
+
   async cancel(): Promise<OplUpdateStatus> {
     await this.initialize()
     if (this.closed || this.value.restart?.phase === 'handoff')
       throw Error('Update service is closing')
     if (this.cancelling) return this.cancelling
+    this.applyEpoch++
     const work = (async () => {
       this.idle.cancel()
       this.prepareAbort?.abort()
@@ -506,6 +570,8 @@ export class UpdateController implements OplUpdateApi {
       throw Error('Update service is closing')
     const policy = updatePolicy(value)
     if (!this.operations.savePolicy) throw Error('Update settings are unavailable')
+    this.applyEpoch++
+    this.idle.changed()
     const work = this.operations.savePolicy(policy)
     this.settingsWrites.add(work)
     try {
@@ -527,6 +593,7 @@ export class UpdateController implements OplUpdateApi {
     await this.initialize()
     if (this.closed || this.value.restart?.phase === 'handoff')
       throw Error('Update service is closing')
+    this.applyEpoch++
     this.idle.postpone()
     await this.persist()
     return this.status()
@@ -546,6 +613,7 @@ export class UpdateController implements OplUpdateApi {
   /** Abort owned requests and wait for their file operations before unloading. */
   async dispose(): Promise<void> {
     this.closed = true
+    this.applyEpoch++
     if (this.timer) clearTimeout(this.timer)
     this.checkAbort?.abort()
     this.prepareAbort?.abort()
@@ -557,6 +625,7 @@ export class UpdateController implements OplUpdateApi {
       this.checking,
       this.preparing,
       this.cancelling,
+      this.applying,
       this.saves,
       ...this.settingsWrites,
     ])

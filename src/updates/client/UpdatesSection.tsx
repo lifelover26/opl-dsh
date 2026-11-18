@@ -1,7 +1,8 @@
 /** Update controls contributed to the official General settings section. */
-import { useEffect, useRef, useSyncExternalStore } from 'react'
-import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Button, Modal, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { OplUpdateRestart } from '../contracts.ts'
 import type { UpdateController } from './controller.ts'
 import { PolicyControls } from './PolicyControls.tsx'
 import { useUpdateCountdown } from './countdown.ts'
@@ -41,8 +42,25 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
   }, [navigation, navigationRevision])
   const view = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const { status, operation } = view
+  const [blocked, setBlocked] = useState<OplUpdateRestart['reason'] | undefined>()
+  const applyRequest = useRef(0)
+  useEffect(
+    () => () => {
+      applyRequest.current++
+    },
+    [],
+  )
+  const applyNow = async () => {
+    const request = ++applyRequest.current
+    const reason = await controller.applyNow()
+    if (request !== applyRequest.current) return
+    if (reason !== undefined) setBlocked(reason)
+  }
   const checking = operation === 'check' || Boolean(status?.checking)
-  const preparing = operation === 'prepare' || Boolean(status?.preparing)
+  const preparing =
+    operation === 'prepare' ||
+    (operation === 'apply' && !status?.pendingVersion) ||
+    Boolean(status?.preparing)
   const handoff = status?.restart?.phase === 'handoff'
   const busy = operation !== null || checking || preparing || handoff
   const writable = view.connected && view.confirmed && !busy && !view.uncertain && status !== null
@@ -144,6 +162,11 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
           {t('cancelling')}
         </p>
       )}
+      {operation === 'apply' && !preparing && (
+        <p role="status" className={css.muted}>
+          {t('applying')}
+        </p>
+      )}
       {status?.checkedAt ? (
         <p className={css.muted}>
           {t('lastChecked')}:{' '}
@@ -209,7 +232,7 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
           >
             {t('releaseNotes')}
           </a>
-          {release.compatibility === 'full-suite' ? (
+          {status?.localCandidate || release.compatibility === 'full-suite' ? (
             <a
               className={updatesCss.link}
               href={release.url}
@@ -219,15 +242,20 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
               {t('download')}
             </a>
           ) : (
-            !status?.pendingVersion && (
-              <Button
-                variant="outline"
-                disabled={!writable}
-                onClick={() => void controller.prepare()}
-              >
-                {t(preparing ? 'preparing' : 'prepare')}
+            <>
+              {!status?.pendingVersion && (
+                <Button
+                  variant="outline"
+                  disabled={!writable}
+                  onClick={() => void controller.prepare()}
+                >
+                  {t(preparing ? 'preparing' : 'prepare')}
+                </Button>
+              )}
+              <Button variant="outline" disabled={!writable} onClick={() => void applyNow()}>
+                {t(operation === 'apply' ? 'applying' : 'applyNow')}
               </Button>
-            )
+            </>
           )}
         </div>
       )}
@@ -249,11 +277,17 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
             {t(
               handoff
                 ? 'restartHandoff'
-                : countdown !== null
-                  ? 'restartCountdown'
-                  : restart?.phase === 'waiting'
-                    ? 'restartWaiting'
-                    : 'pending',
+                : status.localCandidate
+                  ? 'pendingInstaller'
+                  : countdown !== null
+                    ? 'restartCountdown'
+                    : restart?.phase === 'waiting'
+                      ? 'restartWaiting'
+                      : restart?.phase === 'blocked'
+                        ? 'restartBlocked'
+                        : !release
+                          ? 'pendingUnchecked'
+                          : 'pending',
               { version: status.pendingVersion, seconds: countdown ?? 0 },
             )}
           </p>
@@ -285,6 +319,31 @@ export function UpdatesSection({ controller, navigation: navigationProp, t }: Up
           )}
         </div>
       )}
+      <Modal
+        open={blocked !== undefined}
+        title={t('updateBlockedTitle')}
+        closeLabel={t('later')}
+        onClose={() => setBlocked(undefined)}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setBlocked(undefined)}>
+              {t('later')}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={!controller.canCancel()}
+              onClick={() => {
+                setBlocked(undefined)
+                void controller.cancel()
+              }}
+            >
+              {t('cancel')}
+            </Button>
+          </>
+        }
+      >
+        <p>{t(blocked === 'busy' ? 'updateBusyBody' : (blocked ?? 'activity-unknown'))}</p>
+      </Modal>
     </section>
   )
 }

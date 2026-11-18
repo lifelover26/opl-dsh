@@ -128,3 +128,28 @@ test('waits while the profile lock is owned instead of stealing it', async (t) =
   assert.equal(result, 'updated')
   assert.equal(attempts, 2)
 })
+
+test('stops waiting for a profile lock when the prepared plan is cancelled', async (t) => {
+  const value = await fixture(t)
+  let attempts = 0
+  const result = await runPostExitUpdate(
+    {
+      root: value.root,
+      application: '/tmp/DeepSeek Harness.app',
+      profileHome: '/tmp/profile',
+      expected: value.expected,
+      hostPid,
+      desktopPid,
+    },
+    {
+      lock: async () => {
+        attempts++
+        return null
+      },
+      wait: async () => rm(value.path),
+      apply: () => assert.fail('a cancelled plan cannot install'),
+    },
+  )
+  assert.equal(result, 'changed')
+  assert.equal(attempts, 1)
+})

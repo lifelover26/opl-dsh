@@ -26,17 +26,19 @@ export function UpdateNotice({ controller, navigation, openSettings, wide, t }: 
   if (!status || (!status.release && !status.pendingVersion)) return null
   const version = status.pendingVersion ?? status.release!.version
   const label = t(
-    status.pendingVersion
-      ? restart?.phase === 'handoff'
-        ? 'noticeHandoff'
-        : countdown !== null
-          ? 'noticeCountdown'
-          : restart?.phase === 'waiting'
-            ? 'noticeWaiting'
-            : 'noticePending'
-      : status.release!.compatibility === 'full-suite'
-        ? 'noticeFullSuite'
-        : 'noticeAvailable',
+    status.localCandidate
+      ? 'noticeFullSuite'
+      : status.pendingVersion
+        ? restart?.phase === 'handoff'
+          ? 'noticeHandoff'
+          : countdown !== null
+            ? 'noticeCountdown'
+            : restart?.phase === 'waiting'
+              ? 'noticeWaiting'
+              : 'noticePending'
+        : status.release!.compatibility === 'full-suite'
+          ? 'noticeFullSuite'
+          : 'noticeAvailable',
     { version, seconds: countdown ?? 0 },
   )
   const title =

@@ -491,6 +491,18 @@ async function confirmTarget(root, record) {
   return current
 }
 
+async function profileInitializationReleased(root, record, options) {
+  const path = join(record.profileHome, 'profiles/desktop/lock')
+  const now = options.now ?? (() => performance.now())
+  const wait = options.wait ?? pause
+  const deadline = now() + (options.exitTimeoutMs ?? 60_000)
+  while ((await bytes(path, 1024, true)) !== null) {
+    await assertUpdateTransaction(root, record, ['installed'])
+    if (now() >= deadline) throw failure('profile-initialization-busy')
+    await wait(100)
+  }
+}
+
 async function desktopHealthy(root, record) {
   const raw = await bytes(join(root, 'desktop-launch.json'), 128 * 1024, true)
   if (raw === null) return false
@@ -585,6 +597,7 @@ export async function runUpdateTransaction(root, offeredLease, options = {}) {
     await refresh(root, record.application, { transaction: lease })
     const current = await confirmTarget(root, record)
     await transitionUpdateTransaction(root, lease, 'installed')
+    await profileInitializationReleased(root, record, options)
     await transitionUpdateTransaction(root, lease, 'starting')
     const start =
       options.start ??

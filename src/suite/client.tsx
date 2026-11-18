@@ -43,6 +43,7 @@ export async function apply(ctx: Context): Promise<void> {
         check: () => call('check'),
         setAutomatic: (enabled: boolean) => call('automatic', enabled),
         prepare: () => call('prepare'),
+        applyNow: () => call('applyNow'),
         cancel: () => call('cancel'),
         setPolicy: (policy) => call('policy', policy),
         postpone: () => call('postpone'),

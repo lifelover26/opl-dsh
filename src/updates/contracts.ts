@@ -10,7 +10,7 @@ export interface OplUpdatePolicy {
 
 /** A pending restart is observable and can be postponed before handoff. */
 export interface OplUpdateRestart {
-  phase: 'waiting' | 'countdown' | 'handoff' | 'failed'
+  phase: 'waiting' | 'countdown' | 'handoff' | 'blocked' | 'failed'
   dueAt: string | null
   reason:
     'busy' | 'activity-unknown' | 'other-profile' | 'desktop-unavailable' | 'update-failed' | null
@@ -96,6 +96,7 @@ export interface OplUpdateApi {
   check(): Promise<OplUpdateStatus>
   setAutomatic(enabled: boolean): Promise<OplUpdateStatus>
   prepare(): Promise<OplUpdateStatus>
+  applyNow(): Promise<OplUpdateStatus>
   cancel(): Promise<OplUpdateStatus>
   setPolicy(policy: OplUpdatePolicy): Promise<OplUpdateStatus>
   postpone(): Promise<OplUpdateStatus>

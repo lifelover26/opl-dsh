@@ -9,8 +9,8 @@ import type {
 import {
   defaultUpdatePolicy,
   IdleUpdateCoordinator,
-  storedUpdatePolicy,
   updatePolicy,
+  storedUpdatePolicy,
 } from '../../src/updates/host/idle.ts'
 import { UpdateController, type UpdateOperations } from '../../src/updates/host/controller.ts'
 
@@ -96,33 +96,26 @@ async function tick(ms = 0) {
 }
 
 describe('unattended update policy validation', () => {
-  it('uses automatic post-exit updates by default and accepts both numeric endpoints', () => {
-    expect(defaultUpdatePolicy).toEqual({
-      mode: 'on-launch',
-      idleMinutes: 5,
-      countdownSeconds: 30,
-    })
+  it('keeps automatic preparation defaults and accepts both numeric endpoints', () => {
+    expect(defaultUpdatePolicy).toEqual({ mode: 'on-launch', idleMinutes: 5, countdownSeconds: 30 })
     expect(updatePolicy(policy())).toEqual(policy())
     expect(updatePolicy(policy({ idleMinutes: 120, countdownSeconds: 300 }))).toEqual(
       policy({ idleMinutes: 120, countdownSeconds: 300 }),
     )
   })
 
-  it('migrates the untouched legacy reminder default but preserves explicit choices', () => {
-    const notify = policy({ mode: 'notify', idleMinutes: 5, countdownSeconds: 30 })
-    expect(storedUpdatePolicy({ updatePolicy: notify })).toEqual(defaultUpdatePolicy)
-    expect(storedUpdatePolicy({ updatePolicy: notify, updatePolicyChosen: false })).toEqual(
-      defaultUpdatePolicy,
-    )
-    expect(storedUpdatePolicy({ updatePolicy: notify, updatePolicyChosen: true })).toEqual(notify)
-    expect(storedUpdatePolicy({ updatePolicy: policy({ mode: 'idle' }) })).toEqual(
-      policy({ mode: 'idle' }),
-    )
-    expect(
-      storedUpdatePolicy({
-        updatePolicy: policy({ mode: 'notify', idleMinutes: 12 }),
-      }),
-    ).toEqual(policy({ mode: 'notify', idleMinutes: 12 }))
+  it('preserves on-launch preferences without discarding timing', () => {
+    expect(updatePolicy({ mode: 'on-launch', idleMinutes: 8, countdownSeconds: 45 })).toEqual({
+      mode: 'on-launch',
+      idleMinutes: 8,
+      countdownSeconds: 45,
+    })
+  })
+
+  it('migrates only untouched legacy reminder defaults', () => {
+    const legacy = { mode: 'notify' as const, idleMinutes: 5, countdownSeconds: 30 }
+    expect(storedUpdatePolicy({ updatePolicy: legacy })).toEqual(defaultUpdatePolicy)
+    expect(storedUpdatePolicy({ updatePolicy: legacy, updatePolicyChosen: true })).toEqual(legacy)
   })
 
   it.each([
@@ -156,15 +149,14 @@ describe('idle coordinator release and time ownership', () => {
     expect(vi.getTimerCount()).toBe(0)
   })
 
-  it('automatically prepares on-launch policy without inspecting or scheduling a restart', async () => {
+  it('prepares on-launch updates without inspecting or restarting the running app', async () => {
     const f = coordinatorFixture(status({ policy: policy({ mode: 'on-launch' }) }))
     f.coordinator.changed()
     await tick(24 * 60 * 60_000)
     expect(f.operations.prepare).toHaveBeenCalledTimes(1)
-    expect(f.state.pendingVersion).toBe(offer.version)
     expect(f.operations.inspect).not.toHaveBeenCalled()
     expect(f.operations.handoff).not.toHaveBeenCalled()
-    expect(vi.getTimerCount()).toBe(0)
+    expect(f.state.pendingVersion).toBe(offer.version)
   })
 
   it('waits the exact idle interval and countdown before one handoff', async () => {
@@ -408,6 +400,94 @@ describe('idle coordinator failure and teardown', () => {
   })
 })
 
+describe('explicit immediate update ownership', () => {
+  it('bypasses idle timing with one fresh inspection and one shared handoff', async () => {
+    const f = coordinatorFixture(
+      status({ pendingVersion: offer.version, policy: policy({ mode: 'notify' }) }),
+    )
+    await Promise.all([
+      f.coordinator.applyNow(offer.version),
+      f.coordinator.applyNow(offer.version),
+    ])
+    expect(f.operations.inspect).toHaveBeenCalledTimes(1)
+    expect(f.operations.handoff).toHaveBeenCalledTimes(1)
+    expect(f.state.restart?.phase).toBe('handoff')
+    expect(f.operations.prepare).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it.each(['busy', 'activity-unknown', 'other-profile', 'desktop-unavailable'] as const)(
+    'reports %s without stopping tasks or scheduling a background retry',
+    async (reason) => {
+      const f = coordinatorFixture(status({ pendingVersion: offer.version }))
+      f.operations.inspect.mockResolvedValue(reason)
+      await f.coordinator.applyNow(offer.version)
+      expect(f.state.restart).toEqual({ phase: 'blocked', dueAt: null, reason })
+      f.operations.inspect.mockResolvedValue(null)
+      f.coordinator.changed()
+      await tick(24 * 60 * 60_000)
+      expect(f.operations.handoff).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+      await f.coordinator.applyNow(offer.version)
+      expect(f.operations.handoff).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it.each(['cancel', 'postpone', 'version', 'pending', 'policy'] as const)(
+    'does not hand off a late manual inspection after %s',
+    async (change) => {
+      const f = coordinatorFixture(status({ pendingVersion: offer.version }))
+      const gate = deferred<OplUpdateRestart['reason']>(null)
+      f.operations.inspect.mockReturnValueOnce(gate.promise)
+      const applying = f.coordinator.applyNow(offer.version)
+      await Promise.resolve()
+      expect(f.operations.inspect).toHaveBeenCalledTimes(1)
+      if (change === 'cancel') f.coordinator.cancel()
+      if (change === 'postpone') f.coordinator.postpone()
+      if (change === 'version') f.change({ release: { ...offer, version: '0.3.1' } })
+      if (change === 'pending') f.state.pendingVersion = null
+      if (change === 'policy') f.change({ policy: policy({ mode: 'notify' }) })
+      gate.resolve(null)
+      await applying
+      expect(f.operations.handoff).not.toHaveBeenCalled()
+    },
+  )
+
+  it('waits for an owned automatic inspection before starting the explicit one', async () => {
+    const f = coordinatorFixture(status({ pendingVersion: offer.version }))
+    const old = deferred<OplUpdateRestart['reason']>(null)
+    f.operations.inspect.mockReturnValueOnce(old.promise)
+    f.coordinator.changed()
+    await tick()
+    const applying = f.coordinator.applyNow(offer.version)
+    expect(f.operations.inspect).toHaveBeenCalledTimes(1)
+    old.resolve(null)
+    await applying
+    expect(f.operations.inspect).toHaveBeenCalledTimes(2)
+    expect(f.operations.handoff).toHaveBeenCalledTimes(1)
+  })
+
+  it('awaits a manual inspection on unload and suppresses its late result', async () => {
+    const f = coordinatorFixture(status({ pendingVersion: offer.version }))
+    const gate = deferred<OplUpdateRestart['reason']>(null)
+    f.operations.inspect.mockReturnValueOnce(gate.promise)
+    const applying = f.coordinator.applyNow(offer.version)
+    await Promise.resolve()
+    let disposed = false
+    const disposing = f.coordinator.dispose().then(() => {
+      disposed = true
+    })
+    await Promise.resolve()
+    expect(disposed).toBe(false)
+    const count = f.operations.publish.mock.calls.length
+    gate.resolve(null)
+    await Promise.all([disposing, applying])
+    expect(f.operations.publish).toHaveBeenCalledTimes(count)
+    expect(f.operations.handoff).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+})
+
 function hostFixture(overrides: Partial<OplUpdateStatus> = {}) {
   const initial = status(overrides)
   let selected = initial.policy!
@@ -471,18 +551,18 @@ describe('Host idle coordinator integration', () => {
     expect(f.operations.prepare).toHaveBeenCalledTimes(1)
   })
 
-  it('switches an active countdown to on-launch policy without restarting or downloading again', async () => {
+  it('switches an active countdown to reminder policy without restarting or downloading again', async () => {
     const f = hostFixture()
     f.controller.start()
     await f.controller.status()
     await tick(60_000)
     expect((await f.controller.status()).restart?.phase).toBe('countdown')
-    await f.controller.setPolicy(policy({ mode: 'on-launch' }))
+    await f.controller.setPolicy(policy({ mode: 'notify' }))
     await tick(60_000)
     expect((await f.controller.status()).restart).toBeUndefined()
     expect(f.operations.prepare).toHaveBeenCalledTimes(1)
     expect(f.operations.handoff).not.toHaveBeenCalled()
-    expect(f.operations.savePolicy).toHaveBeenCalledExactlyOnceWith(policy({ mode: 'on-launch' }))
+    expect(f.operations.savePolicy).toHaveBeenCalledExactlyOnceWith(policy({ mode: 'notify' }))
   })
 
   it('rejects a postpone during handoff without first erasing the handoff status', async () => {
