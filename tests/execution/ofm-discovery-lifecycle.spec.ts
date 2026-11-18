@@ -158,7 +158,7 @@ it('keeps a removed choice disabled after persistence, restart, and relisting', 
       expect.objectContaining({ modelRef: ref, available: true }),
     )
     expect(relisted.combinations.filter((item) => item.modelRef.model === ref.model)).toEqual([
-      { ...saved, enabled: false, autoEnabled: false, autoEnabledDisabled: true },
+      { ...saved, enabled: false, generated: false, autoEnabled: false, autoEnabledDisabled: true },
     ])
     expect(
       combinationChoices(relisted).filter((item) => item.modelRef.model === ref.model),

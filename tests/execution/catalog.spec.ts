@@ -100,6 +100,7 @@ describe('combination authority', () => {
       autoEnabledDisabled: true,
     }
     expect(normalizeCatalog(catalog).combinations[0]).toMatchObject({
+      generated: false,
       autoEnabled: false,
       autoEnabledDisabled: true,
     })

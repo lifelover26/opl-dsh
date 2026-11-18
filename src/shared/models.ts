@@ -20,12 +20,7 @@ export function isRetiredModel(_ref: ModelRef): boolean {
 }
 
 /** Gateway Gemini models natively paired with the official Antigravity CLI (and OpenCode fallback). */
-export const GATEWAY_ANTIGRAVITY_GEMINI_MODELS = [
-  'gemini-4-carbon',
-  'gemini-4-hydrogen',
-  'gemini-4-argon',
-  'gemini-3.8-flash',
-] as const
+export const GATEWAY_ANTIGRAVITY_GEMINI_MODELS = ['gemini-4-carbon', 'gemini-4-hydrogen'] as const
 
 /** Stable product names for IDs whose upstream display text changed. */
 export function displayModelName(ref: ModelRef, name?: string): string {

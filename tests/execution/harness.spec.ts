@@ -668,7 +668,8 @@ describe('official role execution binding', () => {
   })
 })
 
-describe('external input rejection and replay', () => {
+// A cold replay can start two fixture processes and wait for durable turn settlement.
+describe('external input rejection and replay', { timeout: 15_000 }, () => {
   const ref = { provider: 'opl-gateway', model: 'grok::grok-4.7' }
   const user = (text: string) =>
     createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text }] })
@@ -1959,7 +1960,7 @@ describe('native conversation combinations', () => {
       spy.mockRestore()
     }
   })
-  it('filters retired provider models and combinations from the live catalog', async () => {
+  it('keeps provider-advertised models without a local retirement list', async () => {
     const { service } = await nativeSetup([
       { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
       { id: 'codex::gpt-5', name: 'GPT-5' },
@@ -1967,10 +1968,7 @@ describe('native conversation combinations', () => {
       { id: 'deepseek-flash', name: 'DeepSeek' },
     ])
     const catalog = await service.executionCatalog()
-    expect(catalog.models.map((item) => item.ref.model)).not.toEqual(
-      expect.arrayContaining(['deepseek-v4-pro', 'codex::gpt-5', 'codex::gpt-5-mini']),
-    )
-    expect(catalog.combinations.map((item) => item.modelRef.model)).not.toEqual(
+    expect(catalog.models.map((item) => item.ref.model)).toEqual(
       expect.arrayContaining(['deepseek-v4-pro', 'codex::gpt-5', 'codex::gpt-5-mini']),
     )
   })
@@ -2003,7 +2001,10 @@ describe('native conversation combinations', () => {
     const catalog = await service.executionCatalog()
     expect(
       catalog.models.filter((item) => item.ref.provider === 'deepseek-official'),
-    ).toMatchObject([{ available: false, reason: '凭据未配置' }])
+    ).toMatchObject([
+      { available: false, reason: '凭据未配置' },
+      { available: false, reason: '凭据未配置' },
+    ])
     expect(
       catalog.combinations.filter((item) => item.modelRef.provider === 'deepseek-official'),
     ).toEqual([])
@@ -2058,7 +2059,7 @@ describe('native conversation combinations', () => {
       'OPL Gateway',
     ])
   })
-  it('defaults the two native Gateway Gemini models to Antigravity and keeps OpenCode compatible', async () => {
+  it('defaults the four native Gateway Gemini models to Antigravity and recommends OpenCode', async () => {
     vi.stubEnv('USERPROFILE', join(tmpdir(), 'opl-gemini-opencode-absent-cli'))
     vi.stubEnv('HOME', join(tmpdir(), 'opl-gemini-opencode-absent-cli'))
     vi.stubEnv('PATH', '')
@@ -2084,13 +2085,23 @@ describe('native conversation combinations', () => {
         harnessRef: 'antigravity',
         isDefault: true,
       },
+      {
+        modelRef: { model: 'gemini::gemini-4-argon' },
+        harnessRef: 'antigravity',
+        isDefault: true,
+      },
+      {
+        modelRef: { model: 'gemini::gemini-3.8-flash' },
+        harnessRef: 'antigravity',
+        isDefault: true,
+      },
     ])
     expect(
       catalog.recommendations
         ?.filter((item) => item.modelRef.model.startsWith('gemini::'))
         .map((item) => item.harnessRef),
-    ).toEqual(['opencode', 'opencode'])
-    for (const model of ['gemini-4-carbon', 'gemini-4-hydrogen'])
+    ).toEqual(['opencode', 'opencode', 'opencode', 'opencode'])
+    for (const model of ['gemini-4-carbon', 'gemini-4-hydrogen', 'gemini-4-argon', 'gemini-3.8-flash'])
       expect(catalog.supportedPairings).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
