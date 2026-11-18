@@ -100,11 +100,19 @@ export const qwenCodeAdapter: HarnessAdapter = {
     if (route.model !== QWEN_MODEL) throw failure('来源返回了不同模型，未启动 CLI。')
     const path = await executablePath(options.command || 'qwen', QWEN_CODE_HARNESS)
     if (!path) throw failure('未找到官方 qwen 程序，未启动 CLI。')
+    let env: NodeJS.ProcessEnv
+    try {
+      env = await qwenShellEnvironment(systemEnvironment())
+    } catch {
+      throw failure('Git Bash 检测未完成，未启动 CLI。')
+    }
+    const home = join(options.home, 'qwen')
     const check = commandLaunch(path, [...(options.prefix ?? []), '--version'])
     let version: string
     try {
       version = (
         await exec(check.command, check.args, {
+          env: { ...env, QWEN_HOME: home },
           windowsHide: true,
           timeout: 10_000,
           maxBuffer: 4096,
@@ -116,13 +124,6 @@ export const qwenCodeAdapter: HarnessAdapter = {
     }
     if (version !== QWEN_CODE_VERSION)
       throw failure(`当前适配已验证 Qwen Code ${QWEN_CODE_VERSION}，检测版本不匹配，未启动 CLI。`)
-    let env: NodeJS.ProcessEnv
-    try {
-      env = await qwenShellEnvironment(systemEnvironment())
-    } catch {
-      throw failure('Git Bash 检测未完成，未启动 CLI。')
-    }
-    const home = join(options.home, 'qwen')
     await mkdir(home, { recursive: true })
     lease.assertCurrent()
     // Keys remain in the selected process environment, never this profile file.
