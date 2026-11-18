@@ -8,7 +8,7 @@ const PERMISSION_PRESETS = new Set(['read-only', 'workspace-write', 'danger-full
 type RememberedPreset = 'read-only' | 'workspace-write' | 'danger-full-access'
 const sessionOnlySelections = new WeakSet<Session>()
 
-/** A role narrows this Session without changing the person's default for later chats. */
+/** Apply a session-local preset without changing the person's default for later chats. */
 export function withoutRememberingPermission<T>(session: Session, operation: () => T): T {
   sessionOnlySelections.add(session)
   try {
@@ -44,6 +44,44 @@ export function installPermissionMemory(ctx: Context, enabled = false): () => vo
     if (!owner) return enabled
     return (owner.value as { rememberPermissionPreset?: boolean }).rememberPermissionPreset === true
   }
+  let pending: { preset: RememberedPreset; revision: number } | undefined
+  let writing = false
+  const persist = async () => {
+    if (writing) return
+    writing = true
+    try {
+      while (pending) {
+        const { preset, revision } = pending
+        pending = undefined
+        try {
+          const descriptor = officialPermissionSettings(ctx)
+          if (!active() || !descriptor || descriptor.revision !== revision) continue
+          if ((descriptor.value as { defaultPreset?: string }).defaultPreset === preset) continue
+          await ctx.settings.mutate(
+            descriptor.ns,
+            [{ op: 'set', path: ['defaultPreset'], value: preset }],
+            revision,
+          )
+          const saved = officialPermissionSettings(ctx)
+          // A queued choice may advance over our successful write, but not over
+          // an intervening manual change to the official default.
+          const next = pending as { preset: RememberedPreset; revision: number } | undefined
+          if (
+            next?.revision === revision &&
+            saved?.revision === revision + 1 &&
+            (saved.value as { defaultPreset?: string }).defaultPreset === preset
+          )
+            next.revision = saved.revision
+        } catch (error) {
+          ctx.logger.warn(
+            `permission memory update failed: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+      }
+    } finally {
+      writing = false
+    }
+  }
   const disposeEvent = ctx.on('session/event', (session, event) => {
     if (
       !active() ||
@@ -61,22 +99,13 @@ export function installPermissionMemory(ctx: Context, enabled = false): () => vo
     if (events.find((entry) => entry.type === 'permission/preset')?.seq === event.seq) return
     const descriptor = officialPermissionSettings(ctx)
     if (!descriptor) return
-    const value = descriptor.value as { defaultPreset?: string }
-    if (value.defaultPreset === preset) return
-    // The selection's revision prevents a later manual default edit from being
-    // overwritten by this asynchronous write. The official settings owner
-    // decides conflicts; this observer does not retry them.
-    void ctx.settings
-      .mutate(
-        descriptor.ns,
-        [{ op: 'set', path: ['defaultPreset'], value: preset }],
-        descriptor.revision,
-      )
-      .catch((error) => {
-        ctx.logger.warn(
-          `permission memory update failed: ${error instanceof Error ? error.message : String(error)}`,
-        )
-      })
+    // Keep the newest choice even if it currently matches the persisted value:
+    // an earlier in-flight write may still change that value.
+    pending = { preset, revision: descriptor.revision }
+    void persist()
   })
-  return disposeEvent
+  return () => {
+    pending = undefined
+    disposeEvent()
+  }
 }

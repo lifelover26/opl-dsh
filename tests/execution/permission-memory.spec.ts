@@ -3,6 +3,7 @@ import {
   installPermissionMemory,
   withoutRememberingPermission,
 } from '../../src/compat/host/permission-memory.ts'
+import { setHarnessPermissions } from '../../src/execution/host/permissions.ts'
 
 function fixture(initialDefault = 'workspace-write', initialEnabled = true) {
   type Event = { type: string; seq: number; data: { preset?: string } }
@@ -21,16 +22,16 @@ function fixture(initialDefault = 'workspace-write', initialEnabled = true) {
       { ns: 'opl-execution', value: { rememberPermissionPreset: enabled }, revision: 1 },
     ]),
     mutate: vi.fn(async (_ns: string, ops: { value: string }[], expectedRevision: number) => {
-      if (expectedRevision !== revision) return { ok: false }
+      if (expectedRevision !== revision) throw Error('settings revision changed')
       defaultPreset = ops[0]!.value
       revision += 1
-      return { ok: true }
     }),
   }
   const permissionPresets = { current: vi.fn(), set: vi.fn() }
   const ctx = {
     settings,
     permissionPresets,
+    get: vi.fn(() => permissionPresets),
     logger: { warn: vi.fn() },
     on: vi.fn((name: string, listener: (session: Session, event: Event) => void) => {
       expect(name).toBe('session/event')
@@ -124,6 +125,22 @@ it('does not remember a first-time initialization when an existing Session is op
   f.dispose()
 })
 
+it('does not treat delegated permission assignment as a user default selection', async () => {
+  const f = fixture()
+  const delegated = f.session('delegated')
+  delegated.append('permission/preset', 'workspace-write')
+  f.permissionPresets.set.mockImplementationOnce(() => {
+    delegated.append('permission/preset', 'danger-full-access')
+  })
+  setHarnessPermissions(f.ctx as never, delegated.session as never, 'full-access')
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(f.settings.mutate).not.toHaveBeenCalled()
+  delegated.append('permission/preset', 'read-only')
+  await vi.waitFor(() => expect(f.defaultPreset).toBe('read-only'))
+  f.dispose()
+})
+
 it('does not persist selections while disabled, including after re-enabling and reopening', async () => {
   const f = fixture('workspace-write', false)
   const current = f.session('current')
@@ -174,12 +191,38 @@ it('does not retry a delayed selection over a later manual default edit', async 
   const current = f.session('current')
   current.append('permission/preset', 'workspace-write')
   current.append('permission/preset', 'danger-full-access')
+  current.append('permission/preset', 'workspace-write')
   f.manualDefault('read-only')
   release()
-  await Promise.resolve()
-  await Promise.resolve()
+  await vi.waitFor(() => expect(f.ctx.logger.warn).toHaveBeenCalledOnce())
   expect(f.defaultPreset).toBe('read-only')
   expect(f.settings.mutate).toHaveBeenCalledTimes(1)
+  f.dispose()
+})
+
+it('retains a rapid explicit return to the currently persisted default', async () => {
+  const f = fixture()
+  const mutate = f.settings.mutate.getMockImplementation()!
+  let release!: () => void
+  f.settings.mutate.mockImplementationOnce(async (...args) => {
+    await new Promise<void>((resolve) => {
+      release = resolve
+    })
+    return mutate(...args)
+  })
+  const current = f.session('current')
+  current.append('permission/preset', 'workspace-write')
+  current.append('permission/preset', 'danger-full-access')
+  current.append('permission/preset', 'workspace-write')
+  expect(f.defaultPreset).toBe('workspace-write')
+  release()
+  await vi.waitFor(() => expect(f.settings.mutate).toHaveBeenCalledTimes(2))
+  expect(f.settings.mutate).toHaveBeenLastCalledWith(
+    'permission',
+    [{ op: 'set', path: ['defaultPreset'], value: 'workspace-write' }],
+    5,
+  )
+  expect(f.defaultPreset).toBe('workspace-write')
   f.dispose()
 })
 
