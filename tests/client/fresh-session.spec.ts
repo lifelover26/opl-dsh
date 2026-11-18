@@ -108,37 +108,57 @@ it('disposal does not overwrite a later service resolver', () => {
   expect(f.workspace.connectWorkspace).toBe(later)
 })
 
-it('creates an unattached Session for the global new-conversation action', async () => {
+it.each([undefined, { clearPreviousDraft: false }, { clearPreviousDraft: true }])(
+  'creates a projectless session for untargeted navigation with options %j',
+  async (options) => {
+    const original = vi.fn()
+    const openSession = vi.fn()
+    const workspace = { startSession: original, openSession } as Pick<
+      UiWorkspace,
+      'startSession' | 'openSession'
+    >
+    const createProjectless = vi.fn(async () => sessionId('projectless'))
+    const dispose = allowProjectlessSessions(workspace, createProjectless)
+    workspace.startSession(undefined, options)
+    await vi.waitFor(() => expect(openSession).toHaveBeenCalledExactlyOnceWith('projectless'))
+    expect(original).not.toHaveBeenCalled()
+    expect(createProjectless).toHaveBeenCalledExactlyOnceWith()
+    dispose()
+  },
+)
+
+it('keeps projectless navigation and leaves explicit targets on the official path', async () => {
   const original = vi.fn()
-  const openSession = vi.fn()
-  const workspace = { startSession: original, openSession } as Pick<
-    UiWorkspace,
-    'startSession' | 'openSession'
-  >
-  const fresh = sessionId('projectless-session')
-  const createProjectless = vi.fn(async () => fresh)
-  const dispose = allowProjectlessSessions(workspace, createProjectless)
+  const workspace = { startSession: original, openSession: vi.fn() }
+  const create = vi.fn(async () => sessionId('new-unattached'))
+  const stop = allowProjectlessSessions(workspace, create)
   workspace.startSession()
-  await vi.waitFor(() => expect(openSession).toHaveBeenCalledExactlyOnceWith(fresh))
-  expect(createProjectless).toHaveBeenCalledTimes(1)
-  expect(original).not.toHaveBeenCalled()
-  dispose()
+  await vi.waitFor(() => expect(workspace.openSession).toHaveBeenCalledWith('new-unattached'))
+  workspace.startSession('real-workspace')
+  workspace.startSession(undefined, { prompt: 'prepared draft' })
+  workspace.startSession(undefined, { agentPreset: 'planned-agent' })
+  expect(original.mock.calls).toEqual([
+    ['real-workspace', undefined],
+    [undefined, { prompt: 'prepared draft' }],
+    [undefined, { agentPreset: 'planned-agent' }],
+  ])
+  expect(create).toHaveBeenCalledTimes(1)
+  stop()
 })
 
-it('keeps the official global new-conversation draft option projectless', async () => {
+it('creates projectless sessions for the explicit empty workspace key', async () => {
   const original = vi.fn()
   const openSession = vi.fn()
   const workspace = { startSession: original, openSession } as Pick<
     UiWorkspace,
     'startSession' | 'openSession'
   >
-  const createProjectless = vi.fn(async () => sessionId('projectless-with-option'))
+  const createProjectless = vi.fn(async () => sessionId('projectless-empty-key'))
   const dispose = allowProjectlessSessions(workspace, createProjectless)
-  workspace.startSession(undefined, { clearPreviousDraft: false })
+  workspace.startSession('' as Parameters<UiWorkspace['startSession']>[0])
   await vi.waitFor(() =>
-    expect(openSession).toHaveBeenCalledExactlyOnceWith('projectless-with-option'),
+    expect(openSession).toHaveBeenCalledExactlyOnceWith('projectless-empty-key'),
   )
-  expect(createProjectless).toHaveBeenCalledTimes(1)
   expect(original).not.toHaveBeenCalled()
   dispose()
 })
@@ -152,7 +172,9 @@ it('keeps the ungrouped plus action projectless when it clears the previous draf
   >
   const createProjectless = vi.fn(async () => sessionId('ungrouped-plus'))
   const dispose = allowProjectlessSessions(workspace, createProjectless)
-  workspace.startSession(undefined, { clearPreviousDraft: true })
+  workspace.startSession('' as Parameters<UiWorkspace['startSession']>[0], {
+    clearPreviousDraft: true,
+  })
   await vi.waitFor(() => expect(openSession).toHaveBeenCalledExactlyOnceWith('ungrouped-plus'))
   expect(createProjectless).toHaveBeenCalledTimes(1)
   expect(original).not.toHaveBeenCalled()

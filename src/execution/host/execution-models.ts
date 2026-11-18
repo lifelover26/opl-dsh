@@ -381,6 +381,14 @@ export class ExecutionModelResolver {
       const modelRef = { provider: MINIMAX_CODE_PROVIDER, model: fixed.model }
       const available = await probeExternal(modelRef)
       const existing = catalog.combinations.find((item) => item.id === fixed.combination)
+      const hasOtherDefault = catalog.combinations.some(
+        (item) =>
+          item !== existing &&
+          item.enabled &&
+          item.isDefault &&
+          modelRefKey(item.modelRef) === modelRefKey(modelRef),
+      )
+      const isDefault = existing?.defaultDisabled !== true && !hasOtherDefault
       if (!existing)
         catalog.combinations.push({
           id: fixed.combination,
@@ -388,7 +396,7 @@ export class ExecutionModelResolver {
           modelRef,
           harnessRef: MINIMAX_CODE_HARNESS,
           permissionPolicy: 'full-access',
-          isDefault: true,
+          isDefault,
           enabled: available.available,
           autoEnabled: true,
         })
@@ -401,7 +409,7 @@ export class ExecutionModelResolver {
           modelRef,
           harnessRef: MINIMAX_CODE_HARNESS,
           permissionPolicy: 'full-access',
-          isDefault: true,
+          isDefault,
           ...(existing.autoEnabled && !existing.autoEnabledDisabled
             ? { enabled: available.available }
             : {}),
@@ -472,8 +480,7 @@ export class ExecutionModelResolver {
         existingOfficial.defaultDisabled = false
         defaultMigrationChanged = true
       }
-      const hasResolvedDefault =
-        hasDefault || existingOfficial?.isDefault === true || disabledOfficial
+      const hasResolvedDefault = hasDefault || existingOfficial !== undefined || disabledOfficial
       const harnessRef = automaticHarness(model.ref) === official ? official : undefined
       if (!isRetiredModel(model.ref) && model.available && !hasResolvedDefault && harnessRef) {
         const harnessName = catalog.harnesses.find((h) => h.id === harnessRef)?.name ?? 'DSH'

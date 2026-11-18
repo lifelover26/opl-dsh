@@ -1,4 +1,5 @@
 import { useHarnessSettings } from './use-harness-settings.ts'
+import { ExecutableBrowser } from '../../shared/client/ExecutableBrowser.tsx'
 import { HarnessProxySection } from './HarnessProxySection.tsx'
 import {
   Button,
@@ -149,18 +150,21 @@ function HarnessRow({
         {item.id !== 'dsh' && (
           <details className={css.pathDetails}>
             <summary>可执行文件路径</summary>
-            <input
-              key={item.definition?.command ?? item.path ?? ''}
-              className={css.input}
-              defaultValue={item.definition?.command ?? item.path ?? ''}
-              placeholder="绝对路径或 PATH 中的命令"
-              disabled={busy}
-              onBlur={(e) => {
-                const command = e.target.value.trim()
-                if (command !== (item.definition?.command ?? item.path ?? ''))
-                  void savePath(item.id, command)
-              }}
-            />
+            <div className={css.pathInputRow}>
+              <input
+                key={item.definition?.command ?? item.path ?? ''}
+                className={css.input}
+                defaultValue={item.definition?.command ?? item.path ?? ''}
+                placeholder="绝对路径或 PATH 中的命令"
+                disabled={busy}
+                onBlur={(e) => {
+                  const command = e.target.value.trim()
+                  if (command !== (item.definition?.command ?? item.path ?? ''))
+                    void savePath(item.id, command)
+                }}
+              />
+              <ExecutableBrowser disabled={busy} onPick={(path) => void savePath(item.id, path)} />
+            </div>
           </details>
         )}
         {item.definition && (

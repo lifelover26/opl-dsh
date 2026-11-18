@@ -40,6 +40,7 @@ import {
 import { allowProjectlessSessions, markProjectlessSession } from './fresh-session.ts'
 import {
   installProjectlessOfficialComposer,
+  installProjectlessWorkspaceChoice,
   PROJECTLESS_COMPOSER_NAMESPACE,
   projectlessComposerZh,
   projectlessComposerEn,
@@ -293,6 +294,14 @@ export function apply(ctx: Context, config: ClientConfig = {}): void {
     ),
   )
   const slots = ctx.slots
+  ctx.slots.inject('conversation.hero.workspace', () =>
+    installProjectlessWorkspaceChoice(
+      () => slots.entries('conversation.hero.workspace'),
+      (listener) => slots.subscribe('conversation.hero.workspace', listener),
+      () => workspace.startSession('' as Parameters<typeof workspace.startSession>[0]),
+      () => composerText('projectless'),
+    ),
+  )
   ctx.slots.inject('sidebar.workspaces', () =>
     installProjectlessUngroupedPlus(
       () => slots.entries('sidebar.workspaces'),

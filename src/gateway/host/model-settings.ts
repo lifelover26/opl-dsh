@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from 'node:util'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SettingsDescriptor, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { GATEWAY_GROUPS } from '../contracts/groups.ts'
+import { gatewayGroupNotGranted } from '../contracts/account.ts'
 import { DEFAULT_MODELS, toAdapterConfig } from './config.ts'
 import type { ModelDraft, GatewayModelSettings } from '../contracts/models.ts'
 import {
@@ -309,7 +310,9 @@ export async function gatewayModelSettings(ctx: Context): Promise<GatewayModelSe
   const settings = modelSettingsService(ctx).describe({ redactSecrets: true })
   const account = await ctx.get('oplGatewayAccount')?.status()
   return {
-    groups: GATEWAY_GROUPS.map((group) => {
+    groups: GATEWAY_GROUPS.filter(
+      (group) => !gatewayGroupNotGranted(account?.groups?.find((item) => item.id === group.id)),
+    ).map((group) => {
       const descriptor = settings.find(
         (item) => item.ns === (group.id === 'deepseek' ? 'opl-suite' : 'llm-pi-ai'),
       )
@@ -561,7 +564,12 @@ export async function discoverGatewayModels(ctx: Context, input: unknown): Promi
 export async function syncGatewayModels(ctx: Context): Promise<void> {
   await migrateGatewayProtocolDefaults(ctx)
   const service = modelSettingsService(ctx)
+  const account = await ctx.get('oplGatewayAccount')?.status()
   for (const group of GATEWAY_GROUPS) {
+    if (gatewayGroupNotGranted(account?.groups?.find((item) => item.id === group.id))) {
+      clearGatewayCatalogStatus(ctx, group.id)
+      continue
+    }
     if (!gatewayGroupEnabled(ctx, group.id)) continue
     try {
       const settings = service.describe({ redactSecrets: true })

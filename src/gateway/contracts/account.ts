@@ -50,6 +50,13 @@ export interface GatewayGroupStatus {
   readonly error?: string
   readonly catalog?: GatewayCatalogStatus
 }
+/** A missing permission observation is not a denial. */
+export function gatewayGroupNotGranted(group: GatewayGroupStatus | undefined): boolean {
+  return (
+    group?.authorized === false ||
+    (group?.authorized === undefined && group?.state === 'unauthorized')
+  )
+}
 /** One status answer, secret-free. */
 export interface GatewayAccountStatus {
   readonly phase: GatewayAccountPhase

@@ -694,7 +694,7 @@ export async function verifyDesktopClient(
       )
       const compactRows = await pipe.evaluate(
         session,
-        `Array.from(document.querySelectorAll('[data-opl-combination] > summary')).map(x=>({id:x.parentElement.dataset.oplCombination,height:x.getBoundingClientRect().height,text:x.textContent,clipped:x.scrollWidth>x.clientWidth}))`,
+        `Array.from(document.querySelectorAll('[data-opl-combination] > summary')).map(x=>({id:x.parentElement.dataset.oplCombination,height:x.getBoundingClientRect().height,text:x.textContent,clipped:x.scrollWidth>x.clientWidth,defaultChoice:x.parentElement.querySelector('[role=switch][aria-label="作为此模型的默认执行组合"]')?.getAttribute('aria-checked')??null}))`,
       )
       if (
         !compactRows.length ||
@@ -712,8 +712,8 @@ export async function verifyDesktopClient(
             candidate.modelRef.provider === item.modelRef.provider &&
             candidate.modelRef.model === item.modelRef.model,
         )
-        if (row.text.includes('默认') !== alternatives.length > 1)
-          throw new Error('组合默认标记与已启用的备选数量不一致：' + row.id)
+        if (row.defaultChoice !== (alternatives.length > 1 ? String(item.isDefault) : null))
+          throw new Error('组合默认开关与已启用的备选数量或目录默认值不一致：' + row.id)
       }
       const selectionScreenshot = await captureScreenshot('combination-selection')
       if (selectionScreenshot) screenshots.push(selectionScreenshot)

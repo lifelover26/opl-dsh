@@ -629,6 +629,8 @@ async function pluginFixture(
 ): Promise<{
   ctx: Context
   registration: { name: string; inject?: (sessionId: string) => unknown }
+  slots: Slots
+  provideConfigForms(form: object): Promise<import('@deepseek-ai/cordis').Fiber>
 }> {
   const ok = (value: unknown) => ({ ok: true as const, value })
   const methods = {

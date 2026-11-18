@@ -158,50 +158,54 @@ it('requires the OFM lane to be enabled before its listed model can enable a com
   })
 })
 
-it('promotes a persisted official pairing when no other default exists', async () => {
-  const ref = { provider: 'our-free-model', model: 'moonshotai/kimi-k3' }
-  const store = new ExecutionCatalogStore(await workspace())
-  const catalog = defaultExecutionCatalog()
-  catalog.combinations.push({
-    id: 'auto:' + JSON.stringify([ref.provider, ref.model]),
-    name: 'Kimi K3 + Kimi Code',
-    modelRef: ref,
-    harnessRef: 'kimi-code',
-    permissionPolicy: 'workspace',
-    isDefault: false,
-    enabled: true,
-    autoEnabled: false,
-    autoEnabledDisabled: true,
-  })
-  await store.set(catalog)
-  const ctx = {
-    get: () => undefined,
-    llm: {
-      listProviders: () => [{ id: ref.provider, name: 'OFM' }],
-      listConfigurableProviders: () => [],
-      listModels: async () => [{ id: ref.model }],
-    },
-  }
-  const resolved = await new ExecutionModelResolver(ctx as never, store, undefined, async () => ({
-    catalog: [{ id: ref.model, route: ref.provider }],
-    membership: { [ref.provider]: [ref.model] },
-    settings: { enabled: true, forward: { enabled: true, running: true } },
-  })).resolve()
-  expect(resolved.combinations).toContainEqual(
-    expect.objectContaining({
+it.each([undefined, true])(
+  'projects a saved official pairing with defaultDisabled=%s',
+  async (defaultDisabled) => {
+    const ref = { provider: 'our-free-model', model: 'moonshotai/kimi-k3' }
+    const store = new ExecutionCatalogStore(await workspace())
+    const catalog = defaultExecutionCatalog()
+    catalog.combinations.push({
       id: 'auto:' + JSON.stringify([ref.provider, ref.model]),
+      name: 'Kimi K3 + Kimi Code',
+      modelRef: ref,
       harnessRef: 'kimi-code',
-      isDefault: true,
-    }),
-  )
-  expect(JSON.parse(await readFile(store.filename, 'utf8')).combinations).toContainEqual(
-    expect.objectContaining({
-      id: 'auto:' + JSON.stringify([ref.provider, ref.model]),
-      isDefault: true,
-    }),
-  )
-  await store.dispose()
-})
+      permissionPolicy: 'workspace',
+      isDefault: false,
+      enabled: true,
+      autoEnabled: false,
+      autoEnabledDisabled: true,
+      ...(defaultDisabled === undefined ? {} : { defaultDisabled }),
+    })
+    await store.set(catalog)
+    const ctx = {
+      get: () => undefined,
+      llm: {
+        listProviders: () => [{ id: ref.provider, name: 'OFM' }],
+        listConfigurableProviders: () => [],
+        listModels: async () => [{ id: ref.model }],
+      },
+    }
+    const resolved = await new ExecutionModelResolver(ctx as never, store, undefined, async () => ({
+      catalog: [{ id: ref.model, route: ref.provider }],
+      membership: { [ref.provider]: [ref.model] },
+      settings: { enabled: true, forward: { enabled: true, running: true } },
+    })).resolve()
+    expect(resolved.combinations.filter((item) => item.modelRef.model === ref.model)).toEqual([
+      expect.objectContaining({
+        id: 'auto:' + JSON.stringify([ref.provider, ref.model]),
+        harnessRef: 'kimi-code',
+        isDefault: defaultDisabled !== true,
+      }),
+    ])
+    expect(JSON.parse(await readFile(store.filename, 'utf8')).combinations).toContainEqual(
+      expect.objectContaining({
+        id: 'auto:' + JSON.stringify([ref.provider, ref.model]),
+        isDefault: defaultDisabled !== true,
+      }),
+    )
+    await store.dispose()
+  },
+)
 
 it('disables persisted automatic combinations whose vendor model is no longer ready', async () => {
   const ready = { provider: 'our-free-model', model: 'moonshotai/kimi-k3' }

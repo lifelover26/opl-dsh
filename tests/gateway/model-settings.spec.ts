@@ -657,6 +657,29 @@ describe('protocol prefixes and bundle-owned migration', () => {
 })
 
 describe('per-group catalog observations', () => {
+  it('skips a denied group without losing its configured models and reports a missing key after access is granted', async () => {
+    const f = fixture()
+    const account = f.ctx.get('oplGatewayAccount')!
+    const status = await account.status()
+    const read = vi.spyOn(account, 'status').mockResolvedValue({
+      ...status,
+      groups: [{ id: 'codex', name: 'Codex', authorized: false, state: 'unauthorized' }],
+    })
+    const saved = structuredClone(f.state['llm-pi-ai'].providers['opl-gateway-openai'].models)
+    await syncGatewayModels(f.ctx)
+    expect((await gatewayModelSettings(f.ctx)).groups.some((g) => g.id === 'codex')).toBe(false)
+    expect(f.credentials.resolve).not.toHaveBeenCalledWith('OPL_GATEWAY_CODEX_API_KEY')
+    expect(f.state['llm-pi-ai'].providers['opl-gateway-openai'].models).toEqual(saved)
+    read.mockResolvedValue({
+      ...status,
+      groups: [{ id: 'codex', name: 'Codex', authorized: true, state: 'unconfigured' }],
+    })
+    f.keys.clear()
+    await syncGatewayModels(f.ctx)
+    expect((await gatewayModelSettings(f.ctx)).groups.find((g) => g.id === 'codex')).toMatchObject({
+      catalog: { state: 'error', diagnostic: { code: 'missing_credentials' } },
+    })
+  })
   it('does not equate credential readiness with successful discovery', async () => {
     const f = fixture()
     expect((await gatewayModelSettings(f.ctx)).groups.find((g) => g.id === 'codex')).toMatchObject({
