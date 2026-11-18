@@ -2101,7 +2101,12 @@ describe('native conversation combinations', () => {
         ?.filter((item) => item.modelRef.model.startsWith('gemini::'))
         .map((item) => item.harnessRef),
     ).toEqual(['opencode', 'opencode', 'opencode', 'opencode'])
-    for (const model of ['gemini-4-carbon', 'gemini-4-hydrogen', 'gemini-4-argon', 'gemini-3.8-flash'])
+    for (const model of [
+      'gemini-4-carbon',
+      'gemini-4-hydrogen',
+      'gemini-4-argon',
+      'gemini-3.8-flash',
+    ])
       expect(catalog.supportedPairings).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
