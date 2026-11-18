@@ -1,12 +1,12 @@
 {
-  "candidateVersion": "0.7.4-opl-bash.20261102.3",
+  "candidateVersion": "0.7.7-opl-bash.20261119.1",
   "official": {
-    "version": "0.7.4",
+    "version": "0.7.7",
     "packageName": "@minimax-ai/code",
-    "archiveUrl": "https://registry.npmjs.org/@minimax-ai/code/-/code-0.7.4.tgz",
-    "archiveSha512": "/28qahkVtcF+kfendT8CSWJHigvCzdH+UYMFTfJ7Sk1AUAGFdQ94nmp9JbkiKiT49hBq0TNfYC46QVjpY4N7sQ==",
-    "archiveBytes": 100293035,
-    "filesSha256": "f443aaf6ba6e65176d4deca2b38f6cdfcf8d3c1b136115f15b8759bcd316fc09"
+    "archiveUrl": "https://registry.npmjs.org/@minimax-ai/code/-/code-0.7.7.tgz",
+    "archiveSha512": "A0SHkJCmB+ckYBZi9a19Ysw7mwDwq9LadmTXtQ320oFVo4XbYN9SFLyyGBeZPw05mJjHwbRymSUuIz0foAFHdw==",
+    "archiveBytes": 98890969,
+    "filesSha256": "ff11bdf72b23a40b5c379d6e7a1039d37969e9b438e22c6d91e694ce65b6546a"
   },
   "license": {
     "url": "https://raw.githubusercontent.com/MiniMax-AI/minimax-code/c6c7f28e73921d7295b9c060dee478ced75cf438/LICENSE",
@@ -20,5 +20,5 @@
     "@mariozechner/clipboard",
     "@vscode/ripgrep"
   ],
-  "note": "官方 npm 0.7.4 原文件保持不变；overlay 只包裹导出的 ACP/runtime/login 函数。公开源码最新 tag 为 0.7.2，不能称作 0.7.4 源码重构建。"
+  "note": "Official npm distribution plus the OPL overlay."
 }
