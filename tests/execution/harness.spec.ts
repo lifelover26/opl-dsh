@@ -2059,7 +2059,7 @@ describe('native conversation combinations', () => {
       'OPL Gateway',
     ])
   })
-  it('defaults the four native Gateway Gemini models to Antigravity and recommends OpenCode', async () => {
+  it('defaults the two native Gateway Gemini models to Antigravity and keeps OpenCode compatible', async () => {
     vi.stubEnv('USERPROFILE', join(tmpdir(), 'opl-gemini-opencode-absent-cli'))
     vi.stubEnv('HOME', join(tmpdir(), 'opl-gemini-opencode-absent-cli'))
     vi.stubEnv('PATH', '')
@@ -2085,28 +2085,13 @@ describe('native conversation combinations', () => {
         harnessRef: 'antigravity',
         isDefault: true,
       },
-      {
-        modelRef: { model: 'gemini::gemini-4-argon' },
-        harnessRef: 'antigravity',
-        isDefault: true,
-      },
-      {
-        modelRef: { model: 'gemini::gemini-3.8-flash' },
-        harnessRef: 'antigravity',
-        isDefault: true,
-      },
     ])
     expect(
       catalog.recommendations
         ?.filter((item) => item.modelRef.model.startsWith('gemini::'))
         .map((item) => item.harnessRef),
-    ).toEqual(['opencode', 'opencode', 'opencode', 'opencode'])
-    for (const model of [
-      'gemini-4-carbon',
-      'gemini-4-hydrogen',
-      'gemini-4-argon',
-      'gemini-3.8-flash',
-    ])
+    ).toEqual(['opencode', 'opencode'])
+    for (const model of ['gemini-4-carbon', 'gemini-4-hydrogen'])
       expect(catalog.supportedPairings).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
