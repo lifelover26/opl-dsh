@@ -12,6 +12,33 @@ export { gatewayModelSettings } from './model-settings.ts'
 export { internalGatewayProvider } from '../contracts/groups.ts'
 
 const NATIVE_GEMINI_MODELS = new Set(GATEWAY_ANTIGRAVITY_GEMINI_MODELS.map((id) => `gemini::${id}`))
+const GEMINI_GROUP = GATEWAY_GROUPS.find((group) => group.id === 'gemini')!
+
+type ProviderProfiles = {
+  providers?: Record<
+    string,
+    { baseURL?: string; api?: string; apiKeyEnv?: string; models?: ModelDraft[] }
+  >
+}
+
+function gatewayProviderProfiles(
+  settings: ReturnType<Context['settings']['describe']> | undefined,
+) {
+  return (settings?.find((item) => item.ns === 'llm-pi-ai')?.value as ProviderProfiles | undefined)
+    ?.providers
+}
+
+function hasNativeGeminiEndpoint(api: string, baseURL?: string): boolean {
+  const chat = 'openai-completions'
+  const defaultURL = gatewayInferenceBaseURL(chat)
+  return api === chat && (baseURL ?? defaultURL).replace(/\/+$/u, '') === defaultURL
+}
+
+/** A custom Gemini Chat endpoint has no implied native counterpart. */
+export function gatewayGeminiNativeEndpointConfigured(ctx: Context): boolean {
+  const profile = gatewayProviderProfiles(ctx.get('settings')?.describe())?.[GEMINI_GROUP.provider]
+  return hasNativeGeminiEndpoint(profile?.api ?? GEMINI_GROUP.api, profile?.baseURL)
+}
 
 /**
  * Resolve the Gateway's native Gemini endpoint using its existing group credential.
@@ -25,10 +52,7 @@ export async function resolveGatewayGeminiExecution(
   if (ref.provider !== 'opl-gateway' || !NATIVE_GEMINI_MODELS.has(ref.model))
     throw Error('此模型尚未适配 Gemini 原生接口')
   const route = await resolveGatewayExecution(ctx, ref)
-  if (
-    route.api !== 'openai-completions' ||
-    route.baseURL.replace(/\/+$/u, '') !== gatewayInferenceBaseURL('openai-completions')
-  )
+  if (!hasNativeGeminiEndpoint(route.api, route.baseURL))
     throw Error('自定义 Gemini 地址未声明原生接口；请保留 OpenCode 组合或恢复 OPL 默认地址')
   return { ...route, baseURL: OPL_GATEWAY_GEMINI_NATIVE_BASE_URL, api: 'gemini-native' }
 }
@@ -55,18 +79,10 @@ export async function resolveGatewayExecution(
   const settings = ctx.get('settings')?.describe()
   const suite = settings?.find((item) => item.ns === 'opl-suite')?.value as
     { gateway?: { baseURL?: string; apiKeyEnv?: string; models?: ModelDraft[] } } | undefined
-  const providers = settings?.find((item) => item.ns === 'llm-pi-ai')?.value as
-    | {
-        providers?: Record<
-          string,
-          { baseURL?: string; api?: string; apiKeyEnv?: string; models?: ModelDraft[] }
-        >
-      }
-    | undefined
-  const profile = group.id === 'deepseek' ? suite?.gateway : providers?.providers?.[group.provider]
+  const providers = gatewayProviderProfiles(settings)
+  const profile = group.id === 'deepseek' ? suite?.gateway : providers?.[group.provider]
   const deepseek = group.id === 'deepseek' ? toAdapterConfig(suite?.gateway ?? {}) : undefined
-  const api =
-    group.id === 'deepseek' ? group.api : (providers?.providers?.[group.provider]?.api ?? group.api)
+  const api = group.id === 'deepseek' ? group.api : (providers?.[group.provider]?.api ?? group.api)
   const credential = (deepseek ? deepseek.apiKeyEnv : profile?.apiKeyEnv) ?? group.credential
   const key = resolveKey
     ? await resolveKey()
