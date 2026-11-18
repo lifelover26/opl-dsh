@@ -1960,7 +1960,7 @@ describe('native conversation combinations', () => {
       spy.mockRestore()
     }
   })
-  it('keeps provider-advertised models without a local retirement list', async () => {
+  it('filters retired provider models and combinations from the live catalog', async () => {
     const { service } = await nativeSetup([
       { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
       { id: 'codex::gpt-5', name: 'GPT-5' },
@@ -1968,7 +1968,10 @@ describe('native conversation combinations', () => {
       { id: 'deepseek-flash', name: 'DeepSeek' },
     ])
     const catalog = await service.executionCatalog()
-    expect(catalog.models.map((item) => item.ref.model)).toEqual(
+    expect(catalog.models.map((item) => item.ref.model)).not.toEqual(
+      expect.arrayContaining(['deepseek-v4-pro', 'codex::gpt-5', 'codex::gpt-5-mini']),
+    )
+    expect(catalog.combinations.map((item) => item.modelRef.model)).not.toEqual(
       expect.arrayContaining(['deepseek-v4-pro', 'codex::gpt-5', 'codex::gpt-5-mini']),
     )
   })
@@ -2001,10 +2004,7 @@ describe('native conversation combinations', () => {
     const catalog = await service.executionCatalog()
     expect(
       catalog.models.filter((item) => item.ref.provider === 'deepseek-official'),
-    ).toMatchObject([
-      { available: false, reason: '凭据未配置' },
-      { available: false, reason: '凭据未配置' },
-    ])
+    ).toMatchObject([{ available: false, reason: '凭据未配置' }])
     expect(
       catalog.combinations.filter((item) => item.modelRef.provider === 'deepseek-official'),
     ).toEqual([])

@@ -16,6 +16,7 @@ import {
 import { ExecutionModelResolver } from '../../src/execution/host/execution-models.ts'
 import {
   isHiddenOfmSelection,
+  OFM_CLIENT_REJECTED_MODELS,
   OFM_OPENCODE_DIRECTORY_ONLY_MODELS,
   OFM_OPENCODE_OFFICIAL_FREE_MODELS,
   officialOpenCodeModel,
@@ -511,12 +512,11 @@ it('preserves manual Gateway Gemini pairings when automatic routes change', asyn
 
 const QUALIFICATION_AUTO = 'auto:["our-free-model","opl-qualification-free"]'
 
-it('keeps OFM lanes visible while live directory and adapter state decide readiness', async () => {
+it('hides OFM lanes rejected by the required official client', async () => {
   const stored = defaultExecutionCatalog()
   stored.combinations[0]!.name = 'DeepSeek + DSH'
-  const previouslyRejected = ['muse-spark-1.2-contributor-free', 'step-5-preview-free']
   for (const provider of ['our-free-model', 'our-free-model-region'])
-    for (const model of previouslyRejected)
+    for (const model of OFM_CLIENT_REJECTED_MODELS)
       stored.combinations.push({
         id: provider + ':' + model,
         name: model,
@@ -527,7 +527,7 @@ it('keeps OFM lanes visible while live directory and adapter state decide readin
         enabled: true,
       })
   const models = [
-    ...previouslyRejected,
+    ...OFM_CLIENT_REJECTED_MODELS,
     'stepfun/step-5-preview-free',
     'nvidia/nemotron-3.5-lightning:free',
     'kilo-auto/free',
@@ -553,14 +553,15 @@ it('keeps OFM lanes visible while live directory and adapter state decide readin
   const resolved = await new ExecutionModelResolver(ctx as never, store as never).resolve()
   for (const provider of providers) {
     const ids = resolved.models.filter((m) => m.ref.provider === provider).map((m) => m.ref.model)
-    for (const model of previouslyRejected) expect(ids).toContain(model)
+    for (const model of OFM_CLIENT_REJECTED_MODELS)
+      expect(ids.includes(model)).toBe(provider === 'custom')
     expect(ids).toContain('stepfun/step-5-preview-free')
     expect(ids).toContain('nvidia/nemotron-3.5-lightning:free')
   }
   expect(
     resolved.combinations
       .filter((c) => c.modelRef.provider.startsWith('our-free-model'))
-      .every((c) => c.modelRef.model !== 'combo:recommended-free'),
+      .every((c) => !OFM_CLIENT_REJECTED_MODELS.includes(c.modelRef.model)),
   ).toBe(true)
   expect(stored.combinations).toHaveLength(6)
 })
@@ -1352,37 +1353,6 @@ it('preserves explicit manual ownership after a disk round trip without stop mar
     const result = await new ExecutionModelResolver(ctx as never, store).resolve()
     expect(result.combinations.find((item) => item.id === saved.id)).toEqual(saved)
     expect((await store.get()).combinations.find((item) => item.id === saved.id)).toEqual(saved)
-  } finally {
-    await store.dispose()
-  }
-})
-
-it('preserves saved model references independently of historical retirement names', async () => {
-  const store = new ExecutionCatalogStore(await workspace())
-  const catalog = defaultExecutionCatalog()
-  const saved = ['deepseek-v4-pro', 'codex::gpt-5', 'codex::gpt-5-mini'].map((model) => ({
-    id: 'manual:' + model,
-    name: model,
-    modelRef: { provider: 'opl-gateway', model },
-    harnessRef: 'dsh',
-    permissionPolicy: 'read-only' as const,
-    isDefault: true,
-    enabled: false,
-  }))
-  catalog.combinations.push(...saved)
-  try {
-    await store.set(catalog)
-    const ctx = {
-      get: () => undefined,
-      llm: { listProviders: () => [], listConfigurableProviders: () => [] },
-    }
-    const result = await new ExecutionModelResolver(ctx as never, store).resolve()
-    expect(result.combinations).toEqual(expect.arrayContaining(saved))
-    for (const item of saved)
-      expect(result.models).toContainEqual(
-        expect.objectContaining({ ref: item.modelRef, available: false }),
-      )
-    expect((await store.get()).combinations).toEqual(expect.arrayContaining(saved))
   } finally {
     await store.dispose()
   }

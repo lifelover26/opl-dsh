@@ -14,8 +14,23 @@ export interface ModelDefinition {
 }
 export const modelRefKey = (ref: ModelRef) => JSON.stringify([ref.provider, ref.model])
 
-/** Model availability belongs to the live provider catalog, including saved references. */
-export function isRetiredModel(_ref: ModelRef): boolean {
+/**
+ * Models advertised by an older provider catalog but no longer part of the
+ * OPL product surface. Keep this decision shared by projection and persistence.
+ */
+export function isRetiredModel(ref: ModelRef): boolean {
+  const id = ref.model.includes('::') ? ref.model.slice(ref.model.lastIndexOf('::') + 2) : ref.model
+  const provider = ref.provider.toLowerCase()
+  if (
+    id === 'deepseek-v4-pro' &&
+    (provider.includes('deepseek') || provider.includes('opl-gateway'))
+  )
+    return true
+  if (
+    (id === 'gpt-5' || id === 'gpt-5-mini') &&
+    (provider.includes('opl-gateway') || provider.includes('codex'))
+  )
+    return true
   return false
 }
 

@@ -48,30 +48,62 @@ test('split settings preserve expressions, unknown fields and explicit destinati
   }
 })
 
-test('migrates the legacy permission memory into the official settings owner', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'opl-split-permission-test-'))
-  const file = join(dir, 'cordis.patch.yml')
-  const original = '- id: opl-suite\n  config:\n    lastPermissionPreset: danger-full-access\n'
-  await writeFile(file, original)
-  const options = {
-    dir,
-    yaml,
-    withFileLock: async (_file, operation) => operation(),
-    writeFileAtomic: writeFile,
-    stopped: async () => {},
-  }
-  try {
-    await split.migrateSplitSettings(options)
-    const doc = yaml.parse(await readFile(file, 'utf8'), { logLevel: 'silent' })
-    assert.deepEqual(doc.find((row) => row.id === 'opl-suite').config, {})
-    assert.equal(
-      doc.find((row) => row.id === 'permission').config.defaultPreset,
-      'danger-full-access',
-    )
-  } finally {
-    await rm(dir, { recursive: true, force: true })
-  }
-})
+const permissionMigrations = [
+  {
+    name: 'moves the split execution default even without an opl-suite row',
+    original: '- id: opl-execution\n  config:\n    lastPermissionPreset: read-only\n',
+    expected: [
+      { id: 'opl-execution', config: {} },
+      { id: 'permission', config: { defaultPreset: 'read-only' } },
+    ],
+  },
+  {
+    name: 'migrates an old monolithic settings row',
+    original: '- id: opl-suite\n  config:\n    lastPermissionPreset: workspace-write\n',
+    expected: [
+      { id: 'opl-suite', config: {} },
+      { id: 'permission', config: { defaultPreset: 'workspace-write' } },
+    ],
+  },
+  {
+    name: 'preserves a user-set official default amid both old settings rows',
+    original:
+      '- id: opl-suite\n  config:\n    lastPermissionPreset: workspace-write\n- id: opl-execution\n  config:\n    lastPermissionPreset: danger-full-access\n    rememberPermissionPreset: false\n- id: permission\n  config:\n    defaultPreset: read-only\n',
+    expected: [
+      { id: 'opl-suite', config: {} },
+      { id: 'opl-execution', config: { rememberPermissionPreset: false } },
+      { id: 'permission', config: { defaultPreset: 'read-only' } },
+    ],
+  },
+  {
+    name: 'never passes an invalid legacy preset into the official permission service',
+    original: '- id: opl-execution\n  config:\n    lastPermissionPreset: auto\n',
+    expected: [{ id: 'opl-execution', config: { lastPermissionPreset: 'auto' } }],
+  },
+]
+
+for (const { name, original, expected } of permissionMigrations)
+  test(name, async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'opl-split-permission-test-'))
+    const file = join(dir, 'cordis.patch.yml')
+    await writeFile(file, original)
+    const options = {
+      dir,
+      yaml,
+      withFileLock: async (_file, operation) => operation(),
+      writeFileAtomic: writeFile,
+      stopped: async () => {},
+    }
+    try {
+      await split.migrateSplitSettings(options)
+      const migrated = await readFile(file, 'utf8')
+      assert.deepEqual(yaml.parse(migrated, { logLevel: 'silent' }), expected)
+      await split.migrateSplitSettings(options)
+      assert.equal(await readFile(file, 'utf8'), migrated)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
 
 test('split updates retain independent and legacy disabled choices', () => {
   const names = [
