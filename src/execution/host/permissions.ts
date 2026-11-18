@@ -1,4 +1,5 @@
 /** Official permission presets shared by delegated and ordinary conversations. */
+import { withoutRememberingPermission } from '../../compat/host/permission-memory.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Session } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-permission-presets'
@@ -69,5 +70,5 @@ export function setHarnessPermissions(
 ): void {
   const owner = ctx.get('permissionPresets')
   if (!owner) throw Error('Official permission preset service is unavailable')
-  owner.set(session, harnessPermissionPreset(sandbox))
+  withoutRememberingPermission(session, () => owner.set(session, harnessPermissionPreset(sandbox)))
 }
