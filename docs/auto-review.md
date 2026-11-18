@@ -1,6 +1,6 @@
 # Auto Review 工具审批
 
-DSH 原生 Auto Review 由官方 `@deepseek-ai/dsh-experimental-auto-review` 插件负责，包括 `auto` 权限选项、工具执行前审查、风险规则、历史绑定和插件生命周期。套件在首次安装或本轮能力迁移时通过官方 profile bundle 启用它；此后保留用户在插件管理中的开关选择。每个会话仍须显式选择 Auto，安装和保存设置均不改变已有会话权限。
+DSH 原生 Auto Review 由官方 `@deepseek-ai/dsh-experimental-auto-review` 插件负责，包括 `auto` 权限选项、工具执行前审查、风险规则、历史绑定和插件生命周期。套件不在安装或迁移时自动启用它；用户通过官方插件管理主动开启，已有开关选择保持不变。每个会话仍须显式选择 Auto，安装和保存设置均不改变已有会话权限。
 
 “执行与组合 → 审查模型路线”是默认关闭的 OPL 适配。它只提供独立 reviewer、请求预算、记录和外部 Harness 审批桥。关闭 OPL 适配后，官方 Auto 继续使用当前会话模型；本开关不启用、停用或卸载官方插件。
 

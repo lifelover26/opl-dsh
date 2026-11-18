@@ -14,8 +14,13 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 export const inject = ['slots', 'locale', 'configForms']
 
+/** Client selection for the optional OPL count replacement. */
+export interface ConversationStatsClientConfig {
+  enabled?: boolean
+}
+
 /** @param ctx - Official Client context with the shared Host settings mirror. */
-export function apply(ctx: Context): void {
+export function apply(ctx: Context, config: ConversationStatsClientConfig = {}): void {
   ctx.effect(() => ctx.locale.register(STATISTICS_NAMESPACE, { zh, en }))
   const form = ctx.configForms.get<StatisticsSettings>('opl-suite')
   ctx.slots.inject('settings.general.item', () =>
@@ -30,11 +35,12 @@ export function apply(ctx: Context): void {
       StatisticsPreferenceRow,
     ),
   )
-  ctx.slots.inject('conversation.composer.dock', () =>
-    installActivityCounts({
-      entries: () => ctx.slots.entriesOfSlot('conversation.composer.dock'),
-      subscribe: (listener) => ctx.slots.subscribe('conversation.composer.dock', listener),
-      form,
-    }),
-  )
+  if (config.enabled !== false)
+    ctx.slots.inject('conversation.composer.dock', () =>
+      installActivityCounts({
+        entries: () => ctx.slots.entriesOfSlot('conversation.composer.dock'),
+        subscribe: (listener) => ctx.slots.subscribe('conversation.composer.dock', listener),
+        form,
+      }),
+    )
 }

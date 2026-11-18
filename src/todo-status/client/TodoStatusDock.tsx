@@ -21,14 +21,7 @@ import {
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionListSeat, SessionStatusSeat } from './seats.ts'
 import { TODO_STATUS_NAMESPACE } from './locales.ts'
-import {
-  ACTIVITY_LABEL_KEY,
-  childActivity,
-  childActivityLabelKey,
-  projectTodoPanel,
-  type ChildActivityReader,
-  type TodoCounts,
-} from './todo-display.ts'
+import { ACTIVITY_LABEL_KEY, projectTodoPanel, type TodoCounts } from './todo-display.ts'
 import css from './TodoStatusDock.module.css'
 
 /** Framework `t` seat of this entry's namespace. */
@@ -51,8 +44,8 @@ export type TodoStatusDockProps = PropsRuntime<'conversation.input.dock'> &
     useSessionStatus?: SessionStatusSeat | undefined
     /** Official Session list read-back, used only as the child-status fallback. */
     useSessions?: SessionListSeat | undefined
-    /** Optional wiring seam supplying a child status directly (see `config.ts`). */
-    readChildStatus?: ChildActivityReader | undefined
+    /** Optional wiring seam retained for compatibility with older registrations. */
+    readChildStatus?: ((childId: string) => boolean | undefined) | undefined
   }
 
 /**
@@ -96,7 +89,6 @@ export function TodoStatusDock({
   const statusSeat = useSessionStatus ?? absentStatusSeat
   const listSeat = useSessions ?? absentListSeat
   const todos = projection('todos')
-  const catalog = projection('subagentCatalog')
   const statuses = statusSeat(identityStatus)
   const list = listSeat(identityList)
   const [owner, setOwner] = useState(session?.sessionId)
@@ -109,27 +101,19 @@ export function TodoStatusDock({
     setOwner(session?.sessionId)
     setCollapsed(true)
   }
-  const readChildStatusFromSeats: ChildActivityReader = (childId) => {
-    const injected = readChildStatus?.(childId)
-    if (typeof injected === 'boolean') return injected
-    const fromStatus = statuses?.get(childId)?.running
-    if (typeof fromStatus === 'boolean') return fromStatus
-    const fromList = list?.byId[childId]?.running
-    if (typeof fromList === 'boolean') return fromList
-    return undefined
-  }
-  const view = projectTodoPanel(
-    todos,
-    session?.running,
-    childActivity(catalog, readChildStatusFromSeats),
-  )
+  void statuses
+  void list
+  void readChildStatus
+  const view = projectTodoPanel(todos, session?.running, {
+    kind: 'none',
+    total: 0,
+    running: 0,
+    unknown: 0,
+  })
   if (view.rows.length === 0) return null
-  const childKey = childActivityLabelKey(view.children.kind)
   const activityHint = [
     t(ACTIVITY_LABEL_KEY[view.activity]),
     view.showStoppedNote ? t('stoppedNote') : '',
-    childKey ? t(childKey, { count: view.children.running }) : '',
-    childKey ? t('childNote') : '',
   ]
     .filter(Boolean)
     .join('\n')
@@ -181,11 +165,7 @@ export function TodoStatusDock({
             ))}
           </ul>
         )}
-        {view.children.kind === 'running' && childKey ? (
-          <div className={css.note} data-role="child-activity" title={t('childNote')}>
-            {t(childKey, { count: view.children.running })}
-          </div>
-        ) : null}
+        {view.showStoppedNote ? <div className={css.note}>{t('stoppedNote')}</div> : null}
       </div>
     </section>
   )

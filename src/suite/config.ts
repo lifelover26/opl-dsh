@@ -5,6 +5,8 @@ import type { Volatile } from '@deepseek-ai/cordis'
 import type { LoginChoice } from '../setup/contracts.ts'
 export type { LoginChoice } from '../setup/contracts.ts'
 export interface Config {
+  /** Exact Loader disabled values saved by the explicit Windows Git Bash selection. */
+  nativeShellReceipt: Volatile<string>
   /** Check stable OPL releases automatically according to the selected update policy. */
   updateAutomatic: Volatile<boolean>
   updatePolicy: Volatile<import('../updates/contracts.ts').OplUpdatePolicy>
@@ -12,6 +14,8 @@ export interface Config {
   updatePolicyChosen: Volatile<boolean>
   /** Whether the activity pill counts retained conversation steps or every historical step. */
   conversationStats: Volatile<'current' | 'history'>
+  /** Opt in to the OPL activity-pill count projection; official counts remain the default. */
+  enhancedConversationStats: Volatile<boolean>
   /** Keep the desktop window and taskbar title fixed instead of following the active Session. */
   fixedWindowTitle: Volatile<boolean>
   gatewayGroups: Volatile<Record<string, boolean>>
@@ -21,6 +25,7 @@ export interface Config {
   setupCompleted: Volatile<boolean>
 }
 export const Config = z.object({
+  nativeShellReceipt: z.string().default('').volatile(),
   updateAutomatic: z.boolean().default(true).volatile(),
   updatePolicy: z
     .object({
@@ -32,6 +37,7 @@ export const Config = z.object({
     .volatile(),
   updatePolicyChosen: z.boolean().default(false).volatile(),
   conversationStats: z.union(['current', 'history']).default('current').volatile(),
+  enhancedConversationStats: z.boolean().default(false).volatile(),
   fixedWindowTitle: z.boolean().default(true).volatile(),
   gatewayGroups: z.dict(z.boolean()).default({}).volatile(),
   gatewayCatalogHashes: z.dict(z.string()).default({}).volatile(),

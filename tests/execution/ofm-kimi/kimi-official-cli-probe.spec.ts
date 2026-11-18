@@ -61,7 +61,11 @@ interface Report {
 }
 
 /** Run the probe and return its report, correlated by process exit rather than a timer. */
-function runProbe(mode: string, behaviour: '' | 'omit' | 'hold' | 'reject', label: string): Report {
+function runProbe(
+  mode: string,
+  behaviour: '' | 'omit' | 'hold' | 'reject' | 'recover',
+  label: string,
+): Report {
   const root = mkdtempSync(join(tmpdir(), `opl-kimi-real-${label}-`))
   const out = join(root, 'report.json')
   const result = spawnSync(
@@ -83,10 +87,16 @@ function runProbe(mode: string, behaviour: '' | 'omit' | 'hold' | 'reject', labe
 describe.skipIf(!available)(
   'official Kimi Code CLI with the OFM route (real binary)',
   () => {
-    it('does not multiply an OFM failure into ten CLI attempts', () => {
+    it('honors the provider refusal to retry a failed request', () => {
       const report = runProbe('yolo', 'reject', 'retry')
       expect(report.wire).toHaveLength(1)
       expect(report.toolWroteFile).not.toBe(true)
+    })
+    it('uses the official CLI recovery after a transient provider failure', () => {
+      const report = runProbe('yolo', 'recover', 'recover')
+      expect(report.wire?.length).toBeGreaterThanOrEqual(3)
+      expect(report.prompt?.ok).toBe(true)
+      expect(report.toolWroteFile).toBe(true)
     })
     it('fails closed without the route, which is what makes the route load-bearing', () => {
       const report = runProbe('yolo', 'omit', 'noroute')

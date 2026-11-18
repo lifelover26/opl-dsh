@@ -21,6 +21,11 @@ import { TodoStatusDock } from './TodoStatusDock.tsx'
 
 export type { TodoStatusConfig } from './config.ts'
 
+/** Client selection for the optional OPL todo replacement. */
+export interface TodoStatusClientConfig {
+  enabled?: boolean
+}
+
 /** Services this plugin reads; it reaches nothing else. */
 export const inject = ['slots', 'locale']
 
@@ -30,8 +35,9 @@ export const inject = ['slots', 'locale']
  * @param config - optional child-status seam (see {@link TodoStatusConfig}).
  * @returns nothing.
  */
-export function apply(ctx: Context, config?: TodoStatusConfig): void {
+export function apply(ctx: Context, config?: TodoStatusConfig & TodoStatusClientConfig): void {
   ctx.effect(() => ctx.locale.register(TODO_STATUS_NAMESPACE, { zh, en }))
+  if (config?.enabled === false) return
   ctx.slots.inject('conversation.input.dock', () =>
     ctx.slots.register(
       {

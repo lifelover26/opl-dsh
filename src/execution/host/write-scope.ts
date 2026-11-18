@@ -54,8 +54,8 @@ export function writeScopesOverlap(left: readonly string[], right: readonly stri
  *
  * An omitted scope means "not declared", not ownership of the whole cwd. Treating every
  * unscoped writer in one project as exclusive turns normal parallel sessions into an
- * implicit queue and has no official DSH counterpart. Explicit scopes may still protect a
- * shared output; isolated Git work uses the official worktree owner instead.
+ * implicit queue and has no official DSH counterpart. Explicit scopes may still protect
+ * a shared output; isolated Git work uses the official worktree owner instead.
  */
 export function writerConflicts(
   left: { cwd: string; writeScope?: readonly string[] | undefined },

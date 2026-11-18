@@ -1078,6 +1078,7 @@ const _one_person_lab_dsh_opl_oplExecution_detail_result$schema = () => (_one_pe
 }))
 let _one_person_lab_dsh_opl_oplExecution_execution_limits_result$schema$value
 const _one_person_lab_dsh_opl_oplExecution_execution_limits_result$schema = () => (_one_person_lab_dsh_opl_oplExecution_execution_limits_result$schema$value ??= z.object({
+  'enabled': z.boolean(),
   'firstProgressMs': z.number(),
   'idleProgressMs': z.number(),
 }))
@@ -1469,7 +1470,7 @@ const _one_person_lab_dsh_opl_oplExecution_prompt_parameter_0$schema = () => (_o
   'sessionId': z.string(),
   'text': z.string(),
   'operationId': z.string(),
-  'writeScope': z.array(z.string()).optional().describe('Files/directories owned by this operation; omitted means exclusive project writes.'),
+  'writeScope': z.array(z.string()).optional().describe('Explicit shared write paths; omitted scopes do not reserve the working directory.'),
 }))
 let _one_person_lab_dsh_opl_oplExecution_prompt_result$schema$value
 const _one_person_lab_dsh_opl_oplExecution_prompt_result$schema = () => (_one_person_lab_dsh_opl_oplExecution_prompt_result$schema$value ??= z.object({
@@ -2292,11 +2293,13 @@ const _one_person_lab_dsh_opl_oplExecution_save_cooperation_settings_result$sche
 }))
 let _one_person_lab_dsh_opl_oplExecution_save_execution_limits_parameter_0$schema$value
 const _one_person_lab_dsh_opl_oplExecution_save_execution_limits_parameter_0$schema = () => (_one_person_lab_dsh_opl_oplExecution_save_execution_limits_parameter_0$schema$value ??= z.object({
+  'enabled': z.boolean(),
   'firstProgressMs': z.number(),
   'idleProgressMs': z.number(),
 }))
 let _one_person_lab_dsh_opl_oplExecution_save_execution_limits_result$schema$value
 const _one_person_lab_dsh_opl_oplExecution_save_execution_limits_result$schema = () => (_one_person_lab_dsh_opl_oplExecution_save_execution_limits_result$schema$value ??= z.object({
+  'enabled': z.boolean(),
   'firstProgressMs': z.number(),
   'idleProgressMs': z.number(),
 }))
@@ -3753,6 +3756,14 @@ let _one_person_lab_dsh_opl_oplSetup_finish_parameter_0$schema$value
 const _one_person_lab_dsh_opl_oplSetup_finish_parameter_0$schema = () => (_one_person_lab_dsh_opl_oplSetup_finish_parameter_0$schema$value ??= z.union([z.literal("official"), z.literal("gateway"), z.literal("later")]))
 let _one_person_lab_dsh_opl_oplSetup_finish_result$schema$value
 const _one_person_lab_dsh_opl_oplSetup_finish_result$schema = () => (_one_person_lab_dsh_opl_oplSetup_finish_result$schema$value ??= z.literal(null))
+let _one_person_lab_dsh_opl_oplSetup_native_shell_result$schema$value
+const _one_person_lab_dsh_opl_oplSetup_native_shell_result$schema = () => (_one_person_lab_dsh_opl_oplSetup_native_shell_result$schema$value ??= z.object({
+  'available': z.boolean(),
+  'enabled': z.boolean(),
+  'pending': z.boolean().optional(),
+  'desired': z.boolean().optional(),
+  'reason': z.string().optional(),
+}))
 let _one_person_lab_dsh_opl_oplSetup_official_cancel_result$schema$value
 const _one_person_lab_dsh_opl_oplSetup_official_cancel_result$schema = () => (_one_person_lab_dsh_opl_oplSetup_official_cancel_result$schema$value ??= z.literal(null))
 let _one_person_lab_dsh_opl_oplSetup_official_key_parameter_0$schema$value
@@ -3761,6 +3772,16 @@ let _one_person_lab_dsh_opl_oplSetup_official_key_result$schema$value
 const _one_person_lab_dsh_opl_oplSetup_official_key_result$schema = () => (_one_person_lab_dsh_opl_oplSetup_official_key_result$schema$value ??= z.literal(null))
 let _one_person_lab_dsh_opl_oplSetup_official_start_result$schema$value
 const _one_person_lab_dsh_opl_oplSetup_official_start_result$schema = () => (_one_person_lab_dsh_opl_oplSetup_official_start_result$schema$value ??= z.literal(null))
+let _one_person_lab_dsh_opl_oplSetup_select_native_shell_parameter_0$schema$value
+const _one_person_lab_dsh_opl_oplSetup_select_native_shell_parameter_0$schema = () => (_one_person_lab_dsh_opl_oplSetup_select_native_shell_parameter_0$schema$value ??= z.boolean())
+let _one_person_lab_dsh_opl_oplSetup_select_native_shell_result$schema$value
+const _one_person_lab_dsh_opl_oplSetup_select_native_shell_result$schema = () => (_one_person_lab_dsh_opl_oplSetup_select_native_shell_result$schema$value ??= z.object({
+  'available': z.boolean(),
+  'enabled': z.boolean(),
+  'pending': z.boolean().optional(),
+  'desired': z.boolean().optional(),
+  'reason': z.string().optional(),
+}))
 let _one_person_lab_dsh_opl_oplSetup_status_result$schema$value
 const _one_person_lab_dsh_opl_oplSetup_status_result$schema = () => (_one_person_lab_dsh_opl_oplSetup_status_result$schema$value ??= z.object({
   'completed': z.boolean(),
@@ -4701,7 +4722,7 @@ const _one_person_lab_dsh_opl_oplExecution_prompt_parameter_0_strict$schema = ()
   'sessionId': z.string(),
   'text': z.string(),
   'operationId': z.string(),
-  'writeScope': z.array(z.string()).optional().describe('Files/directories owned by this operation; omitted means exclusive project writes.'),
+  'writeScope': z.array(z.string()).optional().describe('Explicit shared write paths; omitted scopes do not reserve the working directory.'),
 }))
 let _one_person_lab_dsh_opl_oplExecution_queue_status_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_oplExecution_queue_status_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplExecution_queue_status_parameter_0_strict$schema$value ??= z.strictObject({
@@ -4855,6 +4876,7 @@ const _one_person_lab_dsh_opl_oplExecution_save_cooperation_settings_parameter_0
 }))
 let _one_person_lab_dsh_opl_oplExecution_save_execution_limits_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_oplExecution_save_execution_limits_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplExecution_save_execution_limits_parameter_0_strict$schema$value ??= z.strictObject({
+  'enabled': z.boolean(),
   'firstProgressMs': z.number(),
   'idleProgressMs': z.number(),
 }))
@@ -4987,6 +5009,8 @@ let _one_person_lab_dsh_opl_oplSetup_finish_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_oplSetup_finish_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplSetup_finish_parameter_0_strict$schema$value ??= z.union([z.literal("official"), z.literal("gateway"), z.literal("later")]))
 let _one_person_lab_dsh_opl_oplSetup_official_key_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_oplSetup_official_key_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplSetup_official_key_parameter_0_strict$schema$value ??= z.string())
+let _one_person_lab_dsh_opl_oplSetup_select_native_shell_parameter_0_strict$schema$value
+const _one_person_lab_dsh_opl_oplSetup_select_native_shell_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplSetup_select_native_shell_parameter_0_strict$schema$value ??= z.boolean())
 let _one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0_strict$schema$value
 const _one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0_strict$schema = () => (_one_person_lab_dsh_opl_oplUpdates_automatic_parameter_0_strict$schema$value ??= z.boolean())
 let _one_person_lab_dsh_opl_oplUpdates_policy_parameter_0_strict$schema$value
@@ -5433,7 +5457,7 @@ const $remote = createTypertRemoteInfo({
         mode: 'strict',
         typeSymbol: '@one-person-lab/dsh-opl/types#ExecutionLimits',
         create: _one_person_lab_dsh_opl_oplExecution_execution_limits_result$schema,
-        jsonSchema: {"type":"object","properties":{"firstProgressMs":{"type":"number"},"idleProgressMs":{"type":"number"}},"required":["firstProgressMs","idleProgressMs"],"additionalProperties":true},
+        jsonSchema: {"type":"object","properties":{"enabled":{"type":"boolean"},"firstProgressMs":{"type":"number"},"idleProgressMs":{"type":"number"}},"required":["enabled","firstProgressMs","idleProgressMs"],"additionalProperties":true},
       },
       sourceLocation: {"file":"src/execution/host/service.ts","line":123,"column":3},
     },
@@ -5732,13 +5756,13 @@ const $remote = createTypertRemoteInfo({
             mode: 'strict',
             typeSymbol: '@one-person-lab/dsh-opl/types#HarnessPromptRequest',
             create: _one_person_lab_dsh_opl_oplExecution_prompt_parameter_0$schema,
-            jsonSchema: {"type":"object","properties":{"sessionId":{"type":"string"},"text":{"type":"string"},"operationId":{"type":"string"},"writeScope":{"type":"array","items":{"type":"string"},"description":"Files/directories owned by this operation; omitted means exclusive project writes."}},"required":["sessionId","text","operationId"],"additionalProperties":true},
+            jsonSchema: {"type":"object","properties":{"sessionId":{"type":"string"},"text":{"type":"string"},"operationId":{"type":"string"},"writeScope":{"type":"array","items":{"type":"string"},"description":"Explicit shared write paths; omitted scopes do not reserve the working directory."}},"required":["sessionId","text","operationId"],"additionalProperties":true},
           },
           strictCodec: {
             mode: 'strict',
             typeSymbol: '@one-person-lab/dsh-opl/types#HarnessPromptRequest',
             create: _one_person_lab_dsh_opl_oplExecution_prompt_parameter_0_strict$schema,
-            jsonSchema: {"type":"object","properties":{"sessionId":{"type":"string"},"text":{"type":"string"},"operationId":{"type":"string"},"writeScope":{"type":"array","items":{"type":"string"},"description":"Files/directories owned by this operation; omitted means exclusive project writes."}},"required":["sessionId","text","operationId"],"additionalProperties":false},
+            jsonSchema: {"type":"object","properties":{"sessionId":{"type":"string"},"text":{"type":"string"},"operationId":{"type":"string"},"writeScope":{"type":"array","items":{"type":"string"},"description":"Explicit shared write paths; omitted scopes do not reserve the working directory."}},"required":["sessionId","text","operationId"],"additionalProperties":false},
           },
         },
       ],
@@ -6000,13 +6024,13 @@ const $remote = createTypertRemoteInfo({
             mode: 'strict',
             typeSymbol: '@one-person-lab/dsh-opl/types#ExecutionLimits',
             create: _one_person_lab_dsh_opl_oplExecution_save_execution_limits_parameter_0$schema,
-            jsonSchema: {"type":"object","properties":{"firstProgressMs":{"type":"number"},"idleProgressMs":{"type":"number"}},"required":["firstProgressMs","idleProgressMs"],"additionalProperties":true},
+            jsonSchema: {"type":"object","properties":{"enabled":{"type":"boolean"},"firstProgressMs":{"type":"number"},"idleProgressMs":{"type":"number"}},"required":["enabled","firstProgressMs","idleProgressMs"],"additionalProperties":true},
           },
           strictCodec: {
             mode: 'strict',
             typeSymbol: '@one-person-lab/dsh-opl/types#ExecutionLimits',
             create: _one_person_lab_dsh_opl_oplExecution_save_execution_limits_parameter_0_strict$schema,
-            jsonSchema: {"type":"object","properties":{"firstProgressMs":{"type":"number"},"idleProgressMs":{"type":"number"}},"required":["firstProgressMs","idleProgressMs"],"additionalProperties":false},
+            jsonSchema: {"type":"object","properties":{"enabled":{"type":"boolean"},"firstProgressMs":{"type":"number"},"idleProgressMs":{"type":"number"}},"required":["enabled","firstProgressMs","idleProgressMs"],"additionalProperties":false},
           },
         },
       ],
@@ -6014,7 +6038,7 @@ const $remote = createTypertRemoteInfo({
         mode: 'strict',
         typeSymbol: '@one-person-lab/dsh-opl/types#ExecutionLimits',
         create: _one_person_lab_dsh_opl_oplExecution_save_execution_limits_result$schema,
-        jsonSchema: {"type":"object","properties":{"firstProgressMs":{"type":"number"},"idleProgressMs":{"type":"number"}},"required":["firstProgressMs","idleProgressMs"],"additionalProperties":true},
+        jsonSchema: {"type":"object","properties":{"enabled":{"type":"boolean"},"firstProgressMs":{"type":"number"},"idleProgressMs":{"type":"number"}},"required":["enabled","firstProgressMs","idleProgressMs"],"additionalProperties":true},
       },
       sourceLocation: {"file":"src/execution/host/service.ts","line":127,"column":3},
     },
@@ -6779,7 +6803,21 @@ const $remote = createTypertRemoteInfo({
         create: _one_person_lab_dsh_opl_oplSetup_finish_result$schema,
         jsonSchema: {"type":"null","const":null},
       },
-      sourceLocation: {"file":"src/setup/host/index.ts","line":30,"column":9},
+      sourceLocation: {"file":"src/setup/host/index.ts","line":40,"column":9},
+    },
+    'oplSetup/native-shell': {
+      service: 'oplSetup',
+      implementation: 'nativeShell',
+      invocation: { kind: 'direct' },
+      parameters: [
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#NativeShellStatus',
+        create: _one_person_lab_dsh_opl_oplSetup_native_shell_result$schema,
+        jsonSchema: {"type":"object","properties":{"available":{"type":"boolean"},"enabled":{"type":"boolean"},"pending":{"type":"boolean"},"desired":{"type":"boolean"},"reason":{"type":"string"}},"required":["available","enabled"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/setup/host/index.ts","line":28,"column":3},
     },
     'oplSetup/official-cancel': {
       service: 'oplSetup',
@@ -6793,7 +6831,7 @@ const $remote = createTypertRemoteInfo({
         create: _one_person_lab_dsh_opl_oplSetup_official_cancel_result$schema,
         jsonSchema: {"type":"null","const":null},
       },
-      sourceLocation: {"file":"src/setup/host/index.ts","line":52,"column":9},
+      sourceLocation: {"file":"src/setup/host/index.ts","line":62,"column":9},
     },
     'oplSetup/official-key': {
       service: 'oplSetup',
@@ -6823,7 +6861,7 @@ const $remote = createTypertRemoteInfo({
         create: _one_person_lab_dsh_opl_oplSetup_official_key_result$schema,
         jsonSchema: {"type":"null","const":null},
       },
-      sourceLocation: {"file":"src/setup/host/index.ts","line":67,"column":9},
+      sourceLocation: {"file":"src/setup/host/index.ts","line":77,"column":9},
     },
     'oplSetup/official-start': {
       service: 'oplSetup',
@@ -6837,7 +6875,37 @@ const $remote = createTypertRemoteInfo({
         create: _one_person_lab_dsh_opl_oplSetup_official_start_result$schema,
         jsonSchema: {"type":"null","const":null},
       },
-      sourceLocation: {"file":"src/setup/host/index.ts","line":35,"column":9},
+      sourceLocation: {"file":"src/setup/host/index.ts","line":45,"column":9},
+    },
+    'oplSetup/select-native-shell': {
+      service: 'oplSetup',
+      implementation: 'selectNativeShell',
+      invocation: { kind: 'direct' },
+      parameters: [
+        {
+          name: 'enabled',
+          source: 'json',
+          codec: {
+            mode: 'strict',
+            typeSymbol: '@one-person-lab/dsh-opl#oplSetup/select-native-shell:enabled',
+            create: _one_person_lab_dsh_opl_oplSetup_select_native_shell_parameter_0$schema,
+            jsonSchema: {"type":"boolean"},
+          },
+          strictCodec: {
+            mode: 'strict',
+            typeSymbol: '@one-person-lab/dsh-opl#oplSetup/select-native-shell:enabled',
+            create: _one_person_lab_dsh_opl_oplSetup_select_native_shell_parameter_0_strict$schema,
+            jsonSchema: {"type":"boolean"},
+          },
+        },
+      ],
+      result: {
+        mode: 'strict',
+        typeSymbol: '@one-person-lab/dsh-opl/types#NativeShellStatus',
+        create: _one_person_lab_dsh_opl_oplSetup_select_native_shell_result$schema,
+        jsonSchema: {"type":"object","properties":{"available":{"type":"boolean"},"enabled":{"type":"boolean"},"pending":{"type":"boolean"},"desired":{"type":"boolean"},"reason":{"type":"string"}},"required":["available","enabled"],"additionalProperties":true},
+      },
+      sourceLocation: {"file":"src/setup/host/index.ts","line":32,"column":3},
     },
     'oplSetup/status': {
       service: 'oplSetup',
@@ -6850,7 +6918,7 @@ const $remote = createTypertRemoteInfo({
         create: _one_person_lab_dsh_opl_oplSetup_status_result$schema,
         jsonSchema: {"type":"object","properties":{"completed":{"type":"boolean"},"choice":{"type":"string","enum":["official","undecided","gateway","later"]},"gatewayReady":{"type":"boolean"},"officialProvider":{"type":"string"},"officialPhase":{"type":"string"}},"required":["completed","choice","gatewayReady"],"additionalProperties":true},
       },
-      sourceLocation: {"file":"src/setup/host/index.ts","line":26,"column":3},
+      sourceLocation: {"file":"src/setup/host/index.ts","line":36,"column":3},
     },
     'oplUpdates/activity': {
       service: 'oplUpdates',

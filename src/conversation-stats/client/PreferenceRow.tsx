@@ -10,6 +10,7 @@ export type StatisticsMode = 'current' | 'history'
 /** The count preference is one field of the existing Suite settings namespace. */
 export interface StatisticsSettings {
   conversationStats: StatisticsMode
+  enhancedConversationStats?: boolean
 }
 
 /** @param props - Official shared settings form and localized labels. @returns One general settings row. */
@@ -25,6 +26,7 @@ export function StatisticsPreferenceRow({
     [form],
   )
   const state = useSyncExternalStore(source.subscribe, source.getSnapshot)
+  const enhanced = state.value?.enhancedConversationStats === true
   const mode = state.value?.conversationStats ?? 'current'
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -37,6 +39,7 @@ export function StatisticsPreferenceRow({
       live.current = false
     }
   }, [])
+  if (!enhanced) return null
   const select = async (value: string) => {
     if ((value !== 'current' && value !== 'history') || busy) return
     button.current?.focus({ preventScroll: true })

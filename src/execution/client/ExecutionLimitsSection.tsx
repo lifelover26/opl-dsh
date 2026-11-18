@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import css from '../../shared/client/SettingsSection.module.css'
 import type { ExecutionCall as Call } from '../../shared/client/remote-call.ts'
 
-type Limits = { firstProgressMs: number; idleProgressMs: number }
-const defaults: Limits = { firstProgressMs: 90_000, idleProgressMs: 90_000 }
+type Limits = { enabled: boolean; firstProgressMs: number; idleProgressMs: number }
+const defaults: Limits = { enabled: false, firstProgressMs: 90_000, idleProgressMs: 90_000 }
 const seconds = (value: number) => String(Math.max(1, Math.round(value / 1000)))
 
 /** Persisted execution wait controls for turns started after saving. */
@@ -31,7 +31,7 @@ export function ExecutionLimitsSection({ call }: { call: Call }) {
       alive = false
     }
   }, [call])
-  const update = (key: keyof Limits, value: string, unit: number) => {
+  const update = (key: 'firstProgressMs' | 'idleProgressMs', value: string, unit: number) => {
     const parsed = Number(value)
     if (Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 1)
       setDraft((current) => ({ ...current, [key]: parsed * unit }))
@@ -54,8 +54,19 @@ export function ExecutionLimitsSection({ call }: { call: Call }) {
       <summary>等待与超时</summary>
       <div className={css.detailsBody}>
         <p className={css.muted}>
-          只影响新开始的执行轮次。明确的上游错误会立即结束，不会等待这些阈值。
+          关闭时遵循官方或外部执行引擎的等待策略。开启只影响新开始的执行轮次；明确的上游错误会立即结束。
         </p>
+        <div className={css.preferenceRow}>
+          <div className={css.preferenceText}>
+            <div className={css.preferenceTitle}>启用 OPL 进展超时</div>
+          </div>
+          <Switch
+            label="启用 OPL 进展超时"
+            checked={draft.enabled}
+            disabled={busy}
+            onChange={(enabled) => setDraft((current) => ({ ...current, enabled }))}
+          />
+        </div>
         <label className={css.field}>
           首次进展等待（秒）
           <input

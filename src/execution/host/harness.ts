@@ -395,6 +395,7 @@ export class HarnessService {
     this.progressLimits = {
       firstProgressMs: limits.firstProgressMs,
       idleProgressMs: limits.idleProgressMs,
+      enabled: limits.enabled,
     }
   }
   /** Return the limits used when the next turn starts. */
@@ -2328,9 +2329,6 @@ export class HarnessService {
               ? { sessionId: record.acpSessionId, boundaries: [] }
               : await this.observeEditHistory(record))
         const adapter = adapterFor(record.harnessRef, record.modelRef, this.modelSources)
-        const firstProgressTimeoutMs = this.progressLimits
-          ? undefined
-          : adapter?.promptProgressTimeoutMs
         const edit = record.nativeSessionId
           ? this.externalMessageEdits.intent(record.nativeSessionId)
           : undefined
@@ -2404,9 +2402,8 @@ export class HarnessService {
               },
             },
             24 * 60 * 60 * 1000,
-            firstProgressTimeoutMs || record.harnessRef === 'opencode'
+            record.harnessRef === 'opencode'
               ? {
-                  ...(firstProgressTimeoutMs === undefined ? {} : { firstProgressTimeoutMs }),
                   stderrFailure:
                     record.harnessRef === 'opencode'
                       ? (line) => openCodeStreamFailure(line, record.acpSessionId ?? '')

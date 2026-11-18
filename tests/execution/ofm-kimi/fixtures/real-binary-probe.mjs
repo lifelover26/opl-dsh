@@ -166,8 +166,12 @@ const server = createServer((req, res) => {
       toolResultPreview: flattenToolResult(toolResults[0]),
     })
     markRequestSeen()
-    if (BEHAVIOUR === 'reject') {
-      res.writeHead(500, { 'content-type': 'application/json', 'x-should-retry': 'false' })
+    if (BEHAVIOUR === 'reject' || (BEHAVIOUR === 'recover' && wire.length === 1)) {
+      res.writeHead(500, {
+        'content-type': 'application/json',
+        'x-should-retry': BEHAVIOUR === 'recover' ? 'true' : 'false',
+        'retry-after-ms': '1',
+      })
       res.end(
         JSON.stringify({
           type: 'error',
@@ -213,7 +217,6 @@ const env = {
   TEMP: `${ownedProfilePath}/tmp`,
   TMP: `${ownedProfilePath}/tmp`,
   KIMI_CODE_HOME: ownedProfilePath,
-  KIMI_LOOP_MAX_ATTEMPTS_PER_STEP: '1',
   // The shell this adapter would pin, so the official tool runs under it.
   KIMI_SHELL_PATH: SHELL,
   ...(OMIT

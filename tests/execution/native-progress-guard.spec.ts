@@ -57,8 +57,9 @@ function fixture() {
   } as unknown as Context
   installNativeProgressGuard(
     ctx,
-    { firstProgressMs: 90, idleProgressMs: 90 },
+    { enabled: true, firstProgressMs: 90, idleProgressMs: 90 },
     (options) => options.provider === 'native',
+    true,
   )
   const options = {
     provider: 'native',
@@ -279,7 +280,12 @@ it.each(['approval/request', 'user-questions/request'] as const)(
           finish = () => resolve(undefined as never)
         }),
     )
-    installNativeProgressGuard(ctx, { firstProgressMs: 90, idleProgressMs: 90 }, () => true)
+    installNativeProgressGuard(
+      ctx,
+      { enabled: true, firstProgressMs: 90, idleProgressMs: 90 },
+      () => true,
+      true,
+    )
     const options = {
       provider: 'native',
       model: 'test',
@@ -302,3 +308,33 @@ it.each(['approval/request', 'user-questions/request'] as const)(
     expect(cancel).toHaveBeenCalledOnce()
   },
 )
+
+it('leaves the original stream untouched while OPL deadlines are disabled', () => {
+  let listener!: (
+    options: GenerateOptions,
+    next: () => AsyncIterable<StreamChunk>,
+  ) => AsyncIterable<StreamChunk>
+  const owner = { cancel: vi.fn(), session: { id: 'session' } }
+  const ctx = {
+    agents: { get: () => owner },
+    on: (name: string, callback: unknown) => {
+      if (name === 'llm/stream') listener = callback as typeof listener
+    },
+    effect: vi.fn(),
+  } as unknown as Context
+  installNativeProgressGuard(
+    ctx,
+    { enabled: false, firstProgressMs: 90, idleProgressMs: 90 },
+    () => true,
+  )
+  const original = (async function* () {
+    yield { type: 'text-delta', index: 0, text: 'a' } as const
+  })()
+  expect(
+    listener(
+      { signal: new AbortController().signal, sessionId: 'session' } as GenerateOptions,
+      () => original,
+    ),
+  ).toBe(original)
+  expect(owner.cancel).not.toHaveBeenCalled()
+})

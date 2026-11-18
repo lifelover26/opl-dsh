@@ -48,6 +48,28 @@ test('split settings preserve expressions, unknown fields and explicit destinati
   }
 })
 
+test('migrates the legacy permission memory into the official settings owner', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'opl-split-permission-test-'))
+  const file = join(dir, 'cordis.patch.yml')
+  const original = '- id: opl-suite\n  config:\n    lastPermissionPreset: danger-full-access\n'
+  await writeFile(file, original)
+  const options = {
+    dir,
+    yaml,
+    withFileLock: async (_file, operation) => operation(),
+    writeFileAtomic: writeFile,
+    stopped: async () => {},
+  }
+  try {
+    await split.migrateSplitSettings(options)
+    const doc = yaml.parse(await readFile(file, 'utf8'), { logLevel: 'silent' })
+    assert.deepEqual(doc.find((row) => row.id === 'opl-suite').config, {})
+    assert.equal(doc.find((row) => row.id === 'permission').config.defaultPreset, 'danger-full-access')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
 test('split updates retain independent and legacy disabled choices', () => {
   const names = [
     '@one-person-lab/dsh-opl',

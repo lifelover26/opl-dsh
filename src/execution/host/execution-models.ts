@@ -39,7 +39,6 @@ import { ofmModelReadiness, type OfmModelReadiness } from './ofm-source/readines
 import { BAMBOO_STARTLUX_MODEL } from './adapters/bamboo.ts'
 import { JEV_DECISION_MODEL, JEV_TYPESAFE_MODEL } from './adapters/jev.ts'
 import { adapterFor } from './adapters/index.ts'
-import { isOpenCodeGatewayGeminiModel } from './adapters/opencode/index.ts'
 export class ExecutionModelResolver {
   constructor(
     private readonly ctx: Context,
@@ -64,25 +63,24 @@ export class ExecutionModelResolver {
       (item) => item.id === DSH_COMBINATION && item.name === 'DeepSeek + DSH',
     )
     const userEdited = (item: CombinationDefinition) =>
-      item.autoEnabled === false && item.autoEnabledDisabled === true
+      item.autoEnabled === false || item.autoEnabledDisabled === true
+    // Only explicitly managed rows follow automatic migrations and readiness.
+    const unmodifiedManaged = (item: CombinationDefinition) =>
+      (item.generated === true || item.id.startsWith('auto:') || item.autoEnabled === true) &&
+      item.generated !== false &&
+      !userEdited(item)
+    const unmodifiedAutomatic = (item: CombinationDefinition) =>
+      item.id.startsWith('auto:') && unmodifiedManaged(item)
     const legacyNemotronKiloRoute = (item: CombinationDefinition) =>
+      unmodifiedManaged(item) &&
       item.modelRef.provider === OFM_PROVIDER &&
       item.modelRef.model === 'nvidia/nemotron-3-super-120b-a12b:free' &&
       item.harnessRef === 'opencode'
-    // Retired Gateway Gemini models removed from the OpenCode adapter must not
-    // keep advertising an outdated route that the current adapter refuses.
-    const retiredOpenCodeGeminiRoute = (item: CombinationDefinition) =>
-      item.modelRef.provider === 'opl-gateway' &&
-      item.modelRef.model.startsWith('gemini::') &&
-      item.harnessRef === 'opencode' &&
-      !isOpenCodeGatewayGeminiModel(item.modelRef)
     const staleAutomatic = (item: CombinationDefinition) =>
-      item.id.startsWith('auto:') &&
-      !userEdited(item) &&
+      unmodifiedAutomatic(item) &&
       (officialHarnessFor(item.modelRef) !== item.harnessRef ||
         automaticHarness(item.modelRef) !== item.harnessRef)
-    const stalePersisted = (item: CombinationDefinition) =>
-      staleAutomatic(item) || retiredOpenCodeGeminiRoute(item)
+    const stalePersisted = staleAutomatic
     if (retired.length || legacyDefault || catalog.combinations.some(stalePersisted)) {
       catalog = await this.store.cleanLegacyCombinations(stalePersisted)
     }
@@ -276,8 +274,7 @@ export class ExecutionModelResolver {
       hasLiveMembership
     ) {
       const staleOfmAutomatic = (item: CombinationDefinition) =>
-        item.id.startsWith('auto:') &&
-        !userEdited(item) &&
+        unmodifiedAutomatic(item) &&
         OFM_PROVIDERS.includes(item.modelRef.provider) &&
         (!currentOfmModels.has(item.modelRef.model) ||
           !membershipModels.includes(item.modelRef.model))
@@ -290,8 +287,9 @@ export class ExecutionModelResolver {
     )
     for (const item of catalog.combinations) {
       if (!item.id.startsWith('auto:')) continue
-      item.generated = !userEdited(item)
-      if (!item.enabled) item.autoEnabledDisabled = true
+      const generated = unmodifiedManaged(item)
+      item.generated = generated
+      if (!item.enabled && generated) item.autoEnabledDisabled = true
     }
     // Cleanup reloads persisted references; attach the live projection afterwards.
     for (const models of providerModels) catalog.models.push(...models)
@@ -394,7 +392,7 @@ export class ExecutionModelResolver {
           enabled: available.available,
           autoEnabled: true,
         })
-      else {
+      else if (unmodifiedManaged(existing)) {
         // Existing rows from before this field was introduced keep their
         // current state on first projection. A disabled row is treated as an
         // explicit user choice; an enabled row remains managed by readiness.
@@ -437,23 +435,47 @@ export class ExecutionModelResolver {
               : {}),
         })
       }
+    let defaultMigrationChanged = false
     for (const model of catalog.models) {
       const official = officialHarnessFor(model.ref)
       const hasDefault = catalog.combinations.some(
         (item) =>
           !isRetiredModel(item.modelRef) &&
           modelRefKey(item.modelRef) === modelRefKey(model.ref) &&
-          (item.id === 'auto:' + modelRefKey(model.ref) ||
-            // An explicit alternative may carry the legacy auto-disabled marker.
-            // It must not suppress the official default for a model that has a
-            // different official Harness. For models without such an official
-            // route, retain the marker's original suppression behavior.
-            (item.autoEnabledDisabled === true &&
-              (official === undefined || item.harnessRef === official)) ||
-            (item.enabled && item.isDefault)),
+          item.enabled &&
+          item.isDefault,
       )
+      const existingOfficial = official
+        ? catalog.combinations.find(
+            (item) =>
+              item.enabled &&
+              !isRetiredModel(item.modelRef) &&
+              modelRefKey(item.modelRef) === modelRefKey(model.ref) &&
+              item.harnessRef === official,
+          )
+        : undefined
+      const disabledOfficial = official
+        ? catalog.combinations.some(
+            (item) =>
+              !item.enabled &&
+              (item.autoEnabledDisabled === true || item.id === 'auto:' + modelRefKey(model.ref)) &&
+              !isRetiredModel(item.modelRef) &&
+              modelRefKey(item.modelRef) === modelRefKey(model.ref) &&
+              item.harnessRef === official,
+          )
+        : false
+      // Older releases saved an exact official pairing as a user-created row with
+      // isDefault=false. Promote that row only when the model has no other default.
+      // Once the user explicitly selects another default, defaultDisabled preserves it.
+      if (!hasDefault && existingOfficial && existingOfficial.defaultDisabled !== true) {
+        existingOfficial.isDefault = true
+        existingOfficial.defaultDisabled = false
+        defaultMigrationChanged = true
+      }
+      const hasResolvedDefault =
+        hasDefault || existingOfficial?.isDefault === true || disabledOfficial
       const harnessRef = automaticHarness(model.ref) === official ? official : undefined
-      if (!isRetiredModel(model.ref) && model.available && !hasDefault && harnessRef) {
+      if (!isRetiredModel(model.ref) && model.available && !hasResolvedDefault && harnessRef) {
         const harnessName = catalog.harnesses.find((h) => h.id === harnessRef)?.name ?? 'DSH'
         catalog.combinations.push({
           id: 'auto:' + modelRefKey(model.ref),
@@ -471,6 +493,7 @@ export class ExecutionModelResolver {
         })
       }
     }
+    if (defaultMigrationChanged) await this.store.set(catalog)
     // A persisted automatic row is a projection, not a user decision. Keep its
     // identity and permission settings, but make its enabled state follow the
     // model that actually owns it. This also repairs rows written by an older

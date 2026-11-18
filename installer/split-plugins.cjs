@@ -2,7 +2,7 @@
 const { readFileSync, existsSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const FIELDS = {
-  'opl-execution': ['executionLimits', 'lastPermissionPreset', 'toolAutoReview'],
+  'opl-execution': ['executionLimits', 'rememberPermissionPreset', 'toolAutoReview'],
   'opl-collaboration': [
     'cooperation',
     'roleExecutions',
@@ -28,6 +28,28 @@ async function migrateSplitSettings({ dir, yaml, withFileLock, writeFileAtomic, 
       const legacy = base?.get('config', true)
       if (!yaml.isMap(legacy)) return
       let changed = false
+      // Permission defaults moved to the official permission settings owner.
+      // Preserve an old OPL selection only when the official destination has no
+      // explicit value; the runtime never reads or writes the legacy field.
+      if (legacy.has('lastPermissionPreset')) {
+        let row = rows.find((item) => yaml.isMap(item) && item.get('id') === 'permission')
+        if (!row) {
+          row = document.createNode({ id: 'permission', config: {} })
+          document.contents.add(row)
+        }
+        let config = row.get('config', true)
+        if (!config) {
+          config = document.createNode({})
+          row.set('config', config)
+        }
+        if (!yaml.isMap(config)) throw Error('官方权限设置不是映射，已保留原配置')
+        if (!config.has('defaultPreset')) {
+          const value = legacy.get('lastPermissionPreset', true)
+          config.set('defaultPreset', value?.clone ? value.clone() : value)
+        }
+        legacy.delete('lastPermissionPreset')
+        changed = true
+      }
       for (const [id, fields] of Object.entries(FIELDS)) {
         if (!fields.some((field) => legacy.has(field))) continue
         let row = rows.find((item) => yaml.isMap(item) && item.get('id') === id)

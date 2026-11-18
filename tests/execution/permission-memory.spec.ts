@@ -4,119 +4,203 @@ import {
   withoutRememberingPermission,
 } from '../../src/compat/host/permission-memory.ts'
 
-type Handler = (...args: any[]) => void
-
-function fixture(lastPermissionPreset: string = 'workspace-write', existingIds: string[] = []) {
-  const handlers = new Map<string, Handler>()
+function fixture(initialDefault = 'workspace-write', initialEnabled = true) {
+  type Event = { type: string; seq: number; data: { preset?: string } }
+  type Session = {
+    id: string
+    header: { isSeeded?: boolean; origin?: string }
+    snapshotEvents(): Event[]
+  }
+  const listeners = new Set<(session: Session, event: Event) => void>()
+  let defaultPreset = initialDefault
+  let revision = 4
+  let enabled = initialEnabled
   const settings = {
-    describe: vi.fn(() => [{ ns: 'opl-suite', value: { lastPermissionPreset }, revision: 4 }]),
-    mutate: vi.fn(async () => undefined),
+    describe: vi.fn(() => [
+      { ns: 'permission', value: { defaultPreset }, revision },
+      { ns: 'opl-execution', value: { rememberPermissionPreset: enabled }, revision: 1 },
+    ]),
+    mutate: vi.fn(async (_ns: string, ops: { value: string }[], expectedRevision: number) => {
+      if (expectedRevision !== revision) return { ok: false }
+      defaultPreset = ops[0]!.value
+      revision += 1
+      return { ok: true }
+    }),
   }
-  const permissionPresets = {
-    current: vi.fn(() => 'workspace-write'),
-    set: vi.fn(),
-  }
+  const permissionPresets = { current: vi.fn(), set: vi.fn() }
   const ctx = {
-    sessions: { list: () => existingIds.map((id) => ({ id })) },
     settings,
     permissionPresets,
     logger: { warn: vi.fn() },
-    on: vi.fn((name: string, handler: Handler) => {
-      handlers.set(name, handler)
-      return () => handlers.delete(name)
+    on: vi.fn((name: string, listener: (session: Session, event: Event) => void) => {
+      expect(name).toBe('session/event')
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
     }),
   }
-  const dispose = installPermissionMemory(ctx as never)
-  return { ctx, settings, permissionPresets, handlers, dispose }
+  const install = () => installPermissionMemory(ctx as never, false)
+  let dispose = install()
+  function session(id: string, header: Session['header'] = {}) {
+    const events: Event[] = []
+    const session: Session = { id, header, snapshotEvents: () => events }
+    const append = (type: string, preset?: string) => {
+      const event = { type, seq: events.length, data: preset === undefined ? {} : { preset } }
+      events.push(event)
+      for (const listener of listeners) listener(session, event)
+    }
+    return { session, append, events }
+  }
+  return {
+    ctx,
+    settings,
+    permissionPresets,
+    session,
+    get defaultPreset() {
+      return defaultPreset
+    },
+    get revision() {
+      return revision
+    },
+    setEnabled(value: boolean) {
+      enabled = value
+    },
+    manualDefault(value: string) {
+      defaultPreset = value
+      revision += 1
+    },
+    reopen() {
+      dispose()
+      dispose = install()
+    },
+    dispose() {
+      dispose()
+    },
+  }
 }
 
 afterEach(() => vi.restoreAllMocks())
 
-function session(id: string, isSeeded = false, eventCount = 1) {
-  return {
-    id,
-    header: { isSeeded },
-    snapshotEvents: () => Array.from({ length: eventCount }, () => ({ type: 'permission/preset' })),
-  }
-}
-
-it('uses the in-process choice before its settings write resolves', async () => {
-  const f = fixture()
-  const current = session('current')
-  f.handlers.get('session/created')!(current)
-  f.handlers.get('session/event')!(current, {
-    type: 'permission/preset',
-    data: { preset: 'danger-full-access' },
-  })
-  const fresh = session('fresh', false, 3)
-  f.handlers.get('session/created')!(fresh)
-  await Promise.resolve()
-  expect(f.permissionPresets.set).toHaveBeenCalledWith(fresh, 'danger-full-access')
-  f.dispose()
-})
-
-it('applies the remembered preset after official initial permission pinning', async () => {
+it('leaves initial permissions to the official service without applying or caching a second value', async () => {
   const f = fixture('danger-full-access')
-  const fresh = session('fresh', false, 3)
-  f.handlers.get('session/created')!(fresh)
+  const fresh = f.session('fresh')
+  fresh.append('permission/preset', 'danger-full-access')
   await Promise.resolve()
-  expect(f.permissionPresets.set).toHaveBeenCalledExactlyOnceWith(fresh, 'danger-full-access')
+  expect(f.settings.mutate).not.toHaveBeenCalled()
+  expect(f.permissionPresets.set).not.toHaveBeenCalled()
+  expect(f.ctx.on).toHaveBeenCalledTimes(1)
   f.dispose()
 })
 
-it('does not widen an existing or seeded Session', () => {
-  const f = fixture('danger-full-access', ['existing'])
-  const existing = session('existing')
-  const seeded = session('seeded', true, 2)
-  f.handlers.get('session/created')!(existing)
-  f.handlers.get('session/created')!(seeded)
+it('writes a supported explicit selection to the official default only', async () => {
+  const f = fixture()
+  const current = f.session('current')
+  current.append('permission/preset', 'workspace-write')
+  current.append('permission/preset', 'danger-full-access')
+  await Promise.resolve()
+  expect(f.settings.mutate).toHaveBeenCalledExactlyOnceWith(
+    'permission',
+    [{ op: 'set', path: ['defaultPreset'], value: 'danger-full-access' }],
+    4,
+  )
+  expect(f.defaultPreset).toBe('danger-full-access')
+  expect(f.permissionPresets.set).not.toHaveBeenCalled()
+  current.append('permission/preset', 'auto')
+  current.append('permission/preset', 'invalid')
+  current.append('sandbox/mode')
+  expect(f.settings.mutate).toHaveBeenCalledTimes(1)
+  f.dispose()
+})
+
+it('does not remember a first-time initialization when an existing Session is opened', async () => {
+  const f = fixture('danger-full-access')
+  const existing = f.session('existing')
+  existing.append('user/message')
+  existing.append('permission/preset', 'workspace-write')
+  await Promise.resolve()
+  expect(f.settings.mutate).not.toHaveBeenCalled()
+  expect(f.defaultPreset).toBe('danger-full-access')
+  f.dispose()
+})
+
+it('does not persist selections while disabled, including after re-enabling and reopening', async () => {
+  const f = fixture('workspace-write', false)
+  const current = f.session('current')
+  current.append('permission/preset', 'workspace-write')
+  current.append('permission/preset', 'danger-full-access')
+  expect(f.settings.mutate).not.toHaveBeenCalled()
+  f.setEnabled(true)
+  f.reopen()
+  expect(f.defaultPreset).toBe('workspace-write')
+  expect(f.permissionPresets.set).not.toHaveBeenCalled()
+  current.append('permission/preset', 'read-only')
+  await Promise.resolve()
+  expect(f.defaultPreset).toBe('read-only')
+  f.setEnabled(false)
+  current.append('permission/preset', 'danger-full-access')
+  expect(f.defaultPreset).toBe('read-only')
+  f.dispose()
+})
+
+it('preserves a manually edited official default across new Sessions and observer reopening', async () => {
+  const f = fixture()
+  const current = f.session('current')
+  current.append('permission/preset', 'workspace-write')
+  current.append('permission/preset', 'danger-full-access')
+  f.manualDefault('read-only')
+  f.setEnabled(false)
+  f.reopen()
+  f.setEnabled(true)
+  const fresh = f.session('fresh')
+  fresh.append('permission/preset', 'read-only')
+  await Promise.resolve()
+  expect(f.defaultPreset).toBe('read-only')
+  expect(f.settings.mutate).toHaveBeenCalledTimes(1)
   expect(f.permissionPresets.set).not.toHaveBeenCalled()
   f.dispose()
 })
 
-it('persists only supported explicit preset events', async () => {
+it('does not retry a delayed selection over a later manual default edit', async () => {
   const f = fixture()
-  const known = session('known')
-  f.handlers.get('session/created')!(known)
-  f.handlers.get('session/event')!(known, {
-    type: 'permission/preset',
-    data: { preset: 'danger-full-access' },
+  const mutate = f.settings.mutate.getMockImplementation()!
+  let release!: () => void
+  f.settings.mutate.mockImplementationOnce(async (...args) => {
+    await new Promise<void>((resolve) => {
+      release = resolve
+    })
+    return mutate(...args)
   })
+  const current = f.session('current')
+  current.append('permission/preset', 'workspace-write')
+  current.append('permission/preset', 'danger-full-access')
+  f.manualDefault('read-only')
+  release()
   await Promise.resolve()
-  expect(f.settings.mutate).toHaveBeenCalledWith(
-    'opl-suite',
-    [{ op: 'set', path: ['lastPermissionPreset'], value: 'danger-full-access' }],
-    4,
-  )
-  f.settings.mutate.mockClear()
-  f.handlers.get('session/event')!(known, {
-    type: 'permission/preset',
-    data: { preset: 'auto' },
-  })
   await Promise.resolve()
-  expect(f.settings.mutate).not.toHaveBeenCalled()
+  expect(f.defaultPreset).toBe('read-only')
+  expect(f.settings.mutate).toHaveBeenCalledTimes(1)
   f.dispose()
 })
 
-it('keeps delegated permissions and role restrictions out of global defaults', async () => {
-  const f = fixture('danger-full-access')
-  const member = { ...session('member'), header: { isSeeded: false, origin: 'subagent' } }
-  f.handlers.get('session/created')!(member)
-  f.handlers.get('session/event')!(member, {
-    type: 'permission/preset',
-    data: { preset: 'read-only' },
-  })
-  const role = session('role')
-  f.handlers.get('session/created')!(role)
-  withoutRememberingPermission(role as never, () =>
-    f.handlers.get('session/event')!(role, {
-      type: 'permission/preset',
-      data: { preset: 'read-only' },
-    }),
+it('keeps seeded sessions, subagents and role restrictions out of official defaults', async () => {
+  const f = fixture()
+  for (const header of [{ isSeeded: true }, { origin: 'subagent' }]) {
+    const seeded = f.session('seeded', header)
+    seeded.append('permission/preset', 'workspace-write')
+    seeded.append('permission/preset', 'danger-full-access')
+  }
+  const seeded = f.session('durable-seed')
+  seeded.append('permission/preset', 'workspace-write')
+  seeded.append('session/end-seed')
+  seeded.append('permission/preset', 'danger-full-access')
+  const role = f.session('role')
+  role.append('permission/preset', 'workspace-write')
+  withoutRememberingPermission(role.session as never, () =>
+    role.append('permission/preset', 'read-only'),
   )
   await Promise.resolve()
-  expect(f.permissionPresets.set).not.toHaveBeenCalledWith(member, expect.anything())
-  expect(f.permissionPresets.set).toHaveBeenCalledWith(role, 'danger-full-access')
   expect(f.settings.mutate).not.toHaveBeenCalled()
+  expect(f.permissionPresets.set).not.toHaveBeenCalled()
   f.dispose()
 })

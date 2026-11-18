@@ -91,6 +91,7 @@ export function installNativeProgressGuard(
     | import('./progress-watchdog.js').ProgressWatchdogLimits
     | (() => import('./progress-watchdog.js').ProgressWatchdogLimits),
   shouldGuard: (options: import('@deepseek-ai/dsh-llm').GenerateOptions) => boolean,
+  enabled: boolean | (() => boolean) = false,
 ): void {
   type TurnClock = {
     turn: number
@@ -120,7 +121,14 @@ export function installNativeProgressGuard(
   ctx.on('llm/stream', (options, next) => {
     const signal = options.signal
     const agent = options.sessionId && ctx.agents.get(options.sessionId)
-    if (!signal || signal.aborted || !agent || !shouldGuard(options)) return next()
+    if (
+      !signal ||
+      signal.aborted ||
+      !agent ||
+      !(typeof enabled === 'function' ? enabled() : enabled) ||
+      !shouldGuard(options)
+    )
+      return next()
     const key = turnKey(agent)
     let turn = clocks.get(key)
     const turnNumber = activeTurn.get(key)

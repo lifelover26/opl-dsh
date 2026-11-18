@@ -16,7 +16,7 @@ import { serveDesktopUpdate } from './desktop-update.mjs'
  * port). If a future desktop does not expose the skip operation, its own
  * welcome window remains available.
  */
-import { spawn } from 'node:child_process'
+import { spawn, execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 import { openSync, closeSync, readFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
@@ -80,6 +80,24 @@ const resources =
   process.platform === 'win32'
     ? join(application, 'resources')
     : join(application, 'Contents/Resources')
+try {
+  execFileSync(
+    executable,
+    [
+      join(import.meta.dirname, 'native-shell-pending.cjs'),
+      application,
+      join(home, 'profiles/desktop'),
+    ],
+    {
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+      windowsHide: true,
+      stdio: 'inherit',
+      timeout: 30000,
+    },
+  )
+} catch (error) {
+  console.error('Git Bash 选择未应用；保留原配置并继续启动。', error.message)
+}
 const manifest = JSON.parse(readFileSync(join(resources, 'app.asar/package.json'), 'utf8'))
 const env = {
   ...process.env,

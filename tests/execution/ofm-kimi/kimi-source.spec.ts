@@ -112,7 +112,9 @@ describe('Kimi Code launch preparation', () => {
     expect(launch.env?.[KIMI_ROUTE_ENV.apiKey]).toBe(answer.apiKey)
     // `messages` is served to the CLI as its anthropic provider type.
     expect(launch.env?.[KIMI_ROUTE_ENV.providerType]).toBe('anthropic')
-    expect(launch.env?.KIMI_LOOP_MAX_ATTEMPTS_PER_STEP).toBe('1')
+    // Retry count belongs to the official CLI (or the channel's own configuration),
+    // rather than being imposed by this adapter.
+    expect(launch.env).not.toHaveProperty('KIMI_LOOP_MAX_ATTEMPTS_PER_STEP')
     // The suite's own runtime root, so no Moonshot account profile is read or written.
     expect(launch.env?.[KIMI_ROUTE_ENV.home]).toBe(home)
     expect(JSON.parse(launch.env.OPL_KIMI_ARGS!)).toEqual(['acp'])

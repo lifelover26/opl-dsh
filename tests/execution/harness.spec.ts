@@ -2993,10 +2993,24 @@ it('does not report queue admission for an unrelated conversation', async () => 
 })
 
 describe('external execution progress deadlines', () => {
+  it('preserves a silent external execution when OPL deadlines are disabled', async () => {
+    const { service, root } = await setup()
+    service.configureProgressLimits({ enabled: false, firstProgressMs: 1, idleProgressMs: 1 })
+    const session = await start(service, root)
+    await service.prompt({ sessionId: session.id, text: 'wait', operationId: 'official-wait' })
+    await vi.waitFor(async () =>
+      expect((await readFile(join(root, 'calls.txt'), 'utf8')).trim()).toBe('wait'),
+    )
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect((await service.snapshot({ sessionId: session.id })).state).toBe('running')
+    await service.cancel({ sessionId: session.id })
+    expect((await wait(service, session.id)).state).toBe('cancelled')
+  })
+
   it('persists a failed turn when a silent execution exceeds its deadline', async () => {
     const { service, root, options } = await setup()
     const session = await start(service, root)
-    service.configureProgressLimits({ firstProgressMs: 1000, idleProgressMs: 1000 })
+    service.configureProgressLimits({ enabled: true, firstProgressMs: 1000, idleProgressMs: 1000 })
     await service.prompt({ sessionId: session.id, text: 'wait', operationId: 'silent-deadline' })
     const snapshot = await wait(service, session.id)
     expect(snapshot.state).toBe('failed')
@@ -3012,7 +3026,7 @@ describe('external execution progress deadlines', () => {
   it('fails after useful output becomes silent', async () => {
     const { service, root } = await setup()
     const session = await start(service, root)
-    service.configureProgressLimits({ firstProgressMs: 1000, idleProgressMs: 100 })
+    service.configureProgressLimits({ enabled: true, firstProgressMs: 1000, idleProgressMs: 100 })
     await service.prompt({
       sessionId: session.id,
       text: 'partial-then-wait',
@@ -3034,7 +3048,7 @@ describe('external execution progress deadlines', () => {
       writeScope: ['src/shared'],
     })
     const queued = await start(service, root, 'deadline-queued')
-    service.configureProgressLimits({ firstProgressMs: 100, idleProgressMs: 100 })
+    service.configureProgressLimits({ enabled: true, firstProgressMs: 100, idleProgressMs: 100 })
     await service.prompt({
       sessionId: queued.id,
       text: 'result',
@@ -3049,7 +3063,7 @@ describe('external execution progress deadlines', () => {
   it('pauses all deadlines while approval is waiting', async () => {
     const { service, root } = await setup()
     const session = await start(service, root)
-    service.configureProgressLimits({ firstProgressMs: 100, idleProgressMs: 100 })
+    service.configureProgressLimits({ enabled: true, firstProgressMs: 100, idleProgressMs: 100 })
     await service.prompt({
       sessionId: session.id,
       text: 'allow-write',
@@ -3070,7 +3084,7 @@ describe('external execution progress deadlines', () => {
   it('allows a quiet running tool past idle time until explicitly cancelled', async () => {
     const { service, root } = await setup()
     const session = await start(service, root)
-    service.configureProgressLimits({ firstProgressMs: 1000, idleProgressMs: 1000 })
+    service.configureProgressLimits({ enabled: true, firstProgressMs: 1000, idleProgressMs: 1000 })
     await service.prompt({
       sessionId: session.id,
       text: 'tool-in-progress-wait',
@@ -3093,7 +3107,7 @@ describe('external execution progress deadlines', () => {
   it('clears the active deadline on manual cancellation', async () => {
     const { service, root } = await setup()
     const session = await start(service, root)
-    service.configureProgressLimits({ firstProgressMs: 5000, idleProgressMs: 5000 })
+    service.configureProgressLimits({ enabled: true, firstProgressMs: 5000, idleProgressMs: 5000 })
     await service.prompt({ sessionId: session.id, text: 'wait', operationId: 'manual-deadline' })
     await vi.waitFor(async () =>
       expect(await readFile(join(root, 'calls.txt'), 'utf8')).toBe('wait\n'),

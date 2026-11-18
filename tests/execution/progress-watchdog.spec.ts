@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProgressWatchdog } from '../../src/execution/host/progress-watchdog.js'
 
-const limits = { firstProgressMs: 100, idleProgressMs: 50 }
+const limits = { enabled: true, firstProgressMs: 100, idleProgressMs: 50 }
 
 describe('ProgressWatchdog', () => {
   beforeEach(() => vi.useFakeTimers())
@@ -41,7 +41,7 @@ describe('ProgressWatchdog', () => {
   it('allows continuous progress beyond an hour and still expires on later silence', () => {
     const expire = vi.fn()
     const watchdog = new ProgressWatchdog(
-      { firstProgressMs: 90_000, idleProgressMs: 90_000 },
+      { enabled: true, firstProgressMs: 90_000, idleProgressMs: 90_000 },
       expire,
     )
     watchdog.start()
@@ -156,4 +156,24 @@ describe('ProgressWatchdog', () => {
       expect(() => new ProgressWatchdog({ ...limits, [field]: value }, vi.fn())).toThrow(RangeError)
     }
   })
+})
+
+it('never schedules OPL cancellation while disabled, including across progress and pause/resume', () => {
+  vi.useFakeTimers()
+  const expire = vi.fn()
+  const watchdog = new ProgressWatchdog(
+    { enabled: false, firstProgressMs: 1, idleProgressMs: 1 },
+    expire,
+  )
+  watchdog.start()
+  watchdog.progress()
+  watchdog.pause()
+  watchdog.resume()
+  watchdog.pauseIdle()
+  watchdog.resumeIdle()
+  vi.advanceTimersByTime(1_000_000)
+  expect(expire).not.toHaveBeenCalled()
+  expect(vi.getTimerCount()).toBe(0)
+  watchdog.dispose()
+  vi.useRealTimers()
 })

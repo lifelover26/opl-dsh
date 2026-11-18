@@ -1,25 +1,12 @@
 - insert:
+    - id: opl-native-git-bash
+      name: '@one-person-lab/dsh-opl/git-bash'
+      disabled: true
     - id: opl-suite
       name: '@one-person-lab/dsh-opl'
       config:
         gateway:
           apiKeyEnv: OPL_GATEWAY_DEEPSEEK_API_KEY
-- id: bash-sandbox
-  name: '@deepseek-ai/dsh-bash-sandbox'
-  config:
-    timeoutMs: 60000
-  disabled: !!js process.platform === 'win32'
-- id: tool-bash
-  name: '@deepseek-ai/dsh-tool-bash'
-  disabled: !!js false
-- id: pwsh-sandbox
-  name: '@deepseek-ai/dsh-pwsh-sandbox'
-  config:
-    timeoutMs: 60000
-  disabled: !!js true
-- id: tool-pwsh
-  name: '@deepseek-ai/dsh-tool-pwsh'
-  disabled: !!js true
 - id: agent-default-model
   config:
     provider: opl-gateway
@@ -131,6 +118,12 @@
             input: [text, image]
           - id: gemini-4-hydrogen
             name: Gemini 4 Hydrogen
+            input: [text, image]
+          - id: gemini-4-argon
+            name: Gemini 4 Argon
+            input: [text, image]
+          - id: gemini-3.8-flash
+            name: Gemini 3.8 Flash
             input: [text, image]
 - id: ui-settings-general
   config:

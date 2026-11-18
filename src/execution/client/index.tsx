@@ -7,6 +7,12 @@ import {
 import { MiniMaxAccountSection } from './MiniMaxAccountSection.tsx'
 import { QueueStatus } from './QueueStatus.tsx'
 import { installHarnessContextMeter } from './HarnessContextMeter.tsx'
+import {
+  PermissionMemoryPreference,
+  SUITE_FEATURE_NAMESPACE,
+  type PermissionMemorySettings,
+} from '../../shared/client/FeaturePreferences.tsx'
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { SETTINGS_ORDER } from '../../shared/client/settings-navigation.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import { watchStopEditSession } from './stop-edit-session-watch.ts'
@@ -121,6 +127,21 @@ export function apply(ctx: Context, config: ClientConfig = {}): void {
       <MiniMaxAccountSection call={call} t={ctx.locale.bind(MINIMAX_ACCOUNT_NAMESPACE)} />
     )),
   )
+  ctx.inject(['configForms'], (settings) => {
+    const permissionsForm = settings.configForms.get<PermissionMemorySettings>('opl-execution')
+    settings.slots.inject('settings.general.item', () =>
+      settings.slots.register(
+        {
+          name: 'settings.general.item',
+          id: 'opl-remember-permission-preset',
+          order: 36,
+          locale: SUITE_FEATURE_NAMESPACE,
+          inject: () => ({ form: permissionsForm }),
+        },
+        PermissionMemoryPreference,
+      ),
+    )
+  })
   const workspace = ctx.uiWorkspace
   const sessions = ctx.sessions
   ctx.effect(() =>

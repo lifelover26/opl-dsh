@@ -2,6 +2,7 @@
 import z from '@deepseek-ai/schemastery'
 
 export interface ExecutionLimits {
+  enabled: boolean
   firstProgressMs: number
   idleProgressMs: number
 }
@@ -9,6 +10,7 @@ export interface ExecutionLimits {
 /** Validated execution deadlines within the Node timer range. */
 export const executionLimitsSchema = z
   .object({
+    enabled: z.boolean().default(false).description('启用 OPL 进展超时'),
     firstProgressMs: z
       .number()
       .step(1)

@@ -60,6 +60,24 @@ const harness = (method, input = {}) =>
   wire('oplExecution/' + method, Object.keys(input).length ? { request: input } : {})
 const gateway = (method, input) =>
   wire('oplGatewayModels/' + method, input ? { request: input } : {})
+const nativeShellMode = process.argv.includes('--verify-git-bash') ? 'bash' : 'pwsh'
+const verifyGitBash = nativeShellMode === 'bash'
+async function assertNativeShell(enabled) {
+  const status = await wire('oplSetup/native-shell')
+  assert.equal(status.available, true, status.reason)
+  assert.equal(status.enabled, enabled, status.reason)
+  assert.notEqual(status.pending, true, status.reason)
+}
+if (process.argv.includes('--select-git-bash')) {
+  assert.equal(process.platform, 'win32')
+  await assertNativeShell(false)
+  const status = await wire('oplSetup/select-native-shell', { enabled: true })
+  assert.equal(status.enabled, false)
+  assert.equal(status.pending, true)
+  assert.equal(status.desired, true)
+  console.log(JSON.stringify({ pending: true, desired: true }))
+  process.exit(0)
+}
 // Harness completion precedes the official driver's final transcript events.
 async function settledConversation(sessionId, afterTurn) {
   const deadline = Date.now() + 30000
@@ -135,7 +153,12 @@ if (captureSelections || process.argv.includes('--readback-selections')) {
 const project = join(root, 'test-project')
 await mkdir(project, { recursive: true })
 import assert from 'node:assert/strict'
-const modelPlugins = await verifyModelPlugins({ root, origin, cookie, wire, harness })
+if (process.platform === 'win32') await assertNativeShell(verifyGitBash)
+const modelPlugins = verifyGitBash
+  ? undefined
+  : await verifyModelPlugins({ root, origin, cookie, wire, harness })
+if (!verifyGitBash) await verifyControlPermissions()
+async function verifyControlPermissions() {
 // Exercise the OPL control adapter against the official permission and Workspace owners.
 const permissionSession = await rpc('session', 'create', {
   request: { cwd: project, permissionPreset: 'danger-full-access' },
@@ -167,9 +190,12 @@ assert.equal(
   ).preset,
   'read-only',
 )
+}
 const requests = []
-let gitBashProbe = false
+let shellProbe = false
 let teamProbe = false
+const shellFile = 'opl-' + nativeShellMode + '-smoke.txt'
+const shellMarker = 'OPL_' + nativeShellMode.toUpperCase() + '_OK'
 const server = createServer(async (req, res) => {
   try {
     let bytes = ''
@@ -183,13 +209,15 @@ const server = createServer(async (req, res) => {
     )
     const teamResponse = teamProbe ? officialTeamProbeResponse(body) : undefined
     const toolName =
-      teamResponse?.tool?.name ?? (gitBashProbe ? 'bash' : 'list_harness_combinations')
+      teamResponse?.tool?.name ?? (shellProbe ? nativeShellMode : 'list_harness_combinations')
     const toolInput =
       teamResponse?.tool?.input ??
-      (gitBashProbe
+      (shellProbe
         ? {
-            command: 'git --version && printf OPL_GIT_BASH_OK > opl-git-bash-smoke.txt',
-            description: 'Verify Git Bash in the isolated workspace',
+            command: verifyGitBash
+              ? `git --version && printf %s ${shellMarker} > ${shellFile}`
+              : `Set-Content -LiteralPath '${shellFile}' -Value '${shellMarker}' -NoNewline`,
+            description: 'Verify the selected shell in the isolated workspace',
             timeoutMs: 10000,
           }
         : {})
@@ -204,6 +232,7 @@ const server = createServer(async (req, res) => {
       key: req.headers['x-api-key'] ?? req.headers.authorization,
       usedTool,
       hasTool,
+      ...(shellProbe ? { shellTools: body.tools?.map((t) => t.name ?? t.function?.name) ?? [] } : {}),
       ...(teamProbe ? { teamTools: body.tools?.map((t) => t.name ?? t.function?.name) ?? [] } : {}),
     })
     res.writeHead(200, { 'content-type': 'text/event-stream' })
@@ -300,6 +329,44 @@ try {
     ns: 'opl-suite',
     ops: [{ op: 'set', path: ['gateway', 'baseURL'], value: base }],
   })
+  if (process.platform === 'win32') {
+    shellProbe = true
+    const shellSession = await rpc('session', 'create', {
+      request: { cwd: project, permissionPreset: 'danger-full-access' },
+    })
+    assert.equal(shellSession.permissions.preset, 'danger-full-access')
+    await rpc('session', 'selectModel', {
+      request: { sessionId: shellSession.sessionId, provider: 'opl-gateway', model: 'deepseek-flash' },
+    })
+    const receipt = await rpc('session', 'prompt', {
+      request: {
+        sessionId: shellSession.sessionId,
+        requestId: crypto.randomUUID(),
+        mode: 'queue',
+        content: [{ type: 'text', text: 'Run the isolated native shell smoke once.' }],
+      },
+    })
+    assert.equal(receipt.accepted, true)
+    const result = await rpc('session', 'wait', { sessionId: shellSession.sessionId })
+    assert.equal(result.outcome.kind, 'completed')
+    const requestsWithTool = requests.filter((request) => request.shellTools?.includes(nativeShellMode))
+    assert(requestsWithTool.some((request) => request.hasTool), `Model did not call ${nativeShellMode}`)
+    assert(requestsWithTool.some((request) => request.usedTool), `Model received no ${nativeShellMode} result`)
+    assert(
+      requestsWithTool.every((request) => !request.shellTools.includes(verifyGitBash ? 'pwsh' : 'bash')),
+      'Unexpected alternate native shell tool',
+    )
+    assert.equal(await readFile(join(project, shellFile), 'utf8'), shellMarker)
+    shellProbe = false
+  }
+  if (verifyGitBash) console.log(JSON.stringify({ gitBashExecution: true }))
+  else await verifyRemainingRuntime()
+} finally {
+  server.closeAllConnections()
+  server.close()
+}
+
+async function verifyRemainingRuntime() {
   await wire('settings/mutate', {
     ns: 'llm-pi-ai',
     ops: [
@@ -530,34 +597,6 @@ try {
       },
     }) + '\n',
   )
-  if (process.platform === 'win32') {
-    // MSYS2 external programs need full access with the official rc.2 backend.
-    // Only this disposable Session receives that explicit preset.
-    gitBashProbe = true
-    const shellSession = await rpc('session', 'create', {
-      request: { cwd: project, permissionPreset: 'danger-full-access' },
-    })
-    assert.equal(shellSession.permissions.preset, 'danger-full-access')
-    await rpc('session', 'selectModel', {
-      request: {
-        sessionId: shellSession.sessionId,
-        provider: 'opl-gateway',
-        model: 'deepseek-flash',
-      },
-    })
-    const receipt = await rpc('session', 'prompt', {
-      request: {
-        sessionId: shellSession.sessionId,
-        requestId: crypto.randomUUID(),
-        mode: 'queue',
-        content: [{ type: 'text', text: 'Run the isolated Git Bash smoke once.' }],
-      },
-    })
-    assert.equal(receipt.accepted, true)
-    const result = await rpc('session', 'wait', { sessionId: shellSession.sessionId })
-    assert.equal(result.outcome.kind, 'completed')
-    assert.equal(await readFile(join(project, 'opl-git-bash-smoke.txt'), 'utf8'), 'OPL_GIT_BASH_OK')
-  }
   await wire('credentials/set', { ref: 'OPL_GATEWAY_GROK_API_KEY', value: 'fixture-grok' })
   await editGateway('grok', {
     api: 'openai-responses',
@@ -740,7 +779,7 @@ try {
         nativeSettingsReadback: true,
         controlPermissions: true,
         controlProjectAttribution: true,
-        ...(gitBashProbe ? { gitBashExecution: true } : {}),
+        ...(process.platform === 'win32' ? { defaultPowerShellExecution: true } : {}),
         scopedConcurrentWriters: {
           independentRunningTogether: true,
           overlapQueued: true,
@@ -772,7 +811,4 @@ try {
       2,
     ),
   )
-} finally {
-  server.closeAllConnections()
-  server.close()
 }

@@ -187,10 +187,14 @@ export function normalizeCatalog(value: unknown): ExecutionCatalog {
         permissionPolicy,
         isDefault: x.isDefault === true,
         enabled: x.enabled !== false,
+        ...(x.generated === undefined ? {} : { generated: x.generated === true }),
         ...(x.autoEnabled === undefined ? {} : { autoEnabled: x.autoEnabled === true }),
         ...(x.autoEnabledDisabled === undefined
           ? {}
           : { autoEnabledDisabled: x.autoEnabledDisabled === true }),
+        ...(x.defaultDisabled === undefined
+          ? {}
+          : { defaultDisabled: x.defaultDisabled === true }),
       }
     })
   if (input.version !== 2)
