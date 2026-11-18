@@ -27,7 +27,13 @@
 
 import type { ExternalWireProtocol } from '../model-sources.ts'
 import type { OfmConnectionReader } from './source.ts'
-import { OFM_PROVIDER } from './provider.ts'
+import {
+  OFM_PROVIDER,
+  ofmHarnessPinsModel,
+  ofmProtocol,
+  ofmRequiresMainForward,
+} from './provider.ts'
+import { ofmModelReadiness } from './readiness.ts'
 
 /** One admitted request against the plugin's public API. */
 export interface OfmApiRequest {
@@ -81,14 +87,27 @@ interface ClientsResponse {
  * refusal, never a fallback.
  */
 export function createOfmApiConnection(caller: OfmApiCaller, base: string): OfmConnectionReader {
-  return async (_harness, ref, protocol) => {
+  return async (harness, ref, protocol) => {
     // /clients describes only the anonymous forward lane, never the account-channel relay.
     if (ref.provider !== OFM_PROVIDER) return undefined
+    const mainForward = ofmRequiresMainForward(harness)
+    if (
+      mainForward &&
+      (!ofmHarnessPinsModel(harness, ref.model) || ofmProtocol(harness) !== protocol)
+    )
+      return undefined
     // The declared parameter is a `ModelRef`. A bare model id is also read so the
     // reader can be exercised on its own without wrapping it; nothing else about
     // the contract changes.
     const model = typeof ref === 'string' ? ref : ref?.model
-    const response = await caller({ url: base + OFM_CLIENTS_ROUTE, method: 'GET' })
+    let response: Awaited<ReturnType<OfmApiCaller>>
+    try {
+      response = await caller({ url: base + OFM_CLIENTS_ROUTE, method: 'GET' })
+    } catch (error) {
+      if (!mainForward) throw error
+      // Owner transport failures must not expose response bodies or issued keys.
+      return undefined
+    }
     if (response.status < 200 || response.status >= 300) return undefined
     const body = (response.body ?? {}) as ClientsResponse
     if (body.running !== true) return undefined
@@ -103,6 +122,35 @@ export function createOfmApiConnection(caller: OfmApiCaller, base: string): OfmC
     // The same response decides whether the lane still offers this model, so a
     // withdrawn model cannot launch on a connection that no longer lists it.
     if (typeof model !== 'string' || !models.includes(model)) return undefined
+    if (mainForward) {
+      let summary: Awaited<ReturnType<OfmApiCaller>>
+      try {
+        summary = await caller({ url: base + OFM_SUMMARY_ROUTE, method: 'GET' })
+      } catch {
+        // The owner refusal is final; no alternate route is queried.
+        return undefined
+      }
+      if (summary.status < 200 || summary.status >= 300) return undefined
+      if (!ofmModelReadiness(summary.body, ref, true).available) return undefined
+      // The forward listener can expose region models too. Its combined roster
+      // cannot authorize these clients to use a region-only lane.
+      const publicSummary = summary.body as {
+        catalog?: { id?: unknown; route?: unknown }[]
+        membership?: unknown
+      }
+      const catalog = publicSummary.catalog
+      const entry = Array.isArray(catalog) ? catalog.find((item) => item?.id === model) : undefined
+      if (entry?.route !== OFM_PROVIDER) return undefined
+      // The current public summary has no membership field. If an owner version
+      // supplies it, it must agree with the catalog's main-route assignment.
+      const membership = publicSummary.membership
+      if (membership !== undefined) {
+        if (membership === null || typeof membership !== 'object' || Array.isArray(membership))
+          return undefined
+        const mainModels = (membership as Record<string, unknown>)[OFM_PROVIDER]
+        if (!Array.isArray(mainModels) || !mainModels.includes(model)) return undefined
+      }
+    }
     return { baseURL: ofmBaseURL(origin, protocol), apiKey }
   }
 }

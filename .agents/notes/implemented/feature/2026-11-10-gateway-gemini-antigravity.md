@@ -1,6 +1,8 @@
 # Gateway Gemini 使用官方 Antigravity
 
-Gemini 3.8 Flash 与 4 Argon 默认使用 Antigravity 的原生 Gemini 接口及 OPL 分组凭据，不引入 Google 账号。OpenCode 继续作为明确选择的备选，已有绑定及用户默认保留；失败不切换渠道或重发任务。
+Gemini 3.8 Flash、4 Argon、4 Carbon 和 4 Hydrogen 默认使用 Antigravity 的原生 Gemini 接口及 OPL 分组凭据，不引入 Google 账号。OpenCode 可显式选择为备选，已有绑定及用户默认保留；失败不切换渠道或重发任务。
+
+适配器支持列表与 Gateway 配置是独立输入。升级补齐与旧发行默认值完全一致的 Gemini 目录；自定义模型顺序、名称、模态和连接保留。在独立配置中，OpenCode 1.19.0 的 ACP 回读全部四个模型，Antigravity 1.5.3 的 ACP 回读 Argon 和 3.8 Flash，未列出 Carbon 和 Hydrogen。命令可选择模型与上游能完成推理分别验收。
 
 新建与恢复均认证后固定模型、推理档位并核对回读。Windows 使用独占 profile 的官方 Hook 调用 Git Bash；每轮确认 Hook 已运行才允许发送上游请求。流转发只接受所选模型，保留 JSON 数据及用量，跳过空 SSE 事件，明确的接口错误立即结束本轮。缓存和思考用量不重复计数。
 

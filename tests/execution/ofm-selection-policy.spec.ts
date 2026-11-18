@@ -512,6 +512,8 @@ it('preserves manual Gateway Gemini pairings when automatic routes change', asyn
   const resolved = await new ExecutionModelResolver(ctx as never, store as never).resolve()
   expect(resolved.combinations).toEqual(expect.arrayContaining(saved))
   expect(resolved.combinations.some((item) => item.id === stale.id)).toBe(false)
+  expect(catalog.combinations).toEqual(expect.arrayContaining(saved))
+  expect(catalog.combinations.some((item) => item.id === stale.id)).toBe(false)
 })
 
 const QUALIFICATION_AUTO = 'auto:["our-free-model","opl-qualification-free"]'

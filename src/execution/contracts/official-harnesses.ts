@@ -59,6 +59,7 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
       { provider: 'minimax-official', model: 'MiniMax-M3' },
     ],
   },
+  { id: 'qwen-code', officialModels: [] },
   {
     id: 'zcode',
     officialModels: [],

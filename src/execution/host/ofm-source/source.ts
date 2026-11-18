@@ -36,6 +36,7 @@ import {
   isUsableOfmModelId,
   ofmHarnessPinsModel,
   ofmProtocol,
+  ofmRequiresMainForward,
   type OfmWireProtocol,
 } from './provider.ts'
 
@@ -105,6 +106,7 @@ export function createOfmModelSource(
      */
     supports(harness, ref) {
       if (ref.provider !== provider) return false
+      if (ofmRequiresMainForward(harness) && provider !== OFM_PROVIDER) return false
       if (!isUsableOfmModelId(ref.model)) return false
       if (isExcludedOfmModel(ref.model)) return false
       if (ofmProtocol(harness, options.protocols) === undefined) return false
@@ -116,6 +118,8 @@ export function createOfmModelSource(
       const protocol = ofmProtocol(harness, options.protocols)
       if (protocol === undefined) throw Error(`Our Free Model 未适配 Harness「${harness}」`)
       if (ref.provider !== provider) throw Error('模型不属于 Our Free Model 插件')
+      if (ofmRequiresMainForward(harness) && provider !== OFM_PROVIDER)
+        throw Error('该 Harness 仅适配 Our Free Model 免费转发渠道')
       if (!isUsableOfmModelId(ref.model)) throw Error('模型标识无效')
       if (isExcludedOfmModel(ref.model)) throw Error(`模型「${ref.model}」未纳入本次适配范围`)
       if (!ofmHarnessPinsModel(harness, ref.model))

@@ -39,6 +39,7 @@ import { ofmModelReadiness, type OfmModelReadiness } from './ofm-source/readines
 import { BAMBOO_STARTLUX_MODEL } from './adapters/bamboo.ts'
 import { JEV_DECISION_MODEL, JEV_TYPESAFE_MODEL } from './adapters/jev.ts'
 import { adapterFor } from './adapters/index.ts'
+import { isQwenModel, QWEN_CODE_HARNESS } from './adapters/qwen/models.ts'
 export class ExecutionModelResolver {
   constructor(
     private readonly ctx: Context,
@@ -532,20 +533,20 @@ export class ExecutionModelResolver {
           name: model.name + ' + ' + harnessName,
         })
       }
-      // Gemini's native Antigravity route remains the default. OpenCode is a
-      // separately selectable fallback for the same Gateway models; it must
-      // appear as a recommendation without becoming an enabled combination.
-      if (
-        model.available &&
-        official === 'antigravity' &&
-        adapterFor('opencode', model.ref) !== undefined &&
-        catalog.harnesses.some((h) => h.id === 'opencode')
-      ) {
-        const harnessName = catalog.harnesses.find((h) => h.id === 'opencode')!.name
+      // These alternate engines stay opt-in. In particular Qwen Code requires
+      // full access, so discovering it must not change an existing AMD route.
+      const alternative =
+        official === 'antigravity' && adapterFor('opencode', model.ref)
+          ? 'opencode'
+          : isQwenModel(model.ref)
+            ? QWEN_CODE_HARNESS
+            : undefined
+      const alternativeHarness = catalog.harnesses.find((h) => h.id === alternative)
+      if (model.available && alternativeHarness) {
         recommendations.push({
           modelRef: model.ref,
-          harnessRef: 'opencode',
-          name: model.name + ' + ' + harnessName + '（备用）',
+          harnessRef: alternativeHarness.id,
+          name: model.name + ' + ' + alternativeHarness.name + '（备用）',
         })
       }
       return recommendations

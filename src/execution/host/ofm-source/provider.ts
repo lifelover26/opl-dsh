@@ -37,6 +37,7 @@ export const OFM_HARNESS_PROTOCOLS: Readonly<Record<string, OfmWireProtocol>> = 
   pi: 'chat',
   kilo: 'chat',
   vibe: 'chat',
+  'qwen-code': 'chat',
 }
 
 /** Harness alias so a CLI id and its adapter id resolve to one protocol. */
@@ -69,6 +70,7 @@ export const OFM_EXCLUDED_MODELS: readonly string[] = [
  */
 export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[]>> = {
   codex: ['openai/gpt-oss-20b'],
+  'qwen-code': ['amd/Qwen3.8-27B'],
   claude: [],
   vibe: ['mistralai/mistral-large-4-1t-a52b'],
   kimi: ['moonshotai/kimi-k2.6', 'moonshotai/kimi-k3'],
@@ -107,6 +109,7 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'minimaxai/minimax-m3.1-flash',
     'openrouter/free',
     'big-pickle',
+    'hy4-flash-free',
     'flint-40b-free',
   ],
   pi: [
@@ -181,4 +184,9 @@ export function isOfmVirtualRef(ref: ModelRef): boolean {
 export function ofmHarnessPinsModel(harness: string, model: string): boolean {
   const pinned = OFM_PINNED_HARNESS_MODELS[ofmHarnessKey(harness)]
   return pinned === undefined || pinned.includes(model)
+}
+
+/** Qwen Code uses only OFM's anonymous forward lane. */
+export function ofmRequiresMainForward(harness: string): boolean {
+  return harness === 'qwen-code'
 }

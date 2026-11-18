@@ -48,6 +48,7 @@ it('provides fixed official install plans for missing CLIs', () => {
       | 'codex'
       | 'claude'
       | 'antigravity'
+      | 'qwen-code'
       | 'minimax-code'
       | 'mimo-code'
       | 'step-code'
@@ -74,6 +75,7 @@ it('provides fixed official install plans for missing CLIs', () => {
   expect(claude.args.join(' ')).not.toContain('item.path')
   for (const [id, official] of [
     ['antigravity', 'antigravity.google/cli/install.'],
+    ['qwen-code', '@qwen-code/qwen-code@0.27.3'],
     ['minimax-code', 'filecdn.minimax.chat/public/install.'],
     ['mimo-code', 'mimo.xiaomi.com/install'],
     ['step-code', 'static-openapi.stepfun.com/stepcode/install.'],
@@ -95,6 +97,7 @@ it('provides fixed official install plans for missing CLIs', () => {
   expect(pi.args).toContain('@earendil-works/pi-coding-agent@1.2.0')
   expect(pi.args).toContain('--ignore-scripts')
   expect(pi.expectedVersion).toBe('1.2.0')
+  expect(maintenancePlan(missing('qwen-code')).expectedVersion).toBe('0.27.3')
 })
 it('does not pass Gateway or model authentication into package updaters', () => {
   vi.stubEnv('OPL_GATEWAY_CODEX_API_KEY', 'test-sensitive')
