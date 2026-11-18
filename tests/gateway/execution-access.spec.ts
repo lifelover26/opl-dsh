@@ -34,36 +34,27 @@ describe('Gateway route metadata for external engines', () => {
   it('uses the Gemini group credential and its declared native endpoint independently of Chat', async () => {
     const resolve = vi.fn(async () => ({ value: 'native-fixture-key' }))
     const ctx = { get: () => undefined, credentials: { resolve } } as unknown as Context
-    const ref = { provider: 'opl-gateway', model: 'gemini::gemini-4-carbon' }
-    expect(await resolveGatewayGeminiExecution(ctx, ref)).toMatchObject({
-      baseURL: 'https://gateway.medopl.com',
-      api: 'gemini-native',
-      model: 'gemini-4-carbon',
-      credential: 'OPL_GATEWAY_GEMINI_API_KEY',
-      apiKey: 'native-fixture-key',
-    })
-    expect(
-      await resolveGatewayGeminiExecution(ctx, {
-        provider: 'opl-gateway',
-        model: 'gemini::gemini-4-hydrogen',
-      }),
-    ).toMatchObject({
-      baseURL: 'https://gateway.medopl.com',
-      api: 'gemini-native',
-      model: 'gemini-4-hydrogen',
-    })
-    expect(resolve).toHaveBeenCalledTimes(2)
+    for (const model of ['gemini-4-carbon', 'gemini-4-hydrogen', 'gemini-4-argon', 'gemini-3.8-flash']) {
+      expect(await resolveGatewayGeminiExecution(ctx, {
+        provider: 'opl-gateway', model: `gemini::${model}`,
+      })).toMatchObject({
+        baseURL: 'https://gateway.medopl.com',
+        api: 'gemini-native',
+        model,
+        credential: 'OPL_GATEWAY_GEMINI_API_KEY',
+        apiKey: 'native-fixture-key',
+      })
+    }
+    expect(resolve).toHaveBeenCalledTimes(4)
     expect(resolve).toHaveBeenCalledWith('OPL_GATEWAY_GEMINI_API_KEY')
-    expect((await resolveGatewayExecution(ctx, ref)).api).toBe('openai-completions')
+    expect((await resolveGatewayExecution(ctx, {
+      provider: 'opl-gateway', model: 'gemini::gemini-4-carbon',
+    })).api).toBe('openai-completions')
   })
 
   it('refuses unknown native routes and custom Chat addresses without rewriting them', async () => {
     const f = fixture()
-    for (const retired of [
-      'gemini::gemini-3.1-pro',
-      'gemini::gemini-4-argon',
-      'gemini::gemini-3.8-flash',
-    ]) {
+    for (const retired of ['gemini::gemini-3.1-pro', 'gemini::gemini-3.7-flash']) {
       await expect(
         resolveGatewayGeminiExecution(f.ctx, {
           provider: 'opl-gateway',

@@ -543,7 +543,10 @@ export function MiniMaxAccountSection({
           {stateLabel}
         </span>
       </div>
-      <div className={css.field} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <div
+        className={css.field}
+        style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}
+      >
         <label className={css.label} htmlFor="opl-minimax-account-region" title={t('regionHint')}>
           {t('region')}
         </label>

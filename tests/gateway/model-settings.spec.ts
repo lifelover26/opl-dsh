@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createHash } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
+import { parse } from 'yaml'
 import type { Context } from '@deepseek-ai/cordis'
 import { LlmError } from '@deepseek-ai/dsh-llm'
 import { Config as PiAiConfig } from '@deepseek-ai/dsh-llm-pi-ai'
@@ -102,6 +104,20 @@ function fixture({ officialRedaction = false } = {}) {
   } as unknown as Context
   return { ctx, state, users, revisions, settings, discover, credentials, keys }
 }
+
+it('ships every supported Gemini route in the desktop profile', async () => {
+  const patch = parse(await readFile(new URL('../../cordis.patch.yml', import.meta.url), 'utf8'))
+  const models = patch.find((entry: { id: string }) => entry.id === 'llm-pi-ai').config.providers[
+    'opl-gateway-gemini'
+  ].models
+  expect(models.map((model: { id: string }) => model.id)).toEqual([
+    'gemini-4-carbon',
+    'gemini-4-hydrogen',
+    'gemini-4-argon',
+    'gemini-3.8-flash',
+  ])
+})
+
 describe('native model settings authority', () => {
   it('writes DeepSeek edits to the actual adapter config and keeps an explicitly empty list', async () => {
     const f = fixture()
@@ -522,6 +538,10 @@ describe('protocol prefixes and bundle-owned migration', () => {
 
   it.each([
     [
+      { id: 'gemini-4-carbon', name: 'Gemini 4 Carbon', input: ['text', 'image'] },
+      { id: 'gemini-4-hydrogen', name: 'Gemini 4 Hydrogen', input: ['text', 'image'] },
+    ],
+    [
       { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
       { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
     ],
@@ -531,7 +551,7 @@ describe('protocol prefixes and bundle-owned migration', () => {
       { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
     ],
   ])(
-    'upgrades an untouched legacy canonical Gemini catalog to Carbon and Hydrogen: %j',
+    'upgrades an untouched legacy Gemini catalog to all four routes: %j',
     async (...legacyModels) => {
       const f = fixture()
       const profile = {
@@ -549,9 +569,33 @@ describe('protocol prefixes and bundle-owned migration', () => {
       expect(f.state['llm-pi-ai'].providers['opl-gateway-gemini'].models).toEqual([
         { id: 'gemini-4-carbon', name: 'Gemini 4 Carbon', input: ['text', 'image'] },
         { id: 'gemini-4-hydrogen', name: 'Gemini 4 Hydrogen', input: ['text', 'image'] },
+        { id: 'gemini-4-argon', name: 'Gemini 4 Argon', input: ['text', 'image'] },
+        { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', input: ['text', 'image'] },
       ])
+      await migrateGatewayProtocolDefaults(f.ctx)
+      expect(f.settings.mutate).toHaveBeenCalledTimes(1)
     },
   )
+
+  it('preserves an edited Gemini catalog even when its model IDs match the old defaults', async () => {
+    const f = fixture()
+    const profile = {
+      displayName: 'OPL Gateway · Gemini',
+      api: 'openai-completions',
+      baseURL: 'https://gateway.medopl.com/v1',
+      apiKeyEnv: 'OPL_GATEWAY_GEMINI_API_KEY',
+      models: [
+        { id: 'gemini-4-carbon', name: 'Preferred Carbon', input: ['text'] },
+        { id: 'gemini-4-hydrogen', name: 'Gemini 4 Hydrogen', input: ['text', 'image'] },
+      ],
+    }
+    f.state['llm-pi-ai'].providers['opl-gateway-gemini'] = profile
+    f.users['llm-pi-ai'].providers = { 'opl-gateway-gemini': structuredClone(profile) }
+
+    await migrateGatewayProtocolDefaults(f.ctx)
+
+    expect(f.settings.mutate).not.toHaveBeenCalled()
+  })
 
   it('does not replace a custom Gemini catalog', async () => {
     const f = fixture()
@@ -657,6 +701,29 @@ describe('protocol prefixes and bundle-owned migration', () => {
 })
 
 describe('per-group catalog observations', () => {
+  it('skips a denied group without losing its configured models and reports a missing key after access is granted', async () => {
+    const f = fixture()
+    const account = f.ctx.get('oplGatewayAccount')!
+    const status = await account.status()
+    const read = vi.spyOn(account, 'status').mockResolvedValue({
+      ...status,
+      groups: [{ id: 'codex', name: 'Codex', authorized: false, state: 'unauthorized' }],
+    })
+    const saved = structuredClone(f.state['llm-pi-ai'].providers['opl-gateway-openai'].models)
+    await syncGatewayModels(f.ctx)
+    expect((await gatewayModelSettings(f.ctx)).groups.some((g) => g.id === 'codex')).toBe(false)
+    expect(f.credentials.resolve).not.toHaveBeenCalledWith('OPL_GATEWAY_CODEX_API_KEY')
+    expect(f.state['llm-pi-ai'].providers['opl-gateway-openai'].models).toEqual(saved)
+    read.mockResolvedValue({
+      ...status,
+      groups: [{ id: 'codex', name: 'Codex', authorized: true, state: 'unconfigured' }],
+    })
+    f.keys.clear()
+    await syncGatewayModels(f.ctx)
+    expect((await gatewayModelSettings(f.ctx)).groups.find((g) => g.id === 'codex')).toMatchObject({
+      catalog: { state: 'error', diagnostic: { code: 'missing_credentials' } },
+    })
+  })
   it('does not equate credential readiness with successful discovery', async () => {
     const f = fixture()
     expect((await gatewayModelSettings(f.ctx)).groups.find((g) => g.id === 'codex')).toMatchObject({

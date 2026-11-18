@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { TypertRemoteNamespace } from '@deepseek-ai/dsh-typert-protocol'
 import { modelRefKey } from '../contracts/catalog.ts'
+import { isOfficialPairing } from '../contracts/official-harnesses.ts'
 import { pairingKey, savedChoiceKey, recommendationChoiceKey } from './combination-choices.ts'
 import type { CombinationSelection } from './combination-choices.ts'
 import { safeFailureMessage } from './proxy-draft.ts'
@@ -104,6 +105,9 @@ export function useExecutionCatalog(call: RemoteCallInput<TypertRemoteNamespace<
               generated: false,
               autoEnabled: false,
               autoEnabledDisabled: true,
+              ...(patch.isDefault === undefined
+                ? {}
+                : { defaultDisabled: patch.isDefault !== true }),
             }
           : patch.isDefault && modelRefKey(item.modelRef) === modelRefKey(target.modelRef)
             ? { ...item, isDefault: false }
@@ -133,6 +137,7 @@ export function useExecutionCatalog(call: RemoteCallInput<TypertRemoteNamespace<
       setNotice('该组合已在选择列表中，请在上方勾选。')
       return
     }
+    const official = isOfficialPairing(draft.harness, model.ref)
     const result = await save({
       ...catalog,
       combinations: [
@@ -143,10 +148,11 @@ export function useExecutionCatalog(call: RemoteCallInput<TypertRemoteNamespace<
           modelRef: model.ref,
           harnessRef: draft.harness,
           permissionPolicy: 'workspace',
-          isDefault: false,
+          isDefault: official,
           enabled: true,
           autoEnabled: false,
           autoEnabledDisabled: true,
+          defaultDisabled: !official,
         },
       ],
     })
@@ -168,6 +174,7 @@ export function useExecutionCatalog(call: RemoteCallInput<TypertRemoteNamespace<
         enabled: true,
         autoEnabled: false,
         autoEnabledDisabled: true,
+        defaultDisabled: true,
       })
     }
     const availableModels = new Set(

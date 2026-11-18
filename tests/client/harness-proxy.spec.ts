@@ -794,7 +794,7 @@ describe('每个外部 Harness 独立的代理设置', () => {
     )!
     const switches = walk(target).filter((node) => node.getAttribute?.('role') === 'switch')
     expect(switches).toHaveLength(1)
-    expect(text(walk(target).find((node) => node.nodeName === 'SUMMARY')!)).toContain('非默认')
+    expect(text(walk(target).find((node) => node.nodeName === 'SUMMARY')!)).not.toContain('非默认')
     await press(switches[0])
     expect(text(walk(target).find((node) => node.nodeName === 'SUMMARY')!)).not.toContain('非默认')
     expect(stored().combinations.map((item: { isDefault: boolean }) => item.isDefault)).toEqual([
@@ -874,7 +874,9 @@ describe('每个外部 Harness 独立的代理设置', () => {
       modelRef: ref,
     })
     expect(rows()).toHaveLength(2)
-    expect(text(walk(rows()[0]).find((node) => node.nodeName === 'SUMMARY')!)).toContain('非默认')
+    expect(text(walk(rows()[0]).find((node) => node.nodeName === 'SUMMARY')!)).not.toContain(
+      '非默认',
+    )
     const input = walk(rows()[0]).find((node) => node.nodeName === 'INPUT')!
     await act(async () => {
       input.value = '重命名配置'

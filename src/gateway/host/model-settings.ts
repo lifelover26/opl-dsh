@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from 'node:util'
 import type { Context } from '@deepseek-ai/cordis'
 import type { SettingsDescriptor, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import { GATEWAY_GROUPS } from '../contracts/groups.ts'
+import { gatewayGroupNotGranted } from '../contracts/account.ts'
 import { DEFAULT_MODELS, toAdapterConfig } from './config.ts'
 import type { ModelDraft, GatewayModelSettings } from '../contracts/models.ts'
 import {
@@ -171,12 +172,18 @@ function providerSettings(
 }
 
 const LEGACY_CANONICAL_GEMINI_SETS: readonly (readonly string[])[] = [
+  ['gemini-4-carbon', 'gemini-4-hydrogen'],
   ['gemini-3.1-pro', 'gemini-3.8-flash'],
   ['gemini-4-argon', 'gemini-3.8-flash'],
   ['gemini-4-argon', 'gemini-3.8-flash', 'gemini-3.1-pro'],
 ]
 
-/** Replace an unchanged legacy bundled Gemini catalog with the current default pair. */
+const geminiBundleModel = (id: string): ModelDraft => ({
+  id,
+  name: displayModelName({ provider: 'opl-gateway', model: `gemini::${id}` }, id),
+})
+
+/** Upgrade only a legacy bundle catalog whose rows still have their shipped metadata. */
 function addGeminiBundleModels(
   profile: Record<string, any>,
   models: readonly ModelDraft[],
@@ -188,16 +195,20 @@ function addGeminiBundleModels(
     !isDefaultGatewayBaseURL(profile.baseURL)
   )
     return [...models]
-  const ids = new Set(models.map((model) => model.id))
-  if (ids.size !== models.length) return [...models]
   const matchesLegacy = LEGACY_CANONICAL_GEMINI_SETS.some(
-    (set) => set.length === ids.size && set.every((id) => ids.has(id)),
+    (set) =>
+      set.length === models.length &&
+      set.every((id, index) => {
+        const model = models[index]
+        const expected = geminiBundleModel(id)
+        if (isDeepStrictEqual(model, expected)) return true
+        return isDeepStrictEqual(model, { ...expected, input: ['text', 'image'] })
+      }),
   )
   if (!matchesLegacy) return [...models]
-  return GATEWAY_ANTIGRAVITY_GEMINI_MODELS.map((id) => ({
-    id,
-    name: displayModelName({ provider: 'opl-gateway', model: `gemini::${id}` }, id),
-  }))
+  return GATEWAY_ANTIGRAVITY_GEMINI_MODELS.map(
+    (id) => models.find((model) => model.id === id) ?? geminiBundleModel(id),
+  )
 }
 
 /** Add the OPL-owned reviewer without replacing any existing chat provider. */
@@ -309,7 +320,9 @@ export async function gatewayModelSettings(ctx: Context): Promise<GatewayModelSe
   const settings = modelSettingsService(ctx).describe({ redactSecrets: true })
   const account = await ctx.get('oplGatewayAccount')?.status()
   return {
-    groups: GATEWAY_GROUPS.map((group) => {
+    groups: GATEWAY_GROUPS.filter(
+      (group) => !gatewayGroupNotGranted(account?.groups?.find((item) => item.id === group.id)),
+    ).map((group) => {
       const descriptor = settings.find(
         (item) => item.ns === (group.id === 'deepseek' ? 'opl-suite' : 'llm-pi-ai'),
       )
@@ -561,7 +574,12 @@ export async function discoverGatewayModels(ctx: Context, input: unknown): Promi
 export async function syncGatewayModels(ctx: Context): Promise<void> {
   await migrateGatewayProtocolDefaults(ctx)
   const service = modelSettingsService(ctx)
+  const account = await ctx.get('oplGatewayAccount')?.status()
   for (const group of GATEWAY_GROUPS) {
+    if (gatewayGroupNotGranted(account?.groups?.find((item) => item.id === group.id))) {
+      clearGatewayCatalogStatus(ctx, group.id)
+      continue
+    }
     if (!gatewayGroupEnabled(ctx, group.id)) continue
     try {
       const settings = service.describe({ redactSecrets: true })

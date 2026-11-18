@@ -1,8 +1,11 @@
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
-import { createElement } from 'react'
+import { createElement, Fragment, useEffect, useMemo, useState } from 'react'
 import type { ComponentType, MouseEvent } from 'react'
 import type { ComposerBarProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type { WorkspaceBrowserProps } from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {
+  WorkspaceBrowserProps,
+  WorkspacePickerProps,
+} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { StoredEntry } from '@deepseek-ai/dsh-client-ui-slots'
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
 import { isProjectlessSession } from './fresh-session.ts'
@@ -11,10 +14,15 @@ type ResidentComposerProps = ComposerBarProps & { readonly sessionId?: string }
 
 /** Locale namespace for the official composer's Session restoration state. */
 export const PROJECTLESS_COMPOSER_NAMESPACE = 'conversation.oplProjectlessComposer'
-export const projectlessComposerZh = { restoring: '正在恢复会话…', loadingModels: '正在加载模型…' }
+export const projectlessComposerZh = {
+  restoring: '正在恢复会话…',
+  loadingModels: '正在加载模型…',
+  projectless: '不在项目中工作',
+}
 export const projectlessComposerEn: Record<keyof typeof projectlessComposerZh, string> = {
   restoring: 'Restoring conversation…',
   loadingModels: 'Loading models…',
+  projectless: 'Work outside a project',
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -135,7 +143,9 @@ export function installProjectlessUngroupedPlus(
         if (!/新建会话|new session|new conversation/i.test(label)) return
         event.preventDefault()
         event.stopPropagation()
-        props.startSession(undefined, { clearPreviousDraft: true })
+        props.startSession('' as Parameters<WorkspaceBrowserProps['startSession']>[0], {
+          clearPreviousDraft: true,
+        })
       }
       return createElement(
         'div',
@@ -150,6 +160,85 @@ export function installProjectlessUngroupedPlus(
           },
         },
         createElement(component, props),
+      )
+    }
+    entry.component = decorated
+    restore = () => {
+      if (entry.component === decorated) entry.component = original
+    }
+  }
+  const off = subscribe(reconcile)
+  reconcile()
+  return () => {
+    off()
+    restore()
+  }
+}
+
+/** Add an explicit projectless choice to the resident workspace picker menu. */
+export function installProjectlessWorkspaceChoice(
+  entries: () => readonly StoredEntry[],
+  subscribe: (listener: () => void) => () => void,
+  startProjectless: () => void,
+  label: () => string,
+): () => void {
+  let current: StoredEntry | undefined
+  let restore = () => {}
+  const reconcile = () => {
+    const entry = entries()[0]
+    if (entry === current) return
+    restore()
+    current = entry
+    if (!entry) return
+    const original = entry.component
+    const component = original as ComponentType<WorkspacePickerProps>
+    const decorated = (props: WorkspacePickerProps) => {
+      const [menuAnchor, setMenuAnchor] = useState('')
+      useEffect(() => {
+        setMenuAnchor(
+          props.open ? (props.anchorRef?.current?.style.getPropertyValue('anchor-name') ?? '') : '',
+        )
+      })
+      const useWorkspaces: WorkspacePickerProps['useWorkspaces'] = (selector) => {
+        const snapshot = props.useWorkspaces((value) => value)
+        const title = label()
+        const choices = useMemo(
+          () => ({
+            ...snapshot,
+            items: [
+              { workspaceId: '' as never, title, path: '', sessionIds: [], createdAt: 0 },
+              ...snapshot.items,
+            ],
+          }),
+          [snapshot, title],
+        )
+        return selector(choices)
+      }
+      const picker = createElement(component, {
+        ...props,
+        useWorkspaces,
+        onPick: (id) => {
+          if (id !== '') {
+            props.onPick(id)
+            return
+          }
+          props.onClose()
+          startProjectless()
+        },
+      })
+      if (!props.open || !menuAnchor) return picker
+      // The official menu is portaled. Its CSS anchor identifies this picker;
+      // only the injected first row in its scrollable group gets a new glyph.
+      const icon = `[role="menu"][style*="position-anchor: ${CSS.escape(menuAnchor)};"] > :nth-child(1 of [role="presentation"]) > :first-child [role="menuitem"] > [aria-hidden="true"]:first-child`
+      return createElement(
+        Fragment,
+        null,
+        picker,
+        createElement(
+          'style',
+          null,
+          `${icon} > svg { display: none } ${icon}::before { content: "×"; font: 16px/1 sans-serif }`,
+        ),
       )
     }
     entry.component = decorated

@@ -11,6 +11,7 @@ export function installGatewayModelPresentation(): () => void {
     'section[aria-labelledby$="-opl-gateway"],li:has(section[aria-labelledby$="-opl-gateway"]){order:-2}',
     'section[aria-labelledby$="-deepseek-official"],li:has(section[aria-labelledby$="-deepseek-official"]){order:-1}',
     'li:has([data-opl-managed-models]){order:-2}',
+    'li:has([data-opl-managed-models]) > div:first-child > span:last-child > button:first-child{display:none}',
     'li:has([data-opl-internal-provider]){display:none!important}',
   ].join('')
   document.head.append(style)
