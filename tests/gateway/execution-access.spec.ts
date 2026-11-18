@@ -34,10 +34,18 @@ describe('Gateway route metadata for external engines', () => {
   it('uses the Gemini group credential and its declared native endpoint independently of Chat', async () => {
     const resolve = vi.fn(async () => ({ value: 'native-fixture-key' }))
     const ctx = { get: () => undefined, credentials: { resolve } } as unknown as Context
-    for (const model of ['gemini-4-carbon', 'gemini-4-hydrogen', 'gemini-4-argon', 'gemini-3.8-flash']) {
-      expect(await resolveGatewayGeminiExecution(ctx, {
-        provider: 'opl-gateway', model: `gemini::${model}`,
-      })).toMatchObject({
+    for (const model of [
+      'gemini-4-carbon',
+      'gemini-4-hydrogen',
+      'gemini-4-argon',
+      'gemini-3.8-flash',
+    ]) {
+      expect(
+        await resolveGatewayGeminiExecution(ctx, {
+          provider: 'opl-gateway',
+          model: `gemini::${model}`,
+        }),
+      ).toMatchObject({
         baseURL: 'https://gateway.medopl.com',
         api: 'gemini-native',
         model,
@@ -47,9 +55,14 @@ describe('Gateway route metadata for external engines', () => {
     }
     expect(resolve).toHaveBeenCalledTimes(4)
     expect(resolve).toHaveBeenCalledWith('OPL_GATEWAY_GEMINI_API_KEY')
-    expect((await resolveGatewayExecution(ctx, {
-      provider: 'opl-gateway', model: 'gemini::gemini-4-carbon',
-    })).api).toBe('openai-completions')
+    expect(
+      (
+        await resolveGatewayExecution(ctx, {
+          provider: 'opl-gateway',
+          model: 'gemini::gemini-4-carbon',
+        })
+      ).api,
+    ).toBe('openai-completions')
   })
 
   it('refuses unknown native routes and custom Chat addresses without rewriting them', async () => {
