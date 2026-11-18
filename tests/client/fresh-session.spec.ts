@@ -109,7 +109,7 @@ it('disposal does not overwrite a later service resolver', () => {
 })
 
 it.each([undefined, { clearPreviousDraft: false }, { clearPreviousDraft: true }])(
-  'preserves official global navigation with options %j',
+  'creates a projectless session for untargeted navigation with options %j',
   async (options) => {
     const original = vi.fn()
     const openSession = vi.fn()
@@ -120,25 +120,27 @@ it.each([undefined, { clearPreviousDraft: false }, { clearPreviousDraft: true }]
     const createProjectless = vi.fn(async () => sessionId('projectless'))
     const dispose = allowProjectlessSessions(workspace, createProjectless)
     workspace.startSession(undefined, options)
-    expect(original).toHaveBeenCalledExactlyOnceWith(undefined, options)
-    expect(createProjectless).not.toHaveBeenCalled()
-    expect(openSession).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(openSession).toHaveBeenCalledExactlyOnceWith('projectless'))
+    expect(original).not.toHaveBeenCalled()
+    expect(createProjectless).toHaveBeenCalledExactlyOnceWith()
     dispose()
   },
 )
 
-it('inherits projectless navigation only for plain New Session', async () => {
+it('keeps projectless navigation and leaves explicit targets on the official path', async () => {
   const original = vi.fn()
   const workspace = { startSession: original, openSession: vi.fn() }
   const create = vi.fn(async () => sessionId('new-unattached'))
-  const stop = allowProjectlessSessions(workspace, create, () => true)
+  const stop = allowProjectlessSessions(workspace, create)
   workspace.startSession()
   await vi.waitFor(() => expect(workspace.openSession).toHaveBeenCalledWith('new-unattached'))
   workspace.startSession('real-workspace')
   workspace.startSession(undefined, { prompt: 'prepared draft' })
+  workspace.startSession(undefined, { agentPreset: 'planned-agent' })
   expect(original.mock.calls).toEqual([
     ['real-workspace', undefined],
     [undefined, { prompt: 'prepared draft' }],
+    [undefined, { agentPreset: 'planned-agent' }],
   ])
   expect(create).toHaveBeenCalledTimes(1)
   stop()

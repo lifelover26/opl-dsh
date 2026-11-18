@@ -78,30 +78,27 @@ async function fixture(workspaceIds: string[] = []) {
   return { workspace, create, projectless, release }
 }
 
-it('official global new clears an ungrouped current conversation when no Workspace exists', async () => {
+it('global new creates a projectless conversation when no Workspace exists', async () => {
   const f = await fixture()
   f.workspace.openSession('old-projectless' as Parameters<typeof f.workspace.openSession>[0])
   f.workspace.startSession()
-  expect(f.release).toHaveBeenCalledOnce()
+  await vi.waitFor(() => expect(f.projectless).toHaveBeenCalledOnce())
   expect(f.create).not.toHaveBeenCalled()
-  expect(f.projectless).not.toHaveBeenCalled()
 })
 
-it('official global new follows the recent Workspace from an ungrouped conversation', async () => {
+it('global new remains projectless even when a recent Workspace exists', async () => {
   const f = await fixture(['recent'])
   f.workspace.openSession('old-projectless' as Parameters<typeof f.workspace.openSession>[0])
   f.workspace.startSession()
-  await vi.waitFor(() =>
-    expect(f.create).toHaveBeenCalledExactlyOnceWith({ workspaceId: 'recent' }),
-  )
-  expect(f.projectless).not.toHaveBeenCalled()
+  await vi.waitFor(() => expect(f.projectless).toHaveBeenCalledOnce())
+  expect(f.create).not.toHaveBeenCalled()
 })
 
-it('an empty-key Workspace resolved by official global new does not reenter the explicit projectless action', async () => {
+it('global new remains projectless when the Workspace list contains the empty key', async () => {
   const f = await fixture([''])
   f.workspace.startSession()
-  await vi.waitFor(() => expect(f.create).toHaveBeenCalledExactlyOnceWith({ workspaceId: '' }))
-  expect(f.projectless).not.toHaveBeenCalled()
+  await vi.waitFor(() => expect(f.projectless).toHaveBeenCalledOnce())
+  expect(f.create).not.toHaveBeenCalled()
 })
 
 it('the explicit empty Workspace choice still creates a projectless conversation', async () => {

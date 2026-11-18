@@ -191,6 +191,7 @@ export function normalizeCatalog(value: unknown): ExecutionCatalog {
         ...(x.autoEnabledDisabled === undefined
           ? {}
           : { autoEnabledDisabled: x.autoEnabledDisabled === true }),
+        ...(x.defaultDisabled === undefined ? {} : { defaultDisabled: x.defaultDisabled === true }),
       }
     })
   if (input.version !== 2)

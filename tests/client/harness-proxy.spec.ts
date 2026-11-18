@@ -366,7 +366,7 @@ describe('每个外部 Harness 独立的代理设置', () => {
     expect(calls.some((entry) => entry.method === 'save-catalog')).toBe(false)
   })
 
-  it('手动添加只选模型与 Harness，名称自动生成且可在管理列表修改', async () => {
+  it('手动添加官方配对时保留现有默认组合，且新名称可在管理列表修改', async () => {
     const initial = catalog()
     const data = {
       ...initial,
@@ -391,8 +391,12 @@ describe('每个外部 Harness 独立的代理设置', () => {
     expect(stored().combinations.at(-1)).toMatchObject({
       name: 'MiniMax-M3.1-Flash + MiniMax Code',
       enabled: true,
+      isDefault: false,
       permissionPolicy: 'workspace',
     })
+    expect(stored().combinations.filter((item: { isDefault: boolean }) => item.isDefault)).toEqual([
+      initial.combinations[0],
+    ])
     const added = walk(view).find(
       (node) => node.getAttribute?.('data-opl-combination') === stored().combinations.at(-1).id,
     )!

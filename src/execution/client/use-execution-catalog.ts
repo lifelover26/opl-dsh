@@ -109,8 +109,10 @@ export function useExecutionCatalog(call: RemoteCallInput<TypertRemoteNamespace<
                 ? {}
                 : { defaultDisabled: patch.isDefault !== true }),
             }
-          : patch.isDefault && modelRefKey(item.modelRef) === modelRefKey(target.modelRef)
-            ? { ...item, isDefault: false }
+          : patch.isDefault &&
+              item.isDefault &&
+              modelRefKey(item.modelRef) === modelRefKey(target.modelRef)
+            ? { ...item, isDefault: false, defaultDisabled: true }
             : item,
       ),
     })
@@ -137,7 +139,11 @@ export function useExecutionCatalog(call: RemoteCallInput<TypertRemoteNamespace<
       setNotice('该组合已在选择列表中，请在上方勾选。')
       return
     }
-    const official = isOfficialPairing(draft.harness, model.ref)
+    const makeDefault =
+      isOfficialPairing(draft.harness, model.ref) &&
+      !catalog.combinations.some(
+        (item) => item.enabled && item.isDefault && modelRefKey(item.modelRef) === draft.model,
+      )
     const result = await save({
       ...catalog,
       combinations: [
@@ -148,11 +154,11 @@ export function useExecutionCatalog(call: RemoteCallInput<TypertRemoteNamespace<
           modelRef: model.ref,
           harnessRef: draft.harness,
           permissionPolicy: 'workspace',
-          isDefault: official,
+          isDefault: makeDefault,
           enabled: true,
           autoEnabled: false,
           autoEnabledDisabled: true,
-          defaultDisabled: !official,
+          defaultDisabled: !makeDefault,
         },
       ],
     })

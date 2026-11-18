@@ -84,24 +84,23 @@ export function protectEditBranchesFromNewSession(
 /**
  * Provide explicit projectless navigation through the ungrouped Workspace key.
  *
- * Untargeted New Session inherits an explicitly projectless main conversation.
- * The empty key creates and opens an unattached Session through the existing Host owner.
+ * Untargeted New Session and the empty Workspace key create an unattached Session
+ * through the existing Host owner.
  * @param workspace - official navigation service.
  * @param createProjectless - create and catalogue an unattached ordinary Session.
- * @param currentProjectless - whether the main view holds an explicitly projectless Session.
  * @returns disposer restoring the original start action.
  */
 export function allowProjectlessSessions(
   workspace: Pick<UiWorkspace, 'startSession' | 'openSession'>,
   createProjectless: () => Promise<SessionId>,
-  currentProjectless: () => boolean = () => false,
 ): () => void {
   const original = workspace.startSession
   let disposed = false
   const start: UiWorkspace['startSession'] = (workspaceId, options) => {
     const projectless =
-      (workspaceId === '' && options?.prompt === undefined && options?.agentPreset === undefined) ||
-      (workspaceId === undefined && options === undefined && currentProjectless())
+      (workspaceId === '' || workspaceId === undefined) &&
+      options?.prompt === undefined &&
+      options?.agentPreset === undefined
     if (!projectless) {
       original.call(workspace, workspaceId, options)
       return

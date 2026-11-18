@@ -383,6 +383,14 @@ export class ExecutionModelResolver {
       const modelRef = { provider: MINIMAX_CODE_PROVIDER, model: fixed.model }
       const available = await probeExternal(modelRef)
       const existing = catalog.combinations.find((item) => item.id === fixed.combination)
+      const hasOtherDefault = catalog.combinations.some(
+        (item) =>
+          item !== existing &&
+          item.enabled &&
+          item.isDefault &&
+          modelRefKey(item.modelRef) === modelRefKey(modelRef),
+      )
+      const isDefault = existing?.defaultDisabled !== true && !hasOtherDefault
       if (!existing)
         catalog.combinations.push({
           id: fixed.combination,
@@ -390,7 +398,7 @@ export class ExecutionModelResolver {
           modelRef,
           harnessRef: MINIMAX_CODE_HARNESS,
           permissionPolicy: 'full-access',
-          isDefault: true,
+          isDefault,
           enabled: available.available,
           autoEnabled: true,
         })
@@ -403,7 +411,7 @@ export class ExecutionModelResolver {
           modelRef,
           harnessRef: MINIMAX_CODE_HARNESS,
           permissionPolicy: 'full-access',
-          isDefault: true,
+          isDefault,
           ...(existing.autoEnabled && !existing.autoEnabledDisabled
             ? { enabled: available.available }
             : {}),
@@ -450,6 +458,7 @@ export class ExecutionModelResolver {
             // route, retain the marker's original suppression behavior.
             (item.autoEnabledDisabled === true &&
               (official === undefined || item.harnessRef === official)) ||
+            (item.defaultDisabled === true && item.harnessRef === official) ||
             (item.enabled && item.isDefault)),
       )
       const harnessRef = automaticHarness(model.ref) === official ? official : undefined

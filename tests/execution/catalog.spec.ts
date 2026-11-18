@@ -104,6 +104,39 @@ describe('combination authority', () => {
       autoEnabledDisabled: true,
     })
   })
+  it('preserves an explicit MiniMax default change after saving and reloading the catalog', async () => {
+    const { ExecutionModelResolver } = await import('../../src/execution/host/execution-models.ts')
+    const dir = await root()
+    const store = new ExecutionCatalogStore(dir)
+    const ctx = {
+      get: () => undefined,
+      llm: { listProviders: () => [], listConfigurableProviders: () => [] },
+    } as never
+    const probe = async () => ({ available: true })
+    const catalog = await new ExecutionModelResolver(ctx, store, probe).resolve()
+    const ref = { provider: 'minimax-official', model: 'MiniMax-M3.1-Flash' }
+    const fixed = catalog.combinations.find((item) => item.modelRef.model === ref.model)!
+    expect(fixed.isDefault).toBe(true)
+    await store.set({
+      ...catalog,
+      combinations: catalog.combinations.map((item) =>
+        item.id === fixed.id ? { ...item, isDefault: false, defaultDisabled: true } : item,
+      ),
+    })
+    const projected = await new ExecutionModelResolver(
+      ctx,
+      new ExecutionCatalogStore(dir),
+      probe,
+    ).resolve()
+    expect(projected.combinations.find((item) => item.id === fixed.id)).toMatchObject({
+      isDefault: false,
+      defaultDisabled: true,
+      enabled: true,
+    })
+    expect(projected.combinations.filter((item) => item.modelRef.model === ref.model)).toHaveLength(
+      1,
+    )
+  })
   it('refuses removal of the native Harness', () => {
     const catalog = defaultExecutionCatalog()
     catalog.harnesses = []
