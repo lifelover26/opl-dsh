@@ -1,6 +1,6 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import type { PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
@@ -11,6 +11,9 @@ import {
   parseDomainAgentProjection,
   type DomainAgentDefinition,
 } from '../../src/collaboration/host/domain-agent-presets.ts'
+
+const carrierDirectory = resolve('fixtures', 'opl', 'plugins', 'med-autoscience')
+const skillsDirectory = join(carrierDirectory, 'skills')
 
 const cleanups: Array<() => Promise<unknown>> = []
 afterEach(async () => {
@@ -36,7 +39,7 @@ function projection(overrides: Record<string, unknown> = {}): any {
           {
             plugin_id: 'med-autoscience@med-autoscience',
             enabled: true,
-            plugin_source_path: '/opt/opl/plugins/med-autoscience',
+            plugin_source_path: carrierDirectory,
           },
         ],
       },
@@ -78,7 +81,7 @@ describe('OPL domain Agent projection', () => {
         shortcutId: 'research',
         visibleEntry: 'med-autoscience',
         requiredSkillIds: ['med-autoscience'],
-        skillsDirectory: '/opt/opl/plugins/med-autoscience/skills',
+        skillsDirectory,
       },
     ])
   })
@@ -105,7 +108,7 @@ describe('OPL domain Agent projection', () => {
         installation_id: `carrier:${identity}`,
         manager: 'codex_plugin_manager',
         mode: 'installed',
-        location: '/opt/opl/plugins/med-autoscience',
+        location: carrierDirectory,
         active: true,
         entrypoint_verified: true,
       },
@@ -113,7 +116,7 @@ describe('OPL domain Agent projection', () => {
     expect(parseDomainAgentProjection(value)).toEqual([
       expect.objectContaining({
         packageId: 'mas',
-        skillsDirectory: '/opt/opl/plugins/med-autoscience/skills',
+        skillsDirectory,
       }),
     ])
     entry.installations[0].active = false
@@ -148,7 +151,7 @@ describe('OPL domain Agent projection', () => {
         expect.objectContaining({ id: 'tool-skill', name: '@deepseek-ai/dsh-tool-skill' }),
         expect.objectContaining({
           id: 'skill-filesystem',
-          config: { customSkillDirs: ['/opt/opl/plugins/med-autoscience/skills'] },
+          config: { customSkillDirs: [skillsDirectory] },
         }),
       ]),
     )

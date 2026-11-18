@@ -37,8 +37,7 @@ export function RoleExecutions({ call }: { call?: RoleExecutionCall }) {
     }
   }
   return (
-    <div className={css.card} data-opl-role-executions>
-      <h3 className={css.name}>角色与执行</h3>
+    <div className={css.detailsBody} data-opl-role-executions>
       <p className={css.muted}>
         为官方角色预设选择执行组合。绑定用于新对话与新团队成员，已有会话保持原组合。OPL
         智能体预设来自本机已安装且允许启动的 Package。这里选择新会话的交互组合，正式 StageRun

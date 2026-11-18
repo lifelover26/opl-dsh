@@ -73,6 +73,9 @@ jobs:
           node node_modules/vitest/vitest.mjs run tests/execution/antigravity/process-lifecycle.spec.ts
           node --test tests/native-bridge.test.mjs tests/windows-acl.test.mjs tests/windows-official-installer.test.mjs
           node --test tests/update-runner.test.mjs
+      - name: Verify coordinator hooks in Windows shells
+        if: matrix.os == 'windows-latest'
+        run: node --test tests/coordinator-hook-shells.test.mjs
       - name: Download verified official desktop and run isolated qualification
         id: qualification
         run: node scripts/qualify-official-runtime.mjs --download --evidence dist/official-qualification.json
