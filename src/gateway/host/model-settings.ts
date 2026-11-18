@@ -171,12 +171,18 @@ function providerSettings(
 }
 
 const LEGACY_CANONICAL_GEMINI_SETS: readonly (readonly string[])[] = [
+  ['gemini-4-carbon', 'gemini-4-hydrogen'],
   ['gemini-3.1-pro', 'gemini-3.8-flash'],
   ['gemini-4-argon', 'gemini-3.8-flash'],
   ['gemini-4-argon', 'gemini-3.8-flash', 'gemini-3.1-pro'],
 ]
 
-/** Replace an unchanged legacy bundled Gemini catalog with the current default pair. */
+const geminiBundleModel = (id: string): ModelDraft => ({
+  id,
+  name: displayModelName({ provider: 'opl-gateway', model: `gemini::${id}` }, id),
+})
+
+/** Upgrade only a legacy bundle catalog whose rows still have their shipped metadata. */
 function addGeminiBundleModels(
   profile: Record<string, any>,
   models: readonly ModelDraft[],
@@ -188,16 +194,20 @@ function addGeminiBundleModels(
     !isDefaultGatewayBaseURL(profile.baseURL)
   )
     return [...models]
-  const ids = new Set(models.map((model) => model.id))
-  if (ids.size !== models.length) return [...models]
   const matchesLegacy = LEGACY_CANONICAL_GEMINI_SETS.some(
-    (set) => set.length === ids.size && set.every((id) => ids.has(id)),
+    (set) =>
+      set.length === models.length &&
+      set.every((id, index) => {
+        const model = models[index]
+        const expected = geminiBundleModel(id)
+        if (isDeepStrictEqual(model, expected)) return true
+        return isDeepStrictEqual(model, { ...expected, input: ['text', 'image'] })
+      }),
   )
   if (!matchesLegacy) return [...models]
-  return GATEWAY_ANTIGRAVITY_GEMINI_MODELS.map((id) => ({
-    id,
-    name: displayModelName({ provider: 'opl-gateway', model: `gemini::${id}` }, id),
-  }))
+  return GATEWAY_ANTIGRAVITY_GEMINI_MODELS.map(
+    (id) => models.find((model) => model.id === id) ?? geminiBundleModel(id),
+  )
 }
 
 /** Add the OPL-owned reviewer without replacing any existing chat provider. */
