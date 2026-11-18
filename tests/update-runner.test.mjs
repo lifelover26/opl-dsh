@@ -20,6 +20,7 @@ import { syncBuiltinESMExports } from 'node:module'
 import { readFileSync, writeFileSync, cpSync, mkdirSync } from 'node:fs'
 import { launchIndependent } from '../installer/windows-lifecycle.mjs'
 import { prepareUpdate, cancelPreparedUpdate, refreshEnhancements } from '../installer/update.mjs'
+import { runPostExitUpdate } from '../installer/post-exit-update.mjs'
 import {
   acquireUpdateTransaction,
   acquireSuiteLaunch,
@@ -635,6 +636,114 @@ test('a clean transaction installs, launches once, confirms health and releases 
   await assert.rejects(lstat(join(value.root, 'enhancement-transaction.lock')), { code: 'ENOENT' })
   const launch = await acquireSuiteLaunch(value.root)
   await launch.release()
+})
+
+test('an immediate update waits for the post-exit watcher to release the profile initialization lock', async (t) => {
+  const value = await fixture(t)
+  const locked = Promise.withResolvers()
+  const resume = Promise.withResolvers()
+  const path = join(value.profileHome, 'profiles/desktop/lock')
+  const watcher = runPostExitUpdate(
+    {
+      ...value,
+      expected: digest(await readFile(join(value.root, 'enhancement-pending.json'))),
+      hostPid: oldPids.hostPid,
+      desktopPid: oldPids.desktopPid,
+    },
+    {
+      alive: () => true,
+      processes: async () => [],
+      wait: async () => {
+        locked.resolve()
+        await resume.promise
+      },
+      apply: () => assert.fail('the watcher cannot compete with the manual transaction'),
+    },
+  )
+  t.after(async () => {
+    await rm(join(value.root, 'enhancement-pending.json'), { force: true })
+    resume.resolve()
+    await watcher
+  })
+  await locked.promise
+  assert.equal((await readFile(path, 'utf8')).trim(), String(process.pid))
+  const lease = await value.prepare()
+  await handoffUpdateTransaction(value.root, lease)
+  await drain(value, lease)
+  const time = fastTime()
+  let waits = 0
+  const result = await runUpdateTransaction(value.root, lease, {
+    ...time,
+    isAlive: () => false,
+    refresh: value.install,
+    wait: async (ms) => {
+      waits++
+      await lstat(path)
+      resume.resolve()
+      assert.equal(await watcher, 'changed')
+      await time.wait(ms)
+    },
+    start: async (options) => {
+      await assert.rejects(lstat(path), { code: 'ENOENT' })
+      return startFixture(options)
+    },
+    health: async () => true,
+  })
+  assert.equal(waits, 1)
+  assert.deepEqual(result, { state: 'succeeded', version: '0.2.56' })
+})
+
+test('a post-exit watcher yields its profile lock to the same prepared manual transaction', async (t) => {
+  const value = await fixture(t)
+  const locked = Promise.withResolvers()
+  const resume = Promise.withResolvers()
+  const pendingPath = join(value.root, 'enhancement-pending.json')
+  const watcher = runPostExitUpdate(
+    {
+      ...value,
+      expected: digest(await readFile(pendingPath)),
+      hostPid: oldPids.hostPid,
+      desktopPid: oldPids.desktopPid,
+    },
+    {
+      alive: () => true,
+      wait: async () => {
+        locked.resolve()
+        await resume.promise
+      },
+      apply: () => assert.fail('a manual transaction owns installation'),
+    },
+  )
+  t.after(async () => {
+    await rm(pendingPath, { force: true })
+    resume.resolve()
+    await watcher
+  })
+  await locked.promise
+  const lease = await value.prepare()
+  resume.resolve()
+  assert.equal(await watcher, 'handoff')
+  await assert.rejects(lstat(join(value.profileHome, 'profiles/desktop/lock')), { code: 'ENOENT' })
+  assert.equal((await json(pendingPath)).version, value.pending.version)
+  await finishUpdateTransaction(value.root, lease, { stage: 'cancelled' })
+})
+
+test('an immediate update preserves a live profile initialization lock after a bounded wait', async (t) => {
+  const value = await offered(t)
+  await drain(value, value.lease)
+  const path = join(value.profileHome, 'profiles/desktop/lock')
+  const owner = `${process.pid}\n`
+  await writeFile(path, owner)
+  const result = await runUpdateTransaction(value.root, value.lease, {
+    ...fastTime(),
+    exitTimeoutMs: 200,
+    isAlive: () => false,
+    refresh: value.install,
+    start: () => assert.fail('a locked official profile cannot start'),
+  })
+  assert.deepEqual(result, { state: 'failed', failure: 'profile-initialization-busy' })
+  assert.equal(await readFile(path, 'utf8'), owner)
+  assert.equal((await readUpdateTransaction(value.root)).failure.stage, 'installed')
 })
 
 test('the runner start authorization can be joined once, including a duplicate setup process', async (t) => {

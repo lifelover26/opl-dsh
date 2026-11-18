@@ -59,7 +59,10 @@ export function PolicyControls({ controller, status, writable, t }: PolicyContro
             : policy.mode === 'on-launch'
               ? 'modeOnLaunchHelp'
               : 'modeIdleHelp',
-          { idleMinutes: policy.idleMinutes, countdownSeconds: policy.countdownSeconds },
+          {
+            idleMinutes: policy.idleMinutes,
+            countdownSeconds: policy.countdownSeconds,
+          },
         )}
       </p>
       {policy.mode === 'idle' && (

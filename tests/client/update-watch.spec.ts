@@ -144,6 +144,7 @@ describe('update watch recovery', () => {
     const host = new HostUpdateController({
       installed: async () => ({ suiteVersion: '0.2.55', officialVersion: '0.2.2-rc.1' }),
       automatic: () => false,
+      policy: () => ({ mode: 'notify', idleMinutes: 5, countdownSeconds: 30 }),
       saveAutomatic: async () => {},
       load: vi
         .fn()

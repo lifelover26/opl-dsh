@@ -96,6 +96,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   }
   interface TypertRemoteNamespace$6f706c55706461746573 {
     activity: () => Promise<RemoteResult<void>>
+    applyNow: () => Promise<RemoteResult<OplUpdateStatus>>
     automatic: (enabled: boolean) => Promise<RemoteResult<OplUpdateStatus>>
     cancel: () => Promise<RemoteResult<OplUpdateStatus>>
     check: () => Promise<RemoteResult<OplUpdateStatus>>
@@ -192,6 +193,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'oplSetup/select-native-shell': (enabled: boolean) => Promise<RemoteResult<NativeShellStatus>>
     'oplSetup/status': () => Promise<RemoteResult<SetupStatus>>
     'oplUpdates/activity': () => Promise<RemoteResult<void>>
+    'oplUpdates/applyNow': () => Promise<RemoteResult<OplUpdateStatus>>
     'oplUpdates/automatic': (enabled: boolean) => Promise<RemoteResult<OplUpdateStatus>>
     'oplUpdates/cancel': () => Promise<RemoteResult<OplUpdateStatus>>
     'oplUpdates/check': () => Promise<RemoteResult<OplUpdateStatus>>
@@ -299,6 +301,7 @@ export declare const TYPERT_REMOTE: TypertRemoteInfo<{
   readonly 'oplSetup/select-native-shell': TypertRemoteMethod<{ readonly 'enabled': boolean }, NativeShellStatus>
   readonly 'oplSetup/status': TypertRemoteMethod<{  }, SetupStatus>
   readonly 'oplUpdates/activity': TypertRemoteMethod<{  }, void>
+  readonly 'oplUpdates/applyNow': TypertRemoteMethod<{  }, OplUpdateStatus>
   readonly 'oplUpdates/automatic': TypertRemoteMethod<{ readonly 'enabled': boolean }, OplUpdateStatus>
   readonly 'oplUpdates/cancel': TypertRemoteMethod<{  }, OplUpdateStatus>
   readonly 'oplUpdates/check': TypertRemoteMethod<{  }, OplUpdateStatus>

@@ -302,6 +302,16 @@ export async function verifyDesktopClient(
   }
   const clickLabel = (labels, scope = 'document') =>
     `(() => { const labels=${JSON.stringify(labels)}; const root=${scope}; if(!root)return false; const node=Array.from(root.querySelectorAll('button,[role=menuitem]')).find(x=>x.getClientRects().length && !x.disabled && (labels.includes((x.getAttribute('aria-label')||x.textContent||'').trim()) || x.matches('[role=menuitem]') && labels.some(label => (x.textContent||'').trim().startsWith(label)))); if(!node)return false; node.click(); return true })()`
+  const featureSwitch = (labels) =>
+    `Array.from(document.querySelectorAll('[role=switch]')).find(node=>node.getClientRects().length && ${JSON.stringify(labels)}.includes(node.getAttribute('aria-label')))`
+  const statsSwitch = featureSwitch(['增强会话统计', 'Enhanced conversation statistics'])
+  async function setEnhancedStats(enabled) {
+    await pipe.evaluate(session, `${statsSwitch}.click()`)
+    await waitFor(
+      `Boolean(${statsSwitch}?.getAttribute('aria-checked') === '${enabled}' && !${statsSwitch}.disabled)`,
+      '增强会话统计开关未保存',
+    )
+  }
   async function chooseCountMode(labels) {
     const selector = 'document.querySelector("[data-opl-preference=conversation-counts] button")'
     const accepted = `!${selector}.disabled && ${JSON.stringify(labels)}.some(label=>${selector}.textContent.includes(label))`
@@ -524,8 +534,23 @@ export async function verifyDesktopClient(
         automaticSaved: true,
         automaticRestored: true,
       }
+      for (const [label, selector] of [
+        ['增强会话统计', statsSwitch],
+        ['增强待办状态', featureSwitch(['增强待办状态', 'Enhanced todo status'])],
+        ['记住权限预设', featureSwitch(['记住权限预设', 'Remember permission preset'])],
+      ]) {
+        await waitFor(
+          `Boolean(${selector} && !${selector}.disabled)`,
+          label + '设置未就绪',
+        )
+        if ((await pipe.evaluate(session, `${selector}.getAttribute('aria-checked')`)) !== 'false')
+          throw new Error(label + '必须默认关闭')
+      }
       const countSelector =
         'document.querySelector("[data-opl-preference=conversation-counts] button")'
+      if (await pipe.evaluate(session, `Boolean(${countSelector})`))
+        throw new Error('未启用增强会话统计时显示了计数选项')
+      await setEnhancedStats(true)
       await waitFor(
         `Boolean(${countSelector} && !${countSelector}.disabled)`,
         '轮次与步数设置未就绪',
@@ -542,6 +567,7 @@ export async function verifyDesktopClient(
       )
       await chooseCountMode(['当前对话', 'Current conversation'])
       result.generalPreferences.conversationCounts = {
+        enhancementDefaultOff: true,
         currentDefault: true,
         historySaved: true,
         currentRestored: true,
@@ -665,7 +691,7 @@ export async function verifyDesktopClient(
       )
       const compactRows = await pipe.evaluate(
         session,
-        `Array.from(document.querySelectorAll('[data-opl-combination] > summary')).map(x=>({id:x.parentElement.dataset.oplCombination,height:x.getBoundingClientRect().height,text:x.textContent,clipped:x.scrollWidth>x.clientWidth}))`,
+        `Array.from(document.querySelectorAll('[data-opl-combination] > summary')).map(x=>({id:x.parentElement.dataset.oplCombination,height:x.getBoundingClientRect().height,text:x.textContent,clipped:x.scrollWidth>x.clientWidth,defaultChoice:x.parentElement.querySelector('[role=switch][aria-label="作为此模型的默认执行组合"]')?.getAttribute('aria-checked')??null}))`,
       )
       if (
         !compactRows.length ||
@@ -683,8 +709,8 @@ export async function verifyDesktopClient(
             candidate.modelRef.provider === item.modelRef.provider &&
             candidate.modelRef.model === item.modelRef.model,
         )
-        if (row.text.includes('默认') !== alternatives.length > 1)
-          throw new Error('组合默认标记与已启用的备选数量不一致：' + row.id)
+        if (row.defaultChoice !== (alternatives.length > 1 ? String(item.isDefault) : null))
+          throw new Error('组合默认开关与已启用的备选数量或目录默认值不一致：' + row.id)
       }
       const selectionScreenshot = await captureScreenshot('combination-selection')
       if (selectionScreenshot) screenshots.push(selectionScreenshot)
@@ -786,6 +812,13 @@ export async function verifyDesktopClient(
         process.platform === 'win32' ? 280 : 80,
       )
       result.settingsSlots.push('auto-review')
+      if (
+        (await pipe.evaluate(
+          session,
+          `document.querySelector('[data-opl-auto-review-effective-enabled]')?.dataset.oplAutoReviewEffectiveEnabled`,
+        )) !== 'false'
+      )
+        throw new Error('OPL 审查路线适配必须默认关闭')
       // First-run setup can advance opl-suite settings after this panel mounts.
       // Read the current Host revision before editing; keep the CAS guard
       // rejecting stale writes instead of bypassing it in the qualification.
@@ -1114,11 +1147,20 @@ export async function verifyDesktopClient(
     await waitFor(showsCounts(conversationCountFixture.history), '原统计栏没有显示历史累计计数')
     await selectCountScope(['当前对话', 'Current conversation'])
     await waitFor(showsCounts(conversationCountFixture.current), '原统计栏没有恢复当前对话计数')
+    await openSettings()
+    await waitFor(clickLabel(['通用设置', 'General'], settingsNav), '通用设置未打开')
+    await setEnhancedStats(false)
+    await waitFor(
+      `!document.querySelector('[data-opl-preference=conversation-counts]')`,
+      '关闭增强会话统计后仍显示计数选项',
+    )
+    await closeSettings()
     result.conversationCounts = {
       editedNativeConversation: true,
       currentPill: conversationCountFixture.current,
       historyPill: conversationCountFixture.history,
       restoredCurrent: true,
+      enhancementRestoredOff: true,
     }
   }
   result.runtimeExceptions = errors().length

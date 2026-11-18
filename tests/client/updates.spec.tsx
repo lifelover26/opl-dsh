@@ -22,6 +22,18 @@ import { en, zh, UPDATE_NAMESPACE } from '../../src/updates/client/locales.ts'
 import * as updates from '../../src/updates/client/index.tsx'
 
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
+  Modal: ({
+    open,
+    title,
+    children,
+    footer,
+  }: {
+    open: boolean
+    title: string
+    children?: ReactNode
+    footer?: ReactNode
+  }) =>
+    open ? createElement('div', { role: 'dialog', 'aria-label': title }, children, footer) : null,
   Button: ({
     children,
     variant: _variant,
@@ -136,6 +148,10 @@ function host(initial = status()) {
       return current
     }),
     prepare: vi.fn(async () => {
+      current = { ...current, pendingVersion: current.release!.version }
+      return current
+    }),
+    applyNow: vi.fn(async () => {
       current = { ...current, pendingVersion: current.release!.version }
       return current
     }),
@@ -320,12 +336,14 @@ describe('unattended update preferences', () => {
       'idle',
     ])
     expect(f.api.setPolicy).not.toHaveBeenCalled()
-    await selectMode(f.container, 'on-launch')
-    expect(f.api.setPolicy).toHaveBeenCalledExactlyOnceWith(policy({ mode: 'on-launch' }))
+    await selectMode(f.container, 'idle')
+    expect(f.api.setPolicy).toHaveBeenCalledExactlyOnceWith(policy({ mode: 'idle' }))
     expect(f.api.setAutomatic).not.toHaveBeenCalled()
-    expect(f.api.prepare).not.toHaveBeenCalled()
-    expect(select.value).toBe('on-launch')
-    expect(f.container.textContent).toContain(zh.modeOnLaunchHelp)
+    expect(f.api.applyNow).not.toHaveBeenCalled()
+    expect(select.value).toBe('idle')
+    expect(f.container.textContent).toContain(
+      zh.modeIdleHelp.replace('{idleMinutes}', '5').replace('{countdownSeconds}', '30'),
+    )
   })
 
   it('keeps the accepted mode while saving and blocks duplicate or conflicting preferences', async () => {
@@ -339,7 +357,7 @@ describe('unattended update preferences', () => {
     expect(select.value).toBe('notify')
     expect(f.container.textContent).toContain(zh.savingPolicy)
     await act(async () => {
-      await f.controller.setPolicy(policy({ mode: 'on-launch' }))
+      await f.controller.setPolicy(policy({ mode: 'notify' }))
       await f.controller.setAutomatic(false)
     })
     expect(f.api.setPolicy).toHaveBeenCalledExactlyOnceWith(policy({ mode: 'idle' }))
@@ -417,11 +435,11 @@ describe('unattended update preferences', () => {
     await selectMode(f.container, 'idle')
     await act(async () => {
       connection.publish(undefined)
-      f.publish(status({ policy: policy({ mode: 'on-launch' }) }))
+      f.publish(status({ policy: policy({ mode: 'notify' }) }))
       connection.publish(2)
     })
     await complete(gate, status({ policy: policy({ mode: 'idle' }) }))
-    expect(section(f.container).querySelector('select')!.value).toBe('on-launch')
+    expect(section(f.container).querySelector('select')!.value).toBe('notify')
     expect(f.controller.getSnapshot().uncertain).toBe(false)
   })
 
@@ -436,7 +454,7 @@ describe('unattended update preferences', () => {
         }),
       })
       expect(f.container.textContent).toContain(zh.localCandidate)
-      expect(f.api.prepare).not.toHaveBeenCalled()
+      expect(f.api.applyNow).not.toHaveBeenCalled()
       expect(f.api.setPolicy).not.toHaveBeenCalled()
       if (compatibility === 'full-suite') expect(f.container.textContent).toContain(zh.fullSuite)
     },
@@ -459,7 +477,7 @@ describe('restart countdown presentation', () => {
     expect(f.api.status).toHaveBeenCalledTimes(1)
     expect(f.api.activity).toHaveBeenCalledTimes(1)
     expect(f.api.check).not.toHaveBeenCalled()
-    expect(f.api.prepare).not.toHaveBeenCalled()
+    expect(f.api.applyNow).not.toHaveBeenCalled()
     expect(vi.getTimerCount()).toBe(0)
   })
 
@@ -802,7 +820,7 @@ describe('update controls', () => {
     expect(f.container.querySelector('[role="switch"]')!.getAttribute('aria-checked')).toBe('true')
     expect(f.api.status).toHaveBeenCalledTimes(1)
     expect(f.api.check).not.toHaveBeenCalled()
-    expect(f.api.prepare).not.toHaveBeenCalled()
+    expect(f.api.applyNow).not.toHaveBeenCalled()
     expect(f.source.listeners.size).toBe(1)
     expect(f.container.querySelector('[data-opl-update-notice]')).toBeNull()
   })
@@ -811,7 +829,7 @@ describe('update controls', () => {
     const f = await mount({ dictionary: en, initial: status({ release: release() }) })
     expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort())
     expect(button(f.container, en.check)).toBeDefined()
-    expect(button(f.container, en.prepare)).toBeDefined()
+    expect(button(f.container, en.applyNow)).toBeDefined()
     expect(f.container.textContent).toContain(en.releaseNotes)
     expect(f.container.textContent).not.toContain(zh.automaticHelp)
   })
@@ -870,13 +888,13 @@ describe('update controls', () => {
   it('prepares an enhancement only on explicit choice and allows cancelling it', async () => {
     const offer = release()
     const f = await mount({ initial: status({ release: offer }) })
-    expect(f.api.prepare).not.toHaveBeenCalled()
+    expect(f.api.applyNow).not.toHaveBeenCalled()
     const notes = section(f.container).querySelector<HTMLAnchorElement>('a')!
     expect(notes.href).toBe(offer.url)
     expect(notes.rel).toBe('noopener noreferrer')
     expect(notes.target).toBe('_blank')
-    await click(button(f.container, zh.prepare))
-    expect(f.api.prepare).toHaveBeenCalledTimes(1)
+    await click(button(f.container, zh.applyNow))
+    expect(f.api.applyNow).toHaveBeenCalledTimes(1)
     expect(
       f.container
         .querySelector('[data-opl-update-pending]')!
@@ -887,7 +905,81 @@ describe('update controls', () => {
     await click(button(f.container, zh.cancel))
     expect(f.api.cancel).toHaveBeenCalledTimes(1)
     expect(f.container.querySelector('[data-opl-update-pending]')).toBeNull()
-    expect(button(f.container, zh.prepare).disabled).toBe(false)
+    expect(button(f.container, zh.applyNow).disabled).toBe(false)
+  })
+
+  it('shows a busy dialog after immediate update without changing policy or stopping tasks', async () => {
+    const initial = status({ release: release(), policy: policy({ mode: 'idle' }) })
+    const f = await mount({
+      initial,
+      configure(api) {
+        api.applyNow.mockResolvedValue({
+          ...initial,
+          pendingVersion: '0.2.56',
+          restart: { phase: 'blocked', dueAt: null, reason: 'busy' },
+        })
+      },
+    })
+    await click(button(f.container, zh.applyNow))
+    expect(f.container.querySelector('[role="dialog"]')?.textContent).toContain(zh.updateBusyBody)
+    expect(f.api.applyNow).toHaveBeenCalledTimes(1)
+    expect(f.api.setPolicy).not.toHaveBeenCalled()
+    expect(f.api.prepare).not.toHaveBeenCalled()
+    await click(button(f.container, zh.later))
+    expect(f.container.querySelector('[role="dialog"]')).toBeNull()
+    expect(f.api.cancel).not.toHaveBeenCalled()
+    expect(f.container.querySelector('[data-opl-update-pending]')).not.toBeNull()
+    expect(f.api.applyNow).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels only the prepared update from the busy dialog', async () => {
+    const f = await mount({
+      initial: status({ release: release() }),
+      configure(api) {
+        api.applyNow.mockResolvedValue(
+          status({
+            release: release(),
+            pendingVersion: '0.2.56',
+            restart: { phase: 'blocked', dueAt: null, reason: 'busy' },
+          }),
+        )
+      },
+    })
+    await click(button(f.container, zh.applyNow))
+    const dialog = f.container.querySelector('[role="dialog"]')!
+    const cancel = [...dialog.querySelectorAll<HTMLButtonElement>('button')].find(
+      (node) => node.textContent === zh.cancel,
+    )!
+    await click(cancel)
+    expect(f.api.cancel).toHaveBeenCalledTimes(1)
+    expect(f.api.setPolicy).not.toHaveBeenCalled()
+    expect(f.container.querySelector('[role="dialog"]')).toBeNull()
+    expect(f.container.querySelector('[data-opl-update-pending]')).toBeNull()
+  })
+
+  it('ignores a busy reply from the previous connection generation', async () => {
+    const gate = deferred<OplUpdateStatus>()
+    const connection = observable<number | undefined>(1)
+    const f = await mount({
+      initial: status({ release: release() }),
+      config: { connection },
+      configure: (api) => api.applyNow.mockReturnValue(gate.promise),
+    })
+    await click(button(f.container, zh.applyNow))
+    await act(async () => {
+      connection.publish(undefined)
+      connection.publish(2)
+    })
+    await complete(
+      gate,
+      status({
+        release: release(),
+        pendingVersion: '0.2.56',
+        restart: { phase: 'blocked', dueAt: null, reason: 'busy' },
+      }),
+    )
+    expect(f.container.querySelector('[role="dialog"]')).toBeNull()
+    expect(f.controller.getSnapshot().status?.pendingVersion).toBeNull()
   })
 
   it('routes incompatible releases to the full suite without offering preparation', async () => {
@@ -902,12 +994,12 @@ describe('update controls', () => {
     expect(download.href).toBe(offer.url)
     expect(
       [...section(f.container).querySelectorAll('button')].map((node) => node.textContent),
-    ).not.toContain(zh.prepare)
-    await act(async () => f.controller.prepare())
-    expect(f.api.prepare).not.toHaveBeenCalled()
+    ).not.toContain(zh.applyNow)
+    await act(async () => f.controller.applyNow())
+    expect(f.api.applyNow).not.toHaveBeenCalled()
   })
 
-  it('identifies a local candidate and permits only explicit release preparation', async () => {
+  it('offers the full release installer for a local candidate without preparing or applying it', async () => {
     const f = await mount({
       initial: status({
         localCandidate: true,
@@ -916,10 +1008,39 @@ describe('update controls', () => {
       }),
     })
     expect(f.container.textContent).toContain(zh.localCandidate)
-    expect(f.api.prepare).not.toHaveBeenCalled()
+    expect(f.api.applyNow).not.toHaveBeenCalled()
     expect(f.container.textContent).not.toContain(zh.noUpdate)
-    await click(button(f.container, zh.prepare))
-    expect(f.api.prepare).toHaveBeenCalledTimes(1)
+    expect(
+      [...section(f.container).querySelectorAll('button')].map((node) => node.textContent),
+    ).not.toContain(zh.applyNow)
+    const download = [...section(f.container).querySelectorAll<HTMLAnchorElement>('a')].find(
+      (node) => node.textContent === zh.download,
+    )!
+    expect(download.href).toBe(release().url)
+    expect(download.target).toBe('_blank')
+    await act(async () => f.controller.applyNow())
+    expect(f.api.applyNow).not.toHaveBeenCalled()
+    expect(f.api.prepare).not.toHaveBeenCalled()
+  })
+
+  it('keeps a candidate pending plan cancellable without promising immediate application', async () => {
+    const f = await mount({
+      initial: status({
+        localCandidate: true,
+        release: release(),
+        pendingVersion: '0.2.56',
+      }),
+    })
+    expect(f.container.textContent).toContain(zh.pendingInstaller.replace('{version}', '0.2.56'))
+    expect(f.container.querySelector('[data-opl-update-notice]')?.getAttribute('title')).toContain(
+      zh.noticeFullSuite.replace('{version}', '0.2.56'),
+    )
+    expect(
+      [...section(f.container).querySelectorAll('button')].map((node) => node.textContent),
+    ).not.toContain(zh.applyNow)
+    await click(button(f.container, zh.cancel))
+    expect(f.api.cancel).toHaveBeenCalledTimes(1)
+    expect(f.container.querySelector('[data-opl-update-pending]')).toBeNull()
   })
 
   it('does not call a candidate build current when no release is offered', async () => {
@@ -1001,10 +1122,10 @@ describe('update controls', () => {
     const f = await mount({
       initial: status({ release: release() }),
       configure(api) {
-        api.prepare.mockResolvedValue(status({ release: release(), error: 'prepare-failed' }))
+        api.applyNow.mockResolvedValue(status({ release: release(), error: 'prepare-failed' }))
       },
     })
-    await click(button(f.container, zh.prepare))
+    await click(button(f.container, zh.applyNow))
     expect(f.container.textContent).toContain(zh['prepare-failed'])
     expect(f.container.querySelector('[data-opl-update-release]')).not.toBeNull()
     expect(f.container.querySelector('[data-opl-update-pending]')).toBeNull()
@@ -1014,18 +1135,18 @@ describe('update controls', () => {
     const f = await mount({
       initial: status({ release: release() }),
       configure(api) {
-        api.prepare.mockRejectedValue(new Error('private-download-directory'))
+        api.applyNow.mockRejectedValue(new Error('private-download-directory'))
       },
     })
-    await click(button(f.container, zh.prepare))
-    expect(f.container.textContent).toContain(zh['prepare-failed'])
+    await click(button(f.container, zh.applyNow))
+    expect(f.container.textContent).toContain(zh['apply-failed'])
     expect(f.container.querySelector('[data-opl-update-pending]')).toBeNull()
-    expect(button(f.container, zh.prepare).disabled).toBe(true)
-    await click(button(f.container, zh.prepare))
-    expect(f.api.prepare).toHaveBeenCalledTimes(1)
+    expect(button(f.container, zh.applyNow).disabled).toBe(true)
+    await click(button(f.container, zh.applyNow))
+    expect(f.api.applyNow).toHaveBeenCalledTimes(1)
     expect(f.container.textContent).not.toContain('private-download-directory')
     await click(button(f.container, zh.check))
-    expect(button(f.container, zh.prepare).disabled).toBe(false)
+    expect(button(f.container, zh.applyNow).disabled).toBe(false)
   })
 
   it('preserves a prepared update when cancellation fails and allows confirmation by checking', async () => {
@@ -1062,7 +1183,7 @@ describe('update controls', () => {
     expect(f.api.check).toHaveBeenCalledTimes(1)
     expect(check.disabled).toBe(true)
     expect(f.container.querySelector<HTMLButtonElement>('[role="switch"]')!.disabled).toBe(true)
-    expect(button(f.container, zh.prepare).disabled).toBe(true)
+    expect(button(f.container, zh.applyNow).disabled).toBe(true)
     await complete(gate, status({ release: release() }))
     expect(button(f.container, zh.check).disabled).toBe(false)
   })
@@ -1083,32 +1204,32 @@ describe('update controls', () => {
     const f = await mount({
       initial: status({ release: release() }),
       configure(api) {
-        api.prepare.mockImplementation(() => prepareGate.promise)
+        api.applyNow.mockImplementation(() => prepareGate.promise)
         api.cancel.mockImplementation(() => cancelGate.promise)
       },
     })
-    await click(button(f.container, zh.prepare))
+    await click(button(f.container, zh.applyNow))
     expect(button(f.container, zh.cancelDownload).disabled).toBe(false)
     await click(button(f.container, zh.cancelDownload))
     await act(async () => {
       await f.controller.cancel()
-      await f.controller.prepare()
+      await f.controller.applyNow()
     })
     expect(f.api.cancel).toHaveBeenCalledTimes(1)
-    expect(f.api.prepare).toHaveBeenCalledTimes(1)
+    expect(f.api.applyNow).toHaveBeenCalledTimes(1)
     await complete(cancelGate, status({ release: release() }))
     await complete(prepareGate, status({ release: release(), pendingVersion: '0.2.56' }))
     expect(f.container.querySelector('[data-opl-update-pending]')).toBeNull()
-    expect(button(f.container, zh.prepare).disabled).toBe(false)
+    expect(button(f.container, zh.applyNow).disabled).toBe(false)
   })
 
   it('cancels a Host download discovered in the initial status', async () => {
     const f = await mount({ initial: status({ release: release(), preparing: true }) })
     await click(button(f.container, zh.cancelDownload))
     expect(f.api.cancel).toHaveBeenCalledTimes(1)
-    expect(f.api.prepare).not.toHaveBeenCalled()
+    expect(f.api.applyNow).not.toHaveBeenCalled()
     expect(f.container.querySelector('[data-opl-update-pending]')).toBeNull()
-    expect(button(f.container, zh.prepare).disabled).toBe(false)
+    expect(button(f.container, zh.applyNow).disabled).toBe(false)
   })
 
   it('can reread status after a failed cancellation while the Host is still downloading', async () => {
@@ -1127,7 +1248,7 @@ describe('update controls', () => {
     expect(button(f.container, zh.cancelDownload).disabled).toBe(false)
     await click(button(f.container, zh.cancelDownload))
     expect(f.api.cancel).toHaveBeenCalledTimes(2)
-    expect(button(f.container, zh.prepare).disabled).toBe(false)
+    expect(button(f.container, zh.applyNow).disabled).toBe(false)
   })
 
   it('allows an explicit check to recover a failed initial status read', async () => {
@@ -1204,10 +1325,10 @@ describe('update subscriptions and request lifetimes', () => {
       initial: status({ release: release() }),
       config: { connection },
       configure(api) {
-        api.prepare.mockImplementation(() => gate.promise)
+        api.applyNow.mockImplementation(() => gate.promise)
       },
     })
-    await click(button(f.container, zh.prepare))
+    await click(button(f.container, zh.applyNow))
     await act(async () => connection.publish(undefined))
     expect(f.container.textContent).toContain(zh.disconnected)
     await act(async () => {
@@ -1217,7 +1338,7 @@ describe('update subscriptions and request lifetimes', () => {
     await complete(gate, status({ release: release(), pendingVersion: '0.2.56' }))
     expect(f.container.querySelector('[data-opl-update-pending]')).toBeNull()
     expect(f.container.textContent).toContain('0.2.57')
-    expect(f.api.prepare).toHaveBeenCalledTimes(1)
+    expect(f.api.applyNow).toHaveBeenCalledTimes(1)
   })
 
   it('disposes observers and ignores a slow answer after unmount', async () => {
@@ -1250,7 +1371,7 @@ describe('update subscriptions and request lifetimes', () => {
     expect(notices[0]!.getAttribute('aria-label')).toContain('0.2.56')
     await click(notices[0]!)
     expect(f.openSettings).toHaveBeenCalledTimes(1)
-    expect(f.api.prepare).not.toHaveBeenCalled()
+    expect(f.api.applyNow).not.toHaveBeenCalled()
   })
 
   it('consumes each notice navigation intent once and ignores status refreshes', async () => {

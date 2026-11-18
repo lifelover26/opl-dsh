@@ -16,14 +16,14 @@ function deferred<T>() {
   })
   return { promise, resolve }
 }
-function fixture(initialPending: string | null = null) {
+function fixture(localCandidate = false) {
   let automatic = true
-  let pending: string | null = initialPending
+  let pending: string | null = null
   const operations: UpdateOperations = {
     installed: vi.fn(async () => ({
       suiteVersion: '0.2.55',
       officialVersion: '0.2.2-rc.1',
-      localCandidate: true,
+      localCandidate,
     })),
     automatic: () => automatic,
     saveAutomatic: vi.fn(async (enabled) => {
@@ -33,7 +33,6 @@ function fixture(initialPending: string | null = null) {
     save: vi.fn(async () => {}),
     discover: vi.fn(async () => offer),
     pending: vi.fn(async () => pending),
-    armPending: vi.fn(async () => {}),
     prepare: vi.fn(async (_signal, expected) => {
       pending = expected
     }),
@@ -49,9 +48,44 @@ afterEach(() => {
 })
 
 describe('Host update discovery and preparation', () => {
+  it('preserves on-launch preferences and arms an existing prepared plan once', async () => {
+    const f = fixture()
+    f.operations.policy = () => ({ mode: 'on-launch', idleMinutes: 8, countdownSeconds: 45 })
+    f.operations.savePolicy = vi.fn(async () => {})
+    f.operations.armPending = vi.fn(async () => {})
+    vi.mocked(f.operations.pending).mockResolvedValue(offer.version)
+    const results = await Promise.all([f.controller.status(), f.controller.status()])
+    expect(results[0]).toMatchObject({
+      policy: { mode: 'on-launch', idleMinutes: 8, countdownSeconds: 45 },
+      pendingVersion: offer.version,
+    })
+    expect(f.operations.savePolicy).not.toHaveBeenCalled()
+    expect(f.operations.armPending).toHaveBeenCalledTimes(1)
+    expect(f.operations.cancel).not.toHaveBeenCalled()
+    expect(f.operations.prepare).not.toHaveBeenCalled()
+    await f.controller.dispose()
+  })
+
+  it('reports watcher failures without discarding the prepared update', async () => {
+    const f = fixture()
+    f.operations.armPending = vi.fn(async () => {
+      throw Error('private watcher path')
+    })
+    vi.mocked(f.operations.pending).mockResolvedValue(offer.version)
+    const result = await f.controller.status()
+    expect(result).toMatchObject({
+      pendingVersion: offer.version,
+      error: 'prepare-failed',
+      failure: { stage: 'acquire', reason: 'filesystem' },
+    })
+    expect(JSON.stringify(result)).not.toContain('private watcher path')
+    expect(f.operations.cancel).not.toHaveBeenCalled()
+    await f.controller.dispose()
+  })
+
   it('reads status locally and coalesces concurrent checks without preparing an update', async () => {
     const f = fixture()
-    expect((await f.controller.status()).localCandidate).toBe(true)
+    expect((await f.controller.status()).localCandidate).toBe(false)
     expect(f.operations.discover).not.toHaveBeenCalled()
     const response = deferred<OplUpdateRelease | null>()
     vi.mocked(f.operations.discover).mockReturnValue(response.promise)
@@ -102,22 +136,33 @@ describe('Host update discovery and preparation', () => {
     }
   })
 
-  it('arms an already prepared plan when status is first read', async () => {
-    const f = fixture(offer.version)
-    expect(await f.controller.status()).toMatchObject({ pendingVersion: offer.version })
-    expect(f.operations.armPending).toHaveBeenCalledTimes(1)
-    await f.controller.dispose()
-  })
-
   it('prepares the displayed release once, even for a local candidate, and cancels its pending plan', async () => {
-    const f = fixture()
+    const f = fixture(true)
     await f.controller.check()
     await Promise.all([f.controller.prepare(), f.controller.prepare()])
     expect(f.operations.prepare).toHaveBeenCalledTimes(1)
     expect(f.operations.prepare).toHaveBeenCalledWith(expect.any(AbortSignal), offer.version)
-    expect(f.operations.armPending).toHaveBeenCalledTimes(1)
     expect((await f.controller.status()).pendingVersion).toBe(offer.version)
     expect((await f.controller.cancel()).pendingVersion).toBeNull()
+    await f.controller.dispose()
+  })
+
+  it('joins an in-flight official discovery before applying without rejecting concurrency', async () => {
+    const f = fixture()
+    const discovery = deferred<OplUpdateRelease | null>()
+    f.operations.inspect = vi.fn(async () => null)
+    f.operations.handoff = vi.fn(async () => {})
+    vi.mocked(f.operations.discover).mockReturnValue(discovery.promise)
+    const checking = f.controller.check()
+    await vi.waitFor(() => expect(f.operations.discover).toHaveBeenCalledOnce())
+    const applying = f.controller.applyNow()
+    discovery.resolve(offer)
+    await checking
+    const result = await applying
+    expect(result.restart?.phase).toBe('handoff')
+    expect(f.operations.prepare).toHaveBeenCalledOnce()
+    expect(f.operations.inspect).toHaveBeenCalledOnce()
+    expect(f.operations.handoff).toHaveBeenCalledOnce()
     await f.controller.dispose()
   })
 
@@ -128,6 +173,171 @@ describe('Host update discovery and preparation', () => {
     await expect(f.controller.prepare()).rejects.toThrow('full Suite')
     expect(f.operations.prepare).not.toHaveBeenCalled()
     await f.controller.dispose()
+  })
+
+  it('prepares once and shares one immediate handoff after a fresh idle inspection', async () => {
+    const f = fixture()
+    f.operations.inspect = vi.fn(async () => null)
+    f.operations.handoff = vi.fn(async () => {})
+    await f.controller.check()
+    const result = await Promise.all([f.controller.applyNow(), f.controller.applyNow()])
+    expect(f.operations.prepare).toHaveBeenCalledTimes(1)
+    expect(f.operations.inspect).toHaveBeenCalledTimes(1)
+    expect(f.operations.handoff).toHaveBeenCalledTimes(1)
+    expect(result[0].restart?.phase).toBe('handoff')
+    await f.controller.dispose()
+  })
+
+  it.each([null, offer.version])(
+    'rejects candidate immediate updates before preparing or touching the pending plan %s',
+    async (pending) => {
+      const f = fixture(true)
+      f.operations.inspect = vi.fn(async () => null)
+      f.operations.handoff = vi.fn(async () => {})
+      vi.mocked(f.operations.pending).mockResolvedValue(pending)
+      await f.controller.check()
+      await expect(f.controller.applyNow()).rejects.toThrow('full Suite installer')
+      expect(f.operations.prepare).not.toHaveBeenCalled()
+      expect(f.operations.inspect).not.toHaveBeenCalled()
+      expect(f.operations.handoff).not.toHaveBeenCalled()
+      expect(f.operations.cancel).not.toHaveBeenCalled()
+      expect((await f.controller.status()).pendingVersion).toBe(pending)
+      await f.controller.dispose()
+    },
+  )
+
+  it('reuses a matching prepared plan and rejects a different prepared version', async () => {
+    for (const pending of [offer.version, '0.2.99']) {
+      const f = fixture()
+      vi.mocked(f.operations.pending).mockResolvedValue(pending)
+      f.operations.inspect = vi.fn(async () => null)
+      f.operations.handoff = vi.fn(async () => {})
+      await f.controller.check()
+      const result = await f.controller.applyNow()
+      expect(f.operations.prepare).not.toHaveBeenCalled()
+      if (pending === offer.version) {
+        expect(f.operations.handoff).toHaveBeenCalledTimes(1)
+      } else {
+        expect(result).toMatchObject({
+          error: 'prepare-integrity-failed',
+          failure: { stage: 'confirm', reason: 'release-changed' },
+        })
+        expect(f.operations.inspect).not.toHaveBeenCalled()
+      }
+      await f.controller.dispose()
+    }
+  })
+
+  it('does not restart after preparation fails or completes without a confirmed plan', async () => {
+    const f = fixture()
+    f.operations.inspect = vi.fn(async () => null)
+    f.operations.handoff = vi.fn(async () => {})
+    vi.mocked(f.operations.prepare).mockRejectedValueOnce(Error('checksum failed'))
+    await f.controller.check()
+    expect(await f.controller.applyNow()).toMatchObject({
+      error: 'prepare-failed',
+      pendingVersion: null,
+    })
+    vi.mocked(f.operations.prepare).mockResolvedValueOnce()
+    expect(await f.controller.applyNow()).toMatchObject({
+      error: 'prepare-failed',
+      pendingVersion: null,
+      failure: { stage: 'confirm', reason: 'unknown' },
+    })
+    expect(f.operations.inspect).not.toHaveBeenCalled()
+    expect(f.operations.handoff).not.toHaveBeenCalled()
+    await f.controller.dispose()
+  })
+
+  it('cancels an immediate preparation without allowing its late result to restart', async () => {
+    const f = fixture()
+    f.operations.inspect = vi.fn(async () => null)
+    f.operations.handoff = vi.fn(async () => {})
+    vi.mocked(f.operations.prepare).mockImplementation(async (signal) => {
+      await new Promise<void>((resolve) =>
+        signal.addEventListener('abort', () => resolve(), { once: true }),
+      )
+    })
+    await f.controller.check()
+    const applying = f.controller.applyNow()
+    await vi.waitFor(() => expect(f.operations.prepare).toHaveBeenCalledTimes(1))
+    await f.controller.cancel()
+    await applying
+    expect(f.operations.inspect).not.toHaveBeenCalled()
+    expect(f.operations.handoff).not.toHaveBeenCalled()
+    expect((await f.controller.status()).pendingVersion).toBeNull()
+    await f.controller.dispose()
+  })
+
+  it('does not hand off an inspection after explicit cancellation clears the plan', async () => {
+    const f = fixture()
+    const inspection = deferred<null>()
+    f.operations.inspect = vi.fn(() => inspection.promise)
+    f.operations.handoff = vi.fn(async () => {})
+    try {
+      await f.controller.check()
+      await f.controller.prepare()
+      const applying = f.controller.applyNow()
+      await vi.waitFor(() => expect(f.operations.inspect).toHaveBeenCalledTimes(1))
+      await f.controller.cancel()
+      inspection.resolve(null)
+      await applying
+      expect(f.operations.handoff).not.toHaveBeenCalled()
+      expect((await f.controller.status()).pendingVersion).toBeNull()
+    } finally {
+      inspection.resolve(null)
+      await f.controller.dispose()
+    }
+  })
+
+  it('waits for an immediate inspection on unload without publishing or handing off afterward', async () => {
+    const f = fixture()
+    const inspection = deferred<null>()
+    f.operations.inspect = vi.fn(() => inspection.promise)
+    f.operations.handoff = vi.fn(async () => {})
+    try {
+      await f.controller.check()
+      await f.controller.prepare()
+      const applying = f.controller.applyNow()
+      await vi.waitFor(() => expect(f.operations.inspect).toHaveBeenCalledTimes(1))
+      const changed = vi.fn()
+      f.controller.subscribe(changed)
+      let disposed = false
+      const disposing = f.controller.dispose().then(() => {
+        disposed = true
+      })
+      await Promise.resolve()
+      expect(disposed).toBe(false)
+      inspection.resolve(null)
+      await Promise.all([disposing, applying])
+      expect(changed).not.toHaveBeenCalled()
+      expect(f.operations.handoff).not.toHaveBeenCalled()
+    } finally {
+      inspection.resolve(null)
+      await f.controller.dispose()
+    }
+  })
+
+  it('does not apply a release replaced while its preparation was in flight', async () => {
+    const f = fixture()
+    const preparation = deferred<void>()
+    f.operations.inspect = vi.fn(async () => null)
+    f.operations.handoff = vi.fn(async () => {})
+    vi.mocked(f.operations.prepare).mockImplementation(async () => preparation.promise)
+    try {
+      await f.controller.check()
+      const applying = f.controller.applyNow()
+      await vi.waitFor(() => expect(f.operations.prepare).toHaveBeenCalledTimes(1))
+      vi.mocked(f.operations.discover).mockResolvedValue({ ...offer, version: '0.3.1' })
+      await f.controller.check()
+      preparation.resolve()
+      await applying
+      expect(f.operations.handoff).not.toHaveBeenCalled()
+      expect((await f.controller.status()).release?.version).toBe('0.3.1')
+    } finally {
+      preparation.resolve()
+      await f.controller.dispose()
+    }
   })
 
   it('waits for download cancellation before clearing its plan and rejects duplicate cancellation', async () => {

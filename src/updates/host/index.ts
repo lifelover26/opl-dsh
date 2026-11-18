@@ -56,6 +56,12 @@ export class UpdateService extends TypertRemoteService {
     return this.controller.prepare()
   }
 
+  /** Prepare the displayed update and restart only after a fresh idle inspection. */
+  @Remote('applyNow')
+  applyNow(): Promise<OplUpdateStatus> {
+    return this.controller.applyNow()
+  }
+
   /** Cancel a download or prepared update without removing the installed release. */
   @Remote('cancel')
   cancel(): Promise<OplUpdateStatus> {
