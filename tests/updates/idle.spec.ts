@@ -419,7 +419,9 @@ describe('explicit immediate update ownership', () => {
   it.each(['busy', 'activity-unknown', 'other-profile', 'desktop-unavailable'] as const)(
     'reports %s without stopping tasks or scheduling a background retry',
     async (reason) => {
-      const f = coordinatorFixture(status({ pendingVersion: offer.version }))
+      const f = coordinatorFixture(
+        status({ pendingVersion: offer.version, policy: policy({ mode: 'on-launch' }) }),
+      )
       f.operations.inspect.mockResolvedValue(reason)
       await f.coordinator.applyNow(offer.version)
       expect(f.state.restart).toEqual({ phase: 'blocked', dueAt: null, reason })
@@ -432,6 +434,30 @@ describe('explicit immediate update ownership', () => {
       expect(f.operations.handoff).toHaveBeenCalledTimes(1)
     },
   )
+
+  it('keeps the existing idle policy after a busy immediate attempt', async () => {
+    const f = coordinatorFixture(status({ pendingVersion: offer.version }))
+    f.coordinator.changed()
+    await tick(60_000)
+    expect(f.state.restart?.phase).toBe('countdown')
+
+    f.operations.inspect.mockResolvedValue('busy')
+    await f.coordinator.applyNow(offer.version)
+    expect(f.state.restart).toEqual({ phase: 'blocked', dueAt: null, reason: 'busy' })
+    await tick(30_000)
+    expect(f.state.restart).toEqual({ phase: 'waiting', dueAt: null, reason: 'busy' })
+    expect(f.operations.handoff).not.toHaveBeenCalled()
+
+    f.operations.inspect.mockResolvedValue(null)
+    await tick(59_999)
+    expect(f.state.restart?.phase).toBe('waiting')
+    await tick(1)
+    expect(f.state.restart?.phase).toBe('countdown')
+    await tick(14_999)
+    expect(f.operations.handoff).not.toHaveBeenCalled()
+    await tick(1)
+    expect(f.operations.handoff).toHaveBeenCalledTimes(1)
+  })
 
   it.each(['cancel', 'postpone', 'version', 'pending', 'policy'] as const)(
     'does not hand off a late manual inspection after %s',

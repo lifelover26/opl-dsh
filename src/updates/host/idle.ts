@@ -1,6 +1,8 @@
 /** Coordinates preparation and an idle restart without owning task execution. */
 import type { OplUpdatePolicy, OplUpdateRestart, OplUpdateStatus } from '../contracts.ts'
 
+const activityPollMs = 30_000
+
 export const defaultUpdatePolicy: OplUpdatePolicy = {
   mode: 'on-launch',
   idleMinutes: 5,
@@ -121,12 +123,20 @@ export class IdleUpdateCoordinator {
     this.epoch++
     const epoch = this.epoch
     this.dueAt = undefined
-    this.failedVersion = version
+    this.lastActivity = Date.now()
     this.operations.publish(undefined)
     if (this.timer) clearTimeout(this.timer)
     this.timer = undefined
     const work = this.apply(version, epoch).finally(() => {
-      if (this.manual === work) this.manual = undefined
+      if (this.manual !== work) return
+      this.manual = undefined
+      const state = this.operations.status()
+      if (state.restart?.phase === 'blocked') {
+        // Leave the explicit attempt blocked while the selected idle policy resumes its own checks.
+        if (state.policy?.mode === 'idle') this.schedule(activityPollMs)
+      } else {
+        this.schedule(0)
+      }
     })
     this.manual = work
     return work
@@ -143,6 +153,7 @@ export class IdleUpdateCoordinator {
     }
     if (!this.currentAttempt(version, epoch)) return
     if (reason) {
+      this.lastActivity = Date.now()
       this.operations.publish({ phase: 'blocked', dueAt: null, reason })
       return
     }
@@ -247,7 +258,7 @@ export class IdleUpdateCoordinator {
       this.dueAt = undefined
       this.lastActivity = Date.now()
       this.operations.publish({ phase: 'waiting', dueAt: null, reason })
-      this.schedule(30_000)
+      this.schedule(activityPollMs)
       return
     }
     const idleUntil = this.lastActivity + policy.idleMinutes * 60_000
