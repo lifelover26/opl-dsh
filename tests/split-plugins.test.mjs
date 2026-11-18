@@ -64,7 +64,10 @@ test('migrates the legacy permission memory into the official settings owner', a
     await split.migrateSplitSettings(options)
     const doc = yaml.parse(await readFile(file, 'utf8'), { logLevel: 'silent' })
     assert.deepEqual(doc.find((row) => row.id === 'opl-suite').config, {})
-    assert.equal(doc.find((row) => row.id === 'permission').config.defaultPreset, 'danger-full-access')
+    assert.equal(
+      doc.find((row) => row.id === 'permission').config.defaultPreset,
+      'danger-full-access',
+    )
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

@@ -92,7 +92,10 @@ test('release requires official capability ownership and a completed native Team
       },
     },
     {
-      autoReview: { ...evidence().checks.runtime.officialCapabilities.autoReview, defaultEnabled: true },
+      autoReview: {
+        ...evidence().checks.runtime.officialCapabilities.autoReview,
+        defaultEnabled: true,
+      },
     },
     { oneShotProviders: [] },
   ]) {

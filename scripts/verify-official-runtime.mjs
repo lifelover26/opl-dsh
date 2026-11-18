@@ -159,37 +159,37 @@ const modelPlugins = verifyGitBash
   : await verifyModelPlugins({ root, origin, cookie, wire, harness })
 if (!verifyGitBash) await verifyControlPermissions()
 async function verifyControlPermissions() {
-// Exercise the OPL control adapter against the official permission and Workspace owners.
-const permissionSession = await rpc('session', 'create', {
-  request: { cwd: project, permissionPreset: 'danger-full-access' },
-})
-assert.equal(permissionSession.permissions.preset, 'danger-full-access')
-assert.equal(permissionSession.permissions.sandbox, 'danger-full-access')
-assert.equal(permissionSession.permissions.approval, 'never')
-const permissionRead = await rpc('session', 'permissions', {
-  request: { sessionId: permissionSession.sessionId },
-})
-assert.equal(permissionRead.preset, 'danger-full-access')
-assert.equal(permissionRead.running, false)
-const placement = await rpc('workspace', 'follow')
-assert(
-  placement.value.items.some(
-    (item) => item.path === project && item.sessionIds.includes(permissionSession.sessionId),
-  ),
-  'control-created Session is missing from its exact Workspace',
-)
-const switched = await rpc('session', 'selectPermissions', {
-  request: { sessionId: permissionSession.sessionId, preset: 'read-only' },
-})
-assert.equal(switched.permissions.sandbox, 'read-only')
-assert.equal(
-  (
-    await rpc('session', 'permissions', {
-      request: { sessionId: permissionSession.sessionId },
-    })
-  ).preset,
-  'read-only',
-)
+  // Exercise the OPL control adapter against the official permission and Workspace owners.
+  const permissionSession = await rpc('session', 'create', {
+    request: { cwd: project, permissionPreset: 'danger-full-access' },
+  })
+  assert.equal(permissionSession.permissions.preset, 'danger-full-access')
+  assert.equal(permissionSession.permissions.sandbox, 'danger-full-access')
+  assert.equal(permissionSession.permissions.approval, 'never')
+  const permissionRead = await rpc('session', 'permissions', {
+    request: { sessionId: permissionSession.sessionId },
+  })
+  assert.equal(permissionRead.preset, 'danger-full-access')
+  assert.equal(permissionRead.running, false)
+  const placement = await rpc('workspace', 'follow')
+  assert(
+    placement.value.items.some(
+      (item) => item.path === project && item.sessionIds.includes(permissionSession.sessionId),
+    ),
+    'control-created Session is missing from its exact Workspace',
+  )
+  const switched = await rpc('session', 'selectPermissions', {
+    request: { sessionId: permissionSession.sessionId, preset: 'read-only' },
+  })
+  assert.equal(switched.permissions.sandbox, 'read-only')
+  assert.equal(
+    (
+      await rpc('session', 'permissions', {
+        request: { sessionId: permissionSession.sessionId },
+      })
+    ).preset,
+    'read-only',
+  )
 }
 const requests = []
 let shellProbe = false
@@ -232,7 +232,9 @@ const server = createServer(async (req, res) => {
       key: req.headers['x-api-key'] ?? req.headers.authorization,
       usedTool,
       hasTool,
-      ...(shellProbe ? { shellTools: body.tools?.map((t) => t.name ?? t.function?.name) ?? [] } : {}),
+      ...(shellProbe
+        ? { shellTools: body.tools?.map((t) => t.name ?? t.function?.name) ?? [] }
+        : {}),
       ...(teamProbe ? { teamTools: body.tools?.map((t) => t.name ?? t.function?.name) ?? [] } : {}),
     })
     res.writeHead(200, { 'content-type': 'text/event-stream' })
@@ -336,7 +338,11 @@ try {
     })
     assert.equal(shellSession.permissions.preset, 'danger-full-access')
     await rpc('session', 'selectModel', {
-      request: { sessionId: shellSession.sessionId, provider: 'opl-gateway', model: 'deepseek-flash' },
+      request: {
+        sessionId: shellSession.sessionId,
+        provider: 'opl-gateway',
+        model: 'deepseek-flash',
+      },
     })
     const receipt = await rpc('session', 'prompt', {
       request: {
@@ -349,11 +355,21 @@ try {
     assert.equal(receipt.accepted, true)
     const result = await rpc('session', 'wait', { sessionId: shellSession.sessionId })
     assert.equal(result.outcome.kind, 'completed')
-    const requestsWithTool = requests.filter((request) => request.shellTools?.includes(nativeShellMode))
-    assert(requestsWithTool.some((request) => request.hasTool), `Model did not call ${nativeShellMode}`)
-    assert(requestsWithTool.some((request) => request.usedTool), `Model received no ${nativeShellMode} result`)
+    const requestsWithTool = requests.filter((request) =>
+      request.shellTools?.includes(nativeShellMode),
+    )
     assert(
-      requestsWithTool.every((request) => !request.shellTools.includes(verifyGitBash ? 'pwsh' : 'bash')),
+      requestsWithTool.some((request) => request.hasTool),
+      `Model did not call ${nativeShellMode}`,
+    )
+    assert(
+      requestsWithTool.some((request) => request.usedTool),
+      `Model received no ${nativeShellMode} result`,
+    )
+    assert(
+      requestsWithTool.every(
+        (request) => !request.shellTools.includes(verifyGitBash ? 'pwsh' : 'bash'),
+      ),
       'Unexpected alternate native shell tool',
     )
     assert.equal(await readFile(join(project, shellFile), 'utf8'), shellMarker)
