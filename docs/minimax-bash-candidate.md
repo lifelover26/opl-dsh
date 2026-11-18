@@ -1,19 +1,21 @@
 # MiniMax Bash 候选版：构建与选择
 
-当前候选基于官方 npm `@minimax-ai/code@0.7.4`。官方分发文件与账号实现保持原样，OPL 扩展单独存放在 `overlay/`；它使用原生 Git Bash 绑定，并提供 ACP Shell 回读、仅对话历史的编辑、官方登录取消与授权到期处理。M3.1 的实际广告名为 `MiniMax-M3.1-Flash`，不附加 Preview。
+当前候选基于官方 npm `@minimax-ai/code@0.7.7`。官方分发文件与账号实现保持原样，OPL 扩展单独存放在 `overlay/`；它使用原生 Git Bash 绑定，并提供 ACP Shell 回读、仅对话历史的编辑、官方登录取消与授权到期处理。
 
-## 当前 0.7.4 候选
+## 当前 0.7.7 候选
 
-固定输入在 `scripts/mcode-candidate/distribution.json`，官方文件清单在 `official-0.7.4-files.json`。构建先核对 npm 归档 SHA-512、许可 SHA-256 与逐文件摘要，再安装依赖；依赖安装后重新核对原始文件，生成含便携 Node 的完整清单。清单的 `filesSha256` 是官方文件数组经 `JSON.stringify` 序列化的 SHA-256。
+固定输入在 `scripts/mcode-candidate/distribution.json`，官方文件清单在 `official-0.7.7-files.json`。构建先核对 npm 归档 SHA-512、许可 SHA-256 与逐文件摘要，再安装依赖；依赖安装后重新核对原始文件，生成含便携 Node 的完整清单。清单的 `filesSha256` 是官方文件数组经 `JSON.stringify` 序列化的 SHA-256。
 
 ```powershell
-node scripts/mcode-candidate/build-distribution.mjs --out "D:/mcode/0.7.4-opl-bash.20261102.2" --archive "D:/downloads/code-0.7.4.tgz" --node "C:/Program Files/nodejs/node.exe" --license "D:/downloads/MiniMax-LICENSE" --proxy http://127.0.0.1:7897
-node scripts/mcode-candidate/verify-candidate.mjs --candidate "D:/mcode/0.7.4-opl-bash.20261102.2" --out "D:/mcode/verification"
+node scripts/mcode-candidate/build-distribution.mjs --out "D:/mcode/0.7.7-opl-bash.20261119.1" --archive "D:/downloads/code-0.7.7.tgz" --node "C:/Program Files/nodejs/node.exe" --license "D:/downloads/MiniMax-LICENSE" --proxy http://127.0.0.1:7897
+node scripts/mcode-candidate/verify-candidate.mjs --candidate "D:/mcode/0.7.7-opl-bash.20261119.1" --out "D:/mcode/verification"
 ```
 
-当前构建支持 Windows 与 Node 24–26。许可文件取自固定的官方公开提交；npm 0.7.4 暂无同版本公开源码标签，因此此交付不声称从 0.7.4 源码重新编译。overlay 使用该 npm 包的固定导出；升级版本必须重新核验导出、协议和真实工具，不能只改版本字符串。
+当前构建支持 Windows 与 Node 24–26。许可文件取自固定的官方公开提交；构建输入为官方 npm 归档。overlay 使用该 npm 包的固定导出；升级版本必须重新核验导出、协议和真实工具，不能只改版本字符串。
 
 选择使用 `control.mjs minimax-candidate-select --version <版本> --source <目录>`，由 Host 核对全项目空闲并保存实际启动器。静态通过后仍需真实 ACP new/load、Git Bash、正式模型和 effort、仅对话编辑及登录流程验收。旧候选保留，可在全项目空闲时重新选择；历史日志不改名或重写。
+
+0.7.7 候选在 Windows Node 24.20.0 下通过 33 项验证，包含 590 个逐文件核对的官方文件。隔离 ACP 初始化回报 Git Bash、指定的可执行路径、参数 `["-c"]` 和会话历史扩展。独立调用官方 Bash operations 的实测返回 Bash 5.3.15、中文及 emoji、stderr 和退出码 17。空账号目录中的 `session/new` 返回需要认证。本次未验证登录后的 new/load、真实模型对话回退或在线授权取消。原 0.7.4 候选仍可按其固定清单校验。
 
 ## 旧 0.6.3 源码构建记录
 
