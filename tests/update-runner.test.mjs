@@ -338,9 +338,49 @@ test('simultaneous verified requests create one transaction', async (t) => {
   const value = await fixture(t)
   const results = await Promise.allSettled([value.prepare(), value.prepare()])
   assert.equal(results.filter((row) => row.status === 'fulfilled').length, 1)
-  assert.equal(results.find((row) => row.status === 'rejected').reason.code, 'update-in-progress')
+  const rejection = results.find((row) => row.status === 'rejected').reason
+  assert.equal(rejection.code, 'update-in-progress', rejection.stack)
   const lease = results.find((row) => row.status === 'fulfilled').value
   await finishUpdateTransaction(value.root, lease, { stage: 'cancelled' })
+})
+
+test('the Windows Suite gate retries only a transient access error to the gate', async (t) => {
+  const value = await fixture(t)
+  const gate = join(value.root, 'enhancement-suite-gate.lock')
+  const winner = await value.prepare()
+  const originalLink = fsPromises.link
+  const platform = Object.getOwnPropertyDescriptor(process, 'platform')
+  let injected = 0
+  let persistent = false
+  let denied
+  const mocked = t.mock.method(fsPromises, 'link', async (source, target) => {
+    if (target === gate && (persistent || injected === 0)) {
+      injected++
+      denied = Object.assign(Error('fixture sharing interruption'), {
+        code: 'EPERM',
+        syscall: 'link',
+        path: source,
+        dest: target,
+      })
+      throw denied
+    }
+    return originalLink(source, target)
+  })
+  Object.defineProperty(process, 'platform', { ...platform, value: 'win32' })
+  syncBuiltinESMExports()
+  try {
+    await assert.rejects(value.prepare(), { code: 'update-in-progress' })
+    assert.equal(injected, 1)
+    persistent = true
+    await assert.rejects(value.prepare(), (error) => error === denied)
+    assert.equal(injected, 3)
+    assert.equal((await readUpdateTransaction(value.root)).id, winner.id)
+  } finally {
+    mocked.mock.restore()
+    syncBuiltinESMExports()
+    Object.defineProperty(process, 'platform', platform)
+    await finishUpdateTransaction(value.root, winner, { stage: 'cancelled' })
+  }
 })
 
 test('a competing request never observes a partially written Suite gate', async (t) => {
