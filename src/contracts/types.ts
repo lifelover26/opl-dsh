@@ -94,11 +94,20 @@ export interface WakeSettings {
   wakeExecutable: string
   wakeDistro: string
 }
+export interface CoordinatorHooksStatus {
+  installed: boolean
+  total: number
+  registered: number
+  verified: number
+  trusted: number
+  disabled: number
+}
 export interface CoordinationStatus extends WakeSettings {
   installed: boolean
   autoStart: boolean
   version: string
   enhancementVersion: string
+  sessionRecycleSupported?: boolean
   superagentSupported?: boolean
   update: { state?: string; checkedAt?: string; message?: string; checkTrigger: string }
   paths: { suiteRoot: string; profileHome: string; skillDir: string }

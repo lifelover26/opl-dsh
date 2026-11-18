@@ -1,7 +1,11 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { coordinationAction } from './settings.ts'
-import type { CoordinationStatus, WakeSettings } from '../../contracts/types.ts'
+import type {
+  CoordinationStatus,
+  CoordinatorHooksStatus,
+  WakeSettings,
+} from '../../contracts/types.ts'
 declare module '@deepseek-ai/cordis' {
   interface Context {
     oplCoordination: CoordinationService
@@ -25,6 +29,14 @@ export class CoordinationService extends TypertRemoteService {
   async installSkill(): Promise<null> {
     await coordinationAction(this.ctx, 'skill-install', undefined)
     return null
+  }
+  @Remote('coordinator-hooks')
+  async hooks(action: string): Promise<CoordinatorHooksStatus> {
+    return (await coordinationAction(
+      this.ctx,
+      'coordinator-hooks',
+      action,
+    )) as CoordinatorHooksStatus
   }
   @Remote('superagent-open')
   async openSuperagent(): Promise<{ state: string }> {
