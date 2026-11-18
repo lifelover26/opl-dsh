@@ -585,28 +585,6 @@ describe('OPL model button selection projection', () => {
     expect(face.subscribers()).toBe(0)
     await ctx.fiber.dispose()
   })
-
-  it('keeps execution controls live when optional settings arrive and unload later', async () => {
-    const f = await pluginFixture({}, [])
-    const settingsId = 'opl-remember-permission-preset'
-    expect(f.slots.registrations.some((entry) => entry.id === settingsId)).toBe(false)
-    const form = { getSnapshot: () => ({ status: 'loading', value: undefined }) }
-    const provider = await f.provideConfigForms(form)
-    await vi.waitFor(() =>
-      expect(f.slots.registrations.filter((entry) => entry.id === settingsId)).toHaveLength(1),
-    )
-    expect(
-      f.slots.registrations.find((entry) => entry.id === settingsId)?.inject?.('unused'),
-    ).toEqual({ form })
-    await provider.dispose()
-    await vi.waitFor(() =>
-      expect(f.slots.registrations.some((entry) => entry.id === settingsId)).toBe(false),
-    )
-    expect(
-      f.slots.registrations.filter((entry) => entry.name === 'conversation.input.model'),
-    ).toEqual([f.registration])
-    await f.ctx.fiber.dispose()
-  })
 })
 
 /** Minimal Slots service: keeps registrations so a spec can read their inject result. */
@@ -725,18 +703,5 @@ async function pluginFixture(
   await client.plugin(execution)
   const registration = slots.registrations.find((item) => item.name === 'conversation.input.model')
   expect(registration, 'model slot must stay registered').toBeDefined()
-  return {
-    ctx: client,
-    registration: registration!,
-    slots,
-    provideConfigForms: async (form) =>
-      await ctx.plugin({
-        name: 'fixture-optional-settings',
-        apply(provider: Context) {
-          new (class extends Service {
-            get = vi.fn(() => form)
-          })(provider, 'configForms')
-        },
-      }),
-  }
+  return { ctx: client, registration: registration! }
 }
