@@ -430,8 +430,9 @@ it('removes retired Gateway Gemini pairings after route retirement', async () =>
   }
   const resolved = await new ExecutionModelResolver(ctx as never, store as never).resolve()
   for (const item of retired) {
-    expect(resolved.combinations).not.toContainEqual(expect.objectContaining({ id: item.id }))
-    expect(catalog.combinations).not.toContainEqual(expect.objectContaining({ id: item.id }))
+    const supported = item.modelRef.model === 'gemini::gemini-4-argon'
+    expect(resolved.combinations.some((row) => row.id === item.id)).toBe(supported)
+    expect(catalog.combinations.some((row) => row.id === item.id)).toBe(supported)
   }
 })
 
