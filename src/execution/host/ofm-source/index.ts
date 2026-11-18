@@ -18,6 +18,7 @@ export {
   ofmHarnessKey,
   ofmHarnessPinsModel,
   ofmProtocol,
+  ofmRequiresMainForward,
   type OfmWireProtocol,
 } from './provider.ts'
 export {

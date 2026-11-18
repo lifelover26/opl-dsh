@@ -58,6 +58,7 @@ export const OFM_OPENCODE_OFFICIAL_FREE_MODELS: readonly string[] = [
   'nemotron-3.5-super-vl-free',
   'glm-5.3-flash-free',
   'big-pickle',
+  'hy4-flash-free',
   'flint-40b-free',
 ]
 

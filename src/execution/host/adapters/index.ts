@@ -16,6 +16,7 @@ import { piAdapter } from './pi/index.ts'
 import { kiloAdapter } from './kilo/index.ts'
 import { vibeAdapter } from './vibe.ts'
 import { antigravityAdapter } from './antigravity/index.ts'
+import { qwenCodeAdapter } from './qwen/index.ts'
 import type { HarnessAdapter } from './types.ts'
 import type { ExternalModelSources } from '../model-sources.ts'
 import { officialHarnessFor } from '../../contracts/official-harnesses.ts'
@@ -24,6 +25,7 @@ import { OFM_PROVIDER, OFM_PROVIDERS } from '../ofm-source/provider.ts'
 export const harnessAdapters: readonly HarnessAdapter[] = [
   codexAdapter,
   antigravityAdapter,
+  qwenCodeAdapter,
   claudeAdapter,
   withMinimaxPermissions(minimaxCodeAdapter),
   zcodeOfmAdapter,
@@ -57,6 +59,7 @@ export function nativeHarnessMatches(id: string, ref: ModelRef): boolean {
 export function automaticHarness(ref: ModelRef): string | undefined {
   if (isHiddenOfmSelection(ref)) return undefined
   if (antigravityAdapter.matches(ref)) return antigravityAdapter.id
+  if (qwenCodeAdapter.matches(ref)) return qwenCodeAdapter.id
   if (officialOpenCodeModel(ref) !== undefined) return 'opencode'
   if (
     ref.provider === OFM_PROVIDER &&

@@ -52,6 +52,13 @@ const info: Record<
       '使用官方 Antigravity CLI 安装器；Gemini 组合使用 OPL 分组凭据，无需 Google 登录。',
     installable: true,
   },
+  'qwen-code': {
+    command: 'qwen',
+    website: 'https://github.com/QwenLM/qwen-code',
+    instructions:
+      '使用官方 Qwen Code npm 包安装已验证版本；需要已有 Node.js/npm，模型连接由 OFM 管理。',
+    installable: true,
+  },
   'minimax-code': {
     command: process.platform === 'win32' ? 'mcode.cmd' : 'mcode',
     website: 'https://github.com/MiniMax-AI/minimax-code',

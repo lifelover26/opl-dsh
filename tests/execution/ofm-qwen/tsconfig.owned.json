@@ -1,0 +1,11 @@
+{
+  "extends": "../../../tsconfig.host.json",
+  "compilerOptions": { "lib": ["ESNext"] },
+  "files": [
+    "./adapter.spec.ts",
+    "./shell.spec.ts",
+    "./usage.spec.ts",
+    "../ofm-qwen-gemma-source/source.spec.ts",
+    "../qwen-harness-usage.spec.ts"
+  ]
+}

@@ -14,7 +14,7 @@ const lanes = [
   ['amd/DeepSeek-V4-Flash', 'dsh', 'DeepSeek V4 Flash'],
   ['amd/MiMo-V2.6-Flash', 'mimo-code', 'MiMo V2.6 Flash'],
   ['amd/GLM-5.3-Flash', 'zcode', 'GLM 5.3 Flash'],
-  ['amd/Qwen3.8-27B', 'pi', 'Qwen3.8 27B'],
+  ['amd/Qwen3.8-27B', 'qwen-code', 'Qwen3.8 27B'],
   ['amd/MiniCPM-V-4.7-35B-A3B', 'pi', 'MiniCPM-V 4.7 35B-A3B'],
   ['amd/MiniCPM5-2B', 'pi', 'MiniCPM5 2B'],
   ['amd/Gemma-4-31B-IT', 'pi', 'Gemma 4 31B IT'],

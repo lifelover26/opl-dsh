@@ -79,6 +79,7 @@ export function displayModelName(ref: ModelRef, name?: string): string {
     if (id === 'cohere/north-mini-code:free') return 'Kilo North Mini Code'
     if (id === 'nvidia/nemotron-3-ultra-550b-a55b:free') return 'Kilo Nemotron 3 Ultra'
     if (id === 'openrouter/free') return 'Kilo OpenRouter Free'
+    if (id === 'hy4-flash-free') return 'Hy4 Flash Free'
     if (id === 'flint-40b-free') return 'Flint 40B Free'
     if (id === 'recursive/flint-v1.0:free') return 'Flint v1.0 Free'
   }

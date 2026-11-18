@@ -60,6 +60,10 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
     ],
   },
   {
+    id: 'qwen-code',
+    officialModels: [{ provider: 'our-free-model', model: 'amd/Qwen3.8-27B' }],
+  },
+  {
     id: 'zcode',
     officialModels: [],
   },

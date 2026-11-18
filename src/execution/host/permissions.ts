@@ -24,6 +24,7 @@ const FULL_ACCESS_HARNESSES: ReadonlySet<string> = new Set([
   'claude',
   'grok-build',
   'antigravity',
+  'qwen-code',
   'zcode',
   'kimi-code',
   'mimo-code',

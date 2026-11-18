@@ -40,6 +40,14 @@ function fixture() {
     providers: [OFM_PROVIDER],
     connection: createOfmApiConnection(async (request) => {
       calls.push(request.url)
+      if (request.url === '/api/our-free-model/summary')
+        return {
+          status: 200,
+          body: {
+            settings: { enabled: true, forward: { enabled: true, running: true } },
+            catalog: models.map((id) => ({ id, route: OFM_PROVIDER })),
+          },
+        }
       return {
         status: 200,
         body: { running: true, baseUrl: 'http://127.0.0.1:32123', key: 'dummy-ofm-key', models },
