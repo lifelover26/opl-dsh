@@ -14,6 +14,14 @@ import {
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import plan from './candidate.json' with { type: 'json' }
 
+import previousPlan from './candidate-0.160.1.json' with { type: 'json' }
+
+function planFor(version) {
+  if (version === plan.id) return plan
+  if (version === previousPlan.id) return previousPlan
+  throw Error('此 Codex 候选版本尚未验收')
+}
+
 export const codexCandidatePlan = plan
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
@@ -34,9 +42,9 @@ export function plainPath(path) {
 /** Verify the reviewed build identity and every file; a self-declared hash is insufficient. */
 export function verifyCodexCandidate(directory, version = plan.id) {
   const root = plainPath(directory)
-  if (version !== plan.id) throw Error('此 Codex 候选版本尚未验收')
+  const selected = planFor(version)
   const manifestPath = join(root, 'manifest.json')
-  const expectedFiles = Object.keys(plan.files).sort()
+  const expectedFiles = Object.keys(selected.files).sort()
   const actualFiles = []
   function walk(base, prefix = '') {
     for (const name of readdirSync(base)) {
@@ -56,22 +64,23 @@ export function verifyCodexCandidate(directory, version = plan.id) {
     throw Error('候选文件集合与已验收清单不一致')
   const bytes = readFileSync(manifestPath)
   const manifest = JSON.parse(bytes)
-  if (JSON.stringify(manifest) !== JSON.stringify(plan)) throw Error('候选清单与已验收构建不一致')
+  if (JSON.stringify(manifest) !== JSON.stringify(selected))
+    throw Error('候选清单与已验收构建不一致')
   for (const file of expectedFiles)
-    if (digest(readFileSync(join(root, file))) !== plan.files[file])
+    if (digest(readFileSync(join(root, file))) !== selected.files[file])
       throw Error('候选文件摘要不一致：' + file)
   return {
-    version: plan.id,
+    version: selected.id,
     command: join(root, 'bin/codex.exe'),
     manifestSha256: digest(bytes),
-    executableSha256: plan.files['bin/codex.exe'],
+    executableSha256: selected.files['bin/codex.exe'],
     validation: 'static',
   }
 }
 
 /** Copy a verified package into an immutable version directory, preserving earlier builds. */
 export function importCodexCandidate(source, store, version = plan.id) {
-  if (version !== plan.id) throw Error('此 Codex 候选版本尚未验收')
+  const selected = planFor(version)
   const root = plainPath(store),
     destination = join(root, version)
   verifyCodexCandidate(source, version)
@@ -81,7 +90,7 @@ export function importCodexCandidate(source, store, version = plan.id) {
   const stage = join(root, '.import-' + randomUUID())
   mkdirSync(stage, { mode: 0o700 })
   try {
-    for (const file of [...Object.keys(plan.files), 'manifest.json']) {
+    for (const file of [...Object.keys(selected.files), 'manifest.json']) {
       const target = join(stage, file)
       mkdirSync(dirname(target), { recursive: true, mode: 0o700 })
       copyFileSync(join(source, file), target)
@@ -105,13 +114,18 @@ export function packageCodexCandidate(binary, output, assets = import.meta.dirna
     throw Error('二进制与已验收构建不一致')
   mkdirSync(target, { recursive: true, mode: 0o700 })
   for (const file of Object.keys(plan.files)) {
-    const source = file.startsWith('bin/')
-      ? join(dirname(binary), file.slice(4))
-      : join(assets, file.startsWith('patches/') ? file : 'licenses/' + file)
-    if (digest(readFileSync(source)) !== plan.files[file])
-      throw Error('交付输入摘要不一致：' + file)
+    const source = file.startsWith('patches/')
+      ? join(assets, file)
+      : file === 'LICENSE' || file === 'NOTICE'
+        ? join(assets, 'licenses', file)
+        : join(dirname(dirname(binary)), file)
+    const bytes =
+      file === 'LICENSE' || file === 'NOTICE'
+        ? Buffer.from(readFileSync(source, 'utf8').replaceAll('\r\n', '\n'))
+        : readFileSync(source)
+    if (digest(bytes) !== plan.files[file]) throw Error('交付输入摘要不一致：' + file)
     mkdirSync(dirname(join(target, file)), { recursive: true, mode: 0o700 })
-    copyFileSync(source, join(target, file))
+    writeFileSync(join(target, file), bytes, { flag: 'wx' })
   }
   writeFileSync(join(target, 'manifest.json'), JSON.stringify(plan, null, 2) + '\n', { flag: 'wx' })
   return verifyCodexCandidate(target)

@@ -61,7 +61,7 @@ import {
   requireHarnessInputText,
 } from './harness-input.ts'
 import {
-  HISTORY_NOTICE,
+  echoesConversationContext,
   conversationInput,
   promptContentText,
   resolvePromptContent,
@@ -1767,11 +1767,7 @@ export class HarnessService {
       u.title.trim()
     ) {
       const title = u.title.trim().slice(0, 400)
-      if (
-        title.startsWith(HISTORY_NOTICE) &&
-        record.turns.some((turn) => turn.prompt.startsWith(HISTORY_NOTICE))
-      )
-        return
+      if (record.turns.some((turn) => echoesConversationContext(title, turn.prompt))) return
       record.title = title
       record.titleFromHarness = true
       this.changed(record)

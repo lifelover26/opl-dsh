@@ -46,6 +46,7 @@ export const GATEWAY_ANTIGRAVITY_GEMINI_MODELS = [
 export function displayModelName(ref: ModelRef, name?: string): string {
   const id = ref.model.includes('::') ? ref.model.slice(ref.model.lastIndexOf('::') + 2) : ref.model
   if (ref.provider === 'our-free-model') {
+    if (id === 'moonshotai/kimi-k3.1-pro') return 'EAC Kimi K3.1 Pro'
     if (id === 'amd/Qwen3.8-27B') return 'EAC Qwen3.8 27B（AMD）'
     if (id === 'amd/DeepSeek-V4.1-Flash') return 'EAC DeepSeek V4.1 Flash（AMD）'
     if (id === 'amd/DeepSeek-V4-Flash') return 'EAC DeepSeek V4 Flash（AMD）'
@@ -84,6 +85,7 @@ export function displayModelName(ref: ModelRef, name?: string): string {
     if (id === 'nvidia/nemotron-3-ultra-550b-a55b:free') return 'Kilo Nemotron 3 Ultra'
     if (id === 'openrouter/free') return 'Kilo OpenRouter Free'
     if (id === 'hy4-flash-free') return 'Hy4 Flash Free'
+    if (id === 'tidepool-alpha-free') return 'Tidepool Alpha Free'
     if (id === 'flint-40b-free') return 'Flint 40B Free'
     if (id === 'recursive/flint-v1.0:free') return 'Flint v1.0 Free'
   }

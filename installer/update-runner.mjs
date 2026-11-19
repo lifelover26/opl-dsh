@@ -182,7 +182,6 @@ async function updateInputs(root, application, profileHome, options = {}) {
     !hashPattern.test(pending.artifactSha256) ||
     !hashPattern.test(pending.suiteSha256) ||
     !Number.isFinite(Date.parse(pending.preparedAt)) ||
-    pending.officialVersion !== current.officialVersion ||
     !newer(pending.version, current.suiteVersion)
   )
     throw failure('prepared-update-changed')
@@ -209,7 +208,7 @@ async function updateInputs(root, application, profileHome, options = {}) {
   )
     throw failure('prepared-archive-changed')
   const { artifact, artifactSha256 } = await verifyArtifact(join(stage, 'payload'))
-  const target = releaseIdentity(artifact, artifactSha256, current.officialVersion)
+  const target = releaseIdentity(artifact, artifactSha256, pending.officialVersion)
   if (
     target.suiteVersion !== pending.version ||
     target.officialVersion !== pending.officialVersion ||
@@ -219,7 +218,7 @@ async function updateInputs(root, application, profileHome, options = {}) {
     throw failure('prepared-update-changed')
   const readVersion =
     options.readOfficialVersion ?? (await import('./update.mjs')).readOfficialVersion
-  if ((await readVersion(application)) !== current.officialVersion)
+  if ((await readVersion(application)) !== pending.officialVersion)
     throw failure('official-version-changed')
   return {
     current,

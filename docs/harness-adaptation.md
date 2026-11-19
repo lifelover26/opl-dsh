@@ -24,7 +24,7 @@ OFM 来源统一使用 `Our Free Model` 写法，区域渠道保留 `region-limi
 
 | 模型                                                                                                                          | 首选 Harness                    | 协议      |
 | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | --------- |
-| Kimi K2.6、K3                                                                                                                 | Kimi Code                       | Messages  |
+| Kimi K2.6、K3、K3.1 Pro（K3.1 Pro 必须保持思考开启）                                                                          | Kimi Code                       | Messages  |
 | MiMo v2.6 Flash（mimo-v2.6-flash-free）                                                                                       | OpenCode，官方免费通道          | Chat      |
 | Laguna S、XS 2.1                                                                                                              | Poolside                        | Chat      |
 | GLM 5.3、5.3 Flash（z-ai 原始 ID）                                                                                            | ZCode                           | Chat      |
@@ -83,7 +83,7 @@ MiniMax M3.1 Flash 的三条车道分别保留原始 ID：`minimax-m3.1-flash-fr
 
 Mistral Vibe 使用官方 3.0.4 ACP 发行包并保留随附文件，在“执行与组合 → 执行引擎与网络代理”登记 `vibe-acp`（Windows 为 `vibe-acp.exe`）的绝对路径；当前不提供一键安装。套件使用独立的 `VIBE_HOME`，OFM Key 仅传给子进程环境，新建、恢复与发送前核对模型和 `auto-approve` 模式。该组合仅支持显式完全访问；未确认推理档位，模型菜单不显示推理设置。
 
-手动会话的初始标题取真实用户输入，不取交给外部 Harness 的历史上下文说明；CLI 原样回传内部历史说明时不覆盖标题。后续正常标题更新保持生效。
+手动会话的初始标题取真实用户输入，不取交给外部 Harness 的历史上下文说明。任何 Harness 回传本轮转发的历史或注入上下文片段作为标题时均不覆盖原标题，正常标题更新仍生效；空会话在首条消息到达前切换 Harness 时不把旧组合名固定成官方标题。
 
 OpenCode 与 Kilo 的显式完全访问会话通过官方 `permission: "allow"` 配置执行工具，该配置只传给本次 CLI 进程；不会改写用户的配置文件。原生 DSH 组合同样支持显式完全访问，并使用官方持久化权限预设。受限权限与已有会话的权限不会因此升级。
 

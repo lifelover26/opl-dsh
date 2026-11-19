@@ -13,6 +13,29 @@ import {
 export const HISTORY_NOTICE =
   '以下是先前会话记录，仅用于理解上下文，不要重新执行历史任务或工具调用。'
 
+const CONTEXT_NOTICE = '会话上下文：'
+
+/** Recognize a shortened title copied from the transcript sent to the CLI. */
+export function echoesConversationContext(title: string, prompt: string): boolean {
+  const prefix = [HISTORY_NOTICE, CONTEXT_NOTICE].find((value) =>
+    prompt.startsWith(value + '\n'),
+  )
+  if (!prefix) return false
+  if (!prompt.includes('\n当前用户请求：\n')) return false
+  const normalized = title.replace(/\s+/gu, ' ').trim().replace(/(?:…|\.{3})$/u, '').trimEnd()
+  const marker = prefix.replace(/\s+/gu, ' ')
+  if (prefix === HISTORY_NOTICE) {
+    return (
+      normalized.startsWith(marker) ||
+      (normalized.length >= 12 && marker.startsWith(normalized))
+    )
+  }
+  return (
+    normalized.startsWith(marker) &&
+    /^(?:user:|assistant:|tool \()/u.test(normalized.slice(marker.length).trimStart())
+  )
+}
+
 /** Validate references read from an OPL-owned durable journal, before the attachment store reads bytes. */
 export function validPromptContent(value: unknown): value is HarnessPromptPart[] {
   if (!Array.isArray(value) || !value.length) return false

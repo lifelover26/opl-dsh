@@ -1,5 +1,5 @@
 /** Access only the current profile's installation receipt and updater-owned files. */
-import { readFile, writeFile, rename, unlink } from 'node:fs/promises'
+import { readFile, writeFile, rename, stat, unlink } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -20,11 +20,15 @@ interface Installed extends InstalledUpdateIdentity {
   skillDir: string
 }
 interface Updater {
+  readOfficialVersion(application: string): string
   checkRelease(
     current: InstalledUpdateIdentity,
     options: { signal: AbortSignal },
   ): Promise<{ release: OplUpdateRelease | null }>
-  readPreparedUpdate(root: string): Promise<{ version: string; preparedAt: string } | null>
+  readPreparedUpdate(
+    root: string,
+    officialVersion?: string,
+  ): Promise<{ version: string; preparedAt: string } | null>
   prepareUpdate(
     root: string,
     app: string,
@@ -82,6 +86,21 @@ export function updateOperations(ctx: Context): UpdateOperations {
   }
   const updater = async (installed: Installed): Promise<Updater> =>
     (await import(pathToFileURL(join(installed.release, 'update.mjs')).href)) as Updater
+  let versionCache: { key: string; version: string } | undefined
+  const actualInstallation = async (): Promise<Installed> => {
+    const receipt = await installation()
+    if (process.platform !== 'win32' && process.platform !== 'darwin') return receipt
+    const archive = join(
+      receipt.app,
+      process.platform === 'win32' ? 'resources' : 'Contents/Resources',
+      'app.asar',
+    )
+    const file = await stat(archive, { bigint: true })
+    const key = [archive, file.ino, file.size, file.ctimeNs, file.mtimeNs].join(':')
+    if (versionCache?.key !== key)
+      versionCache = { key, version: (await updater(receipt)).readOfficialVersion(receipt.app) }
+    return { ...receipt, officialVersion: versionCache.version }
+  }
   const desktop = async (
     installed: Installed,
     method: string,
@@ -103,7 +122,7 @@ export function updateOperations(ctx: Context): UpdateOperations {
     })
   }
   return {
-    installed: installation,
+    installed: actualInstallation,
     automatic: () => {
       const value = ctx.settings.describe().find((entry) => entry.ns === 'opl-suite')?.value as
         { updateAutomatic?: boolean } | undefined
@@ -158,12 +177,14 @@ export function updateOperations(ctx: Context): UpdateOperations {
       }
     },
     load: async () => {
-      const installed = await installation()
+      const installed = await actualInstallation()
       const stored = await readJson(join(installed.suiteRoot, 'update-status.json'))
       const outcome = await readJson(join(installed.suiteRoot, 'enhancement-update.json'))
       let pending
       try {
-        pending = await (await updater(installed)).readPreparedUpdate(installed.suiteRoot)
+        pending = await (
+          await updater(installed)
+        ).readPreparedUpdate(installed.suiteRoot, installed.officialVersion)
       } catch {
         return stored
       } // The controller reports malformed pending plans separately.
@@ -187,14 +208,18 @@ export function updateOperations(ctx: Context): UpdateOperations {
       return (await (await updater(installed)).checkRelease(current, { signal })).release
     },
     pending: async () => {
-      const installed = await installation()
-      const pending = await (await updater(installed)).readPreparedUpdate(installed.suiteRoot)
+      const installed = await actualInstallation()
+      const pending = await (
+        await updater(installed)
+      ).readPreparedUpdate(installed.suiteRoot, installed.officialVersion)
       if (!pending) armed = undefined
       return pending?.version ?? null
     },
     armPending: async () => {
-      const installed = await installation()
-      const pending = await (await updater(installed)).readPreparedUpdate(installed.suiteRoot)
+      const installed = await actualInstallation()
+      const pending = await (
+        await updater(installed)
+      ).readPreparedUpdate(installed.suiteRoot, installed.officialVersion)
       if (!pending) return
       const identity = `${pending.version}:${pending.preparedAt}`
       if (armed === identity) return

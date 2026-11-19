@@ -54,6 +54,7 @@ const loaded: CatalogState = {
   models: {
     [OFM_PROVIDER]: [
       'moonshotai/kimi-k3',
+      'moonshotai/kimi-k3.1-pro',
       'mimo-v2.6-flash-free',
       'poolside/laguna-s-2.1:free',
       'openai/gpt-oss-20b',
@@ -82,6 +83,7 @@ describe('OFM source pairing', () => {
     const { source } = harness(loaded)
     for (const [harness, model] of [
       ['kimi', 'moonshotai/kimi-k3'],
+      ['kimi-code', 'moonshotai/kimi-k3.1-pro'],
       ['mimo', 'mimo-v2.6-flash-free'],
       ['pool', 'poolside/laguna-s-2.1:free'],
       ['codex', 'openai/gpt-oss-20b'],

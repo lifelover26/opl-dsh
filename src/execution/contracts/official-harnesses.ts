@@ -69,6 +69,7 @@ export const OFFICIAL_HARNESSES: readonly OfficialHarness[] = [
     officialModels: [
       { provider: 'our-free-model', model: 'moonshotai/kimi-k2.6' },
       { provider: 'our-free-model', model: 'moonshotai/kimi-k3' },
+      { provider: 'our-free-model', model: 'moonshotai/kimi-k3.1-pro' },
     ],
   },
   {

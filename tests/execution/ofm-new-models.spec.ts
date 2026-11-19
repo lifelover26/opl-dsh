@@ -55,6 +55,22 @@ const snapshot = (options = config()): AcpSessionSnapshot => ({
 })
 
 describe('new OFM channel pairings', () => {
+  it('routes EAC Kimi K3.1 Pro through its official Kimi Code adapter', () => {
+    const model = ref('moonshotai/kimi-k3.1-pro')
+    expect(automaticHarness(model)).toBe('kimi-code')
+    expect(adapterFor('kimi-code', model)?.matches(model)).toBe(true)
+    expect(ofmHarnessPinsModel('kimi-code', model.model)).toBe(true)
+    expect(officialOpenCodeModel(model)).toBeUndefined()
+    expect(displayModelName(model)).toBe('EAC Kimi K3.1 Pro')
+  })
+  it('pins Tidepool Alpha Free to the official OpenCode free channel', () => {
+    const model = ref('tidepool-alpha-free')
+    expect(automaticHarness(model)).toBe('opencode')
+    expect(adapterFor('opencode', model)?.matches(model)).toBe(true)
+    expect(ofmHarnessPinsModel('opencode', model.model)).toBe(true)
+    expect(officialOpenCodeModel(model)).toBe('opencode/tidepool-alpha-free')
+    expect(displayModelName(model)).toBe('Tidepool Alpha Free')
+  })
   it.each(lanes)('routes %s through %s without changing the channel', (model, harness, label) => {
     expect(automaticHarness(ref(model))).toBe(harness)
     expect(adapterFor(harness, ref(model))?.matches(ref(model))).toBe(true)

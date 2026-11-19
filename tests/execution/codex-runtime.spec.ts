@@ -121,3 +121,29 @@ describe('Codex runtime publication', () => {
     await expect(service.updateHarness('codex')).rejects.toThrow('不使用官方更新器')
   })
 })
+
+it.skipIf(process.platform !== 'win32' || !process.env.OPL_TEST_CODEX_PACKAGE)(
+  'imports the pinned Windows archive and preserves the selection across rejection and switch-back',
+  async () => {
+    const { service, prepare, current, root } = await setup()
+    prepare.mockRestore()
+    const original = await current()
+    const version = '0.169.0-opl-gitbash.20261116.1'
+    const selected = await service.selectCodexRuntime({
+      mode: 'git-bash',
+      version,
+      source: process.env.OPL_TEST_CODEX_PACKAGE!,
+    })
+    expect(selected.command).toContain(version)
+    const catalog = join(root, 'profiles/desktop/execution-catalog.json')
+    const saved = await readFile(catalog)
+    await expect(
+      service.selectCodexRuntime({ mode: 'git-bash', version, source: root }),
+    ).rejects.toThrow()
+    expect(await readFile(catalog)).toEqual(saved)
+    await service.selectCodexRuntime({ mode: 'official' })
+    expect((await current()).command).toBe(original.command)
+    expect(await current()).not.toHaveProperty('codexRuntime')
+  },
+  120_000,
+)

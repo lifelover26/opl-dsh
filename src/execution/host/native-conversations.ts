@@ -184,7 +184,9 @@ export class NativeHarnessConversations {
     if (this.ctx.agents.get(session.id)?.status === 'running')
       throw Error('官方会话仍在运行，不能迁移历史')
     if (!record.nativeSessionId) {
-      await this.native('rename', { sessionId: id, title: record.title })
+      // An empty conversation can switch models before the first message supplies its title.
+      if (record.turns.length || record.titleFromHarness)
+        await this.native('rename', { sessionId: id, title: record.title })
       record.nativeSessionId = id
       await persist()
     }

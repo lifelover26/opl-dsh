@@ -226,6 +226,9 @@ export const kimiCodeAdapter: HarnessAdapter = {
         OPL_KIMI_COMMAND: path,
         OPL_KIMI_ARGS: JSON.stringify([...(options.prefix ?? []), 'acp']),
         [KIMI_ROUTE_ENV.model]: route.model,
+        ...(route.model === 'moonshotai/kimi-k3.1-pro'
+          ? { KIMI_MODEL_CAPABILITIES: 'image_in,always_thinking' }
+          : {}),
         [KIMI_ROUTE_ENV.apiKey]: route.apiKey,
         [KIMI_ROUTE_ENV.baseUrl]: route.baseURL,
         [KIMI_ROUTE_ENV.providerType]: providerType,

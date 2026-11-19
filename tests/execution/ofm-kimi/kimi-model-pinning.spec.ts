@@ -112,8 +112,8 @@ describe('Kimi Code route identity', () => {
     expect(kimiCodeAdapter.capabilities.autoReview).toBe('unsupported')
   })
 
-  it('serves exactly the two Kimi models and nothing else from that provider', () => {
-    for (const model of ['moonshotai/kimi-k2.6', 'moonshotai/kimi-k3'])
+  it('serves exactly the pinned Kimi models and nothing else from that provider', () => {
+    for (const model of ['moonshotai/kimi-k2.6', 'moonshotai/kimi-k3', 'moonshotai/kimi-k3.1-pro'])
       expect(kimiCodeAdapter.matches({ provider: KIMI_PROVIDER, model })).toBe(true)
     // Other models published by the same owner belong to other harnesses.
     for (const model of [

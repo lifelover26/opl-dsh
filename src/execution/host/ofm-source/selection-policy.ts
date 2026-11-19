@@ -59,6 +59,7 @@ export const OFM_OPENCODE_OFFICIAL_FREE_MODELS: readonly string[] = [
   'glm-5.3-flash-free',
   'big-pickle',
   'hy4-flash-free',
+  'tidepool-alpha-free',
   'flint-40b-free',
 ]
 

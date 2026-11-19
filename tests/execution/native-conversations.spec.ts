@@ -99,6 +99,14 @@ function setup() {
 }
 
 describe('ordinary official conversations for external tasks', () => {
+  it('leaves an empty shell eligible for the official first-message title after a model switch', async () => {
+    const { bridge, record, invoke } = setup()
+    record.turns = []
+    await bridge.ensure(record, async () => {})
+    expect(record.nativeSessionId).toBe('session-' + record.id)
+    expect(invoke.mock.calls.some(([request]) => request.method === 'rename')).toBe(false)
+  })
+
   it('does not open already imported historical Sessions while restoring the task index', async () => {
     const { ctx, bridge, record } = setup()
     Object.assign(ctx, { logger: { warn: vi.fn() } })

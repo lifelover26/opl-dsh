@@ -73,7 +73,7 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
   'qwen-code': ['amd/Qwen3.8-27B'],
   claude: [],
   vibe: ['mistralai/mistral-large-4-1t-a52b'],
-  kimi: ['moonshotai/kimi-k2.6', 'moonshotai/kimi-k3'],
+  kimi: ['moonshotai/kimi-k2.6', 'moonshotai/kimi-k3', 'moonshotai/kimi-k3.1-pro'],
   mimo: ['mimo-v2.6-flash-free', 'amd/MiMo-V2.6-Flash'],
   pool: ['poolside/laguna-s-2.1:free', 'poolside/laguna-xs-2.1:free'],
   zcode: ['z-ai/glm-5.3', 'z-ai/glm-5.3-flash', 'amd/GLM-5.3-Flash'],
@@ -110,6 +110,7 @@ export const OFM_PINNED_HARNESS_MODELS: Readonly<Record<string, readonly string[
     'openrouter/free',
     'big-pickle',
     'hy4-flash-free',
+    'tidepool-alpha-free',
     'flint-40b-free',
   ],
   pi: [

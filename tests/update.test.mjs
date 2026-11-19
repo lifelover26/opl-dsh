@@ -229,6 +229,7 @@ async function fixture(
     if (source !== destination) cpSync(source, destination, { recursive: true })
     const next = {
       ...receipt,
+      officialVersion: state.officialVersion,
       suiteVersion:
         state.unconfirmed && artifact.enhancementVersion !== '0.2.55'
           ? '0.0.0'
@@ -313,6 +314,7 @@ test('a candidate is replaced only after explicit prepare and a later stopped st
     release = releaseFixture()
   const calls = remote(t, release)
   const prepared = await prepareUpdate(value.root, value.application, { expectedVersion: '0.2.56' })
+  assert.equal(await readPreparedUpdate(value.root, '0.2.2-rc.5'), null)
   assert.equal(prepared.version, '0.2.56')
   assert.deepEqual(await readPreparedUpdate(value.root), {
     version: '0.2.56',
@@ -401,13 +403,32 @@ test('old, incompatible and no-longer-accepted releases never download the ZIP',
   }
 })
 
-test('prepare refuses a changed official app or a foreign installation path before network access', async (t) => {
+test('uses the installed Desktop for platform compatibility while retaining the original receipt until apply', async (t) => {
+  const value = await fixture(t)
+  value.state.officialVersion = '0.2.2-rc.5'
+  remote(t, releaseFixture(payload('0.2.56', { officialVersion: value.state.officialVersion })))
+  await prepareUpdate(value.root, value.application)
+  assert.equal(await readFile(join(value.root, 'installation.json'), 'utf8'), value.originalBytes)
+  await refreshEnhancements(value.root, value.application)
+  for (const file of [
+    join(value.root, 'installation.json'),
+    join(value.home, 'opl-dsh/installation.json'),
+  ])
+    assert.equal(
+      JSON.parse(await readFile(file, 'utf8')).officialVersion,
+      value.state.officialVersion,
+    )
+  assert.equal(await readPreparedUpdate(value.root), null)
+})
+
+test('refuses a foreign application before network access and a mismatched release before downloading the ZIP', async (t) => {
   const value = await fixture(t),
     calls = remote(t, releaseFixture())
-  value.state.officialVersion = '0.2.2-rc.2'
-  await assert.rejects(prepareUpdate(value.root, value.application), /官方桌面/)
   await assert.rejects(prepareUpdate(value.root, join(value.root, 'foreign-app')), /原安装/)
   assert.equal(calls.length, 0)
+  value.state.officialVersion = '0.2.2-rc.2'
+  await assert.rejects(prepareUpdate(value.root, value.application), /完整套件/)
+  assert.equal(calls.length, 2)
   assert.equal(value.state.installs.length, 0)
 })
 

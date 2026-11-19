@@ -25,11 +25,25 @@ import {
   agentSupportsPromptImages,
   assertPromptImages,
   conversationInput,
+  echoesConversationContext,
   resolvePromptContent,
   validPromptContent,
 } from '../../src/execution/host/multimodal-prompt.ts'
 import { HarnessSessionStore } from '../../src/execution/host/session-store.ts'
 import { HARNESS_INPUT_MAX_LENGTH } from '../../src/execution/host/harness-input.ts'
+
+it('recognizes shortened context echoes and accepts real titles for the same request', () => {
+  const history = HISTORY_NOTICE + '\nuser: earlier\n\n当前用户请求：\nuser: example'
+  expect(echoesConversationContext(HISTORY_NOTICE.slice(0, 24) + '…', history)).toBe(true)
+  const context =
+    '会话上下文：\nuser: <system-reminder> earlier state\n\n当前用户请求：\nuser: example'
+  expect(echoesConversationContext('会话上下文： user: <system-reminder>…', context)).toBe(true)
+  expect(echoesConversationContext('会话上下文：用户请求摘要', context)).toBe(false)
+  expect(echoesConversationContext('example', context)).toBe(false)
+  expect(echoesConversationContext('会话上下文： user: example', 'user: 会话上下文： user: example')).toBe(
+    false,
+  )
+})
 
 const tempDirectory = tmpdir()
 const roots: string[] = []

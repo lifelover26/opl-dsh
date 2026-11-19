@@ -123,6 +123,18 @@ describe('Kimi Code launch preparation', () => {
     expect(launch.command).toBe(process.execPath)
   })
 
+  it('keeps thinking enabled on the exact EAC K3.1 Pro route', async () => {
+    const modelRef = ref('moonshotai/kimi-k3.1-pro')
+    const sources = new ExternalModelSources(ctx)
+    sources.register(
+      owner,
+      createKimiCodeSource(() => ({ ...answer, model: modelRef.model })),
+    )
+    const launch = await kimiCodeAdapter.prepare!(ctx, record({ modelRef }), options(sources))
+    expect(launch.env[KIMI_ROUTE_ENV.model]).toBe(modelRef.model)
+    expect(launch.env.KIMI_MODEL_CAPABILITIES).toBe('image_in,always_thinking')
+  })
+
   it('never asks the user to log in, and never carries a Moonshot credential', async () => {
     const launch = await kimiCodeAdapter.prepare!(ctx, record(), options(withSource()))
     for (const forbidden of ['KIMI_CODE_TOKEN', 'MOONSHOT_API_KEY', 'ANTHROPIC_API_KEY'])

@@ -439,10 +439,12 @@ function validatePending(plan) {
 }
 
 /** Return the explicit pending version; malformed plans remain available for diagnosis. */
-export async function readPreparedUpdate(root) {
+export async function readPreparedUpdate(root, actualOfficialVersion) {
   const bytes = await readOptional(join(root, pendingName), maxPendingSize)
   if (bytes === null) return null
   const plan = validatePending(JSON.parse(bytes.toString('utf8')))
+  if (actualOfficialVersion !== undefined && plan.officialVersion !== actualOfficialVersion)
+    return null
   return { version: plan.version, preparedAt: plan.preparedAt }
 }
 
@@ -454,8 +456,6 @@ export async function prepareUpdate(root, application, { signal, expectedVersion
     signal?.throwIfAborted()
     const { current, bytes: installationBytes } = await installed(root, application)
     const officialVersion = readOfficialVersion(application)
-    if (current.officialVersion !== officialVersion)
-      throw Error('官方桌面与安装回执版本不符，请重新安装完整套件')
     const { release, metadata } = await checkRelease(
       { ...current, officialVersion, platform: process.platform, arch: process.arch },
       { signal },
@@ -655,9 +655,13 @@ export async function refreshEnhancements(
     if (
       !newer(plan.version, current.suiteVersion) ||
       readOfficialVersion(application) !== plan.officialVersion ||
-      current.officialVersion !== plan.officialVersion ||
       releaseForInstallation(
-        { ...current, platform: process.platform, arch: process.arch },
+        {
+          ...current,
+          officialVersion: plan.officialVersion,
+          platform: process.platform,
+          arch: process.arch,
+        },
         plan.metadata,
       ).compatibility !== 'enhancement'
     )
@@ -714,14 +718,24 @@ export async function refreshEnhancements(
     try {
       if (transaction) await assertUpdateTransaction(root, transaction)
       runInstaller(payload, application, root, current)
-      await confirmInstalled(root, application, artifact, current)
+      await confirmInstalled(
+        root,
+        application,
+        { ...artifact, officialVersion: plan.officialVersion },
+        current,
+      )
     } catch (error) {
       rollback = 'failed'
       try {
         if (transaction) await assertUpdateTransaction(root, transaction)
         await profilesStopped(current)
         runInstaller(current.release, application, root, current, current.localCandidate === true)
-        await confirmInstalled(root, application, previous.artifact, current)
+        await confirmInstalled(
+          root,
+          application,
+          { ...previous.artifact, officialVersion: plan.officialVersion },
+          current,
+        )
         await writeFile(join(root, 'installation.json'), installationBytes, { mode: 0o600 })
         if (oldProfileReceipt !== null)
           await writeFile(profileReceipt, oldProfileReceipt, { mode: 0o600 })

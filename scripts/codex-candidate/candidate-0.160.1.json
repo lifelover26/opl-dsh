@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "0.160.1-opl-gitbash.20261012.2",
+  "platform": "win32",
+  "arch": "x64",
+  "version": "codex-cli 0.160.1",
+  "upstream": {
+    "repository": "https://github.com/openai/codex",
+    "tag": "rust-v0.160.1",
+    "commit": "d27764b82f7118f674371e6d6e76271d9d606edb"
+  },
+  "build": {
+    "profile": "dev",
+    "signed": false,
+    "command": ["cargo", "build", "--locked", "-p", "codex-cli", "--bin", "codex"],
+    "toolchain": "Rust 1.95/static CRT",
+    "notes": "Includes existing Git Bash backend and SSE recovery patch; retains official default shell when not selected.",
+    "companion": "Unmodified codex-code-mode-host.exe from @openai/codex@0.160.1-win32-x64"
+  },
+  "files": {
+    "bin/codex.exe": "9e69f034f4f6c2bc586b1f0eaef6764f53178b59763fec6dd855a99b58bff8d3",
+    "bin/codex-code-mode-host.exe": "b905b5169bd758dbe3c31ca22c22ad0c24df0047ba7ae32652c706d3ac3ba78d",
+    "LICENSE": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
+    "NOTICE": "9d71575ecfd9a843fc1677b0efb08053c6ba9fd686a0de1a6f5382fd3c220915",
+    "patches/gitbash-0.160.1-complete.patch": "89af525685bee3c00c899b495059b079f04aa4ce6e9979d1466015148dde3be6",
+    "patches/gitbash-0.160.1-port.patch": "27b1c87519bbae8224b1a5406b86bd13a312112b46f520ce7761832e9a8d4133"
+  }
+}

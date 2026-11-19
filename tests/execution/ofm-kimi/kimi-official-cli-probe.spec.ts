@@ -24,7 +24,7 @@ import { KIMI_ENV_MODEL_ALIAS } from '../../../src/execution/host/adapters/kimi/
 
 const PROBE = fileURLToPath(new URL('./fixtures/real-binary-probe.mjs', import.meta.url))
 const BIN = process.env.OPL_KIMI_PROBE_BINARY ?? ''
-const WIRE_MODEL = 'moonshotai/kimi-k3'
+const WIRE_MODEL = process.env.OPL_KIMI_PROBE_MODEL ?? 'moonshotai/kimi-k3'
 const available = BIN.length > 0 && existsSync(BIN)
 
 interface Wire {
@@ -41,6 +41,7 @@ interface Report {
   agentInfo?: { name: string; version: string }
   sessionNewError?: { code: number; message: string }
   modelOption?: { currentValue: string; values: string[] }
+  thinkingOption?: { currentValue: string; values: string[] }
   modeOption?: { currentValue: string; values: string[] }
   modeAfterSet?: string
   modelAfterSet?: string
@@ -112,6 +113,8 @@ describe.skipIf(!available)(
       expect(report.modelOption?.values).toEqual([KIMI_ENV_MODEL_ALIAS])
       // The alias and the wire model are distinct identifiers, and the suite pins the alias.
       expect(KIMI_ENV_MODEL_ALIAS).not.toBe(WIRE_MODEL)
+      if (WIRE_MODEL === 'moonshotai/kimi-k3.1-pro')
+        expect(report.thinkingOption?.values).toEqual(['on'])
     })
 
     it('really sends the route on the wire, with the anthropic protocol', () => {

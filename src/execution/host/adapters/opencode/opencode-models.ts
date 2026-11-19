@@ -103,6 +103,7 @@ export const OPENCODE_OFM_MODELS: readonly string[] = [
   'big-pickle',
   // This id goes through the OFM route, distinct from OpenCode's own free endpoint.
   'hy4-flash-free',
+  'tidepool-alpha-free',
   'flint-40b-free',
   // EAC's qualified ids use OFM forwarding and retain their complete channel identities.
   'opencode/nemotron-3.5-lightning-free',

@@ -144,7 +144,13 @@ async function zipArtifact(directory, value) {
 
 async function fixture(
   t,
-  { sourcePatch, targetPatch, manifestPatch, omitUpdateErrors = false } = {},
+  {
+    sourcePatch,
+    targetPatch,
+    manifestPatch,
+    omitUpdateErrors = false,
+    receiptOfficialVersion = officialVersion,
+  } = {},
 ) {
   const root = await mkdtemp(join(tmpdir(), 'opl-transaction-'))
   t.after(() => rm(root, { recursive: true, force: true }))
@@ -166,7 +172,7 @@ async function fixture(
     app: application,
     release,
     suiteVersion: '0.2.55',
-    officialVersion,
+    officialVersion: receiptOfficialVersion,
     suiteSha256: source.suiteSha256,
     enhancementSha256: source.sha256,
     skillDir: join(root, 'Codex home/skills/opl-dsh-official'),
@@ -309,6 +315,12 @@ test('protocol 1 artifacts without an update-errors helper prepare an unattended
       false,
     )
   }
+  const lease = await value.prepare()
+  await finishUpdateTransaction(value.root, lease, { stage: 'cancelled' })
+})
+
+test('permits verified handoff across an independent official update with the original receipt still pinned', async (t) => {
+  const value = await fixture(t, { receiptOfficialVersion: '0.2.1' })
   const lease = await value.prepare()
   await finishUpdateTransaction(value.root, lease, { stage: 'cancelled' })
 })

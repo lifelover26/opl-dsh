@@ -226,6 +226,9 @@ const env = {
         KIMI_MODEL_API_KEY: 'dummy-probe-key',
         KIMI_MODEL_BASE_URL: `http://127.0.0.1:${port}/v1`,
         KIMI_MODEL_PROVIDER_TYPE: 'anthropic',
+        ...(WIRE_MODEL === 'moonshotai/kimi-k3.1-pro'
+          ? { KIMI_MODEL_CAPABILITIES: 'image_in,always_thinking' }
+          : {}),
       }),
 }
 
@@ -345,6 +348,10 @@ try {
     report.modelOption = {
       currentValue: pick(created.configOptions, 'model')?.currentValue,
       values: (pick(created.configOptions, 'model')?.options ?? []).map((o) => o.value),
+    }
+    report.thinkingOption = {
+      currentValue: pick(created.configOptions, 'thinking')?.currentValue,
+      values: (pick(created.configOptions, 'thinking')?.options ?? []).map((o) => o.value),
     }
     report.modeOption = {
       currentValue: pick(created.configOptions, 'mode')?.currentValue,

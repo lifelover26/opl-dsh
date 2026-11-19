@@ -72,7 +72,11 @@ export function kimiThinkingValue(requested?: string): string | undefined {
 }
 
 /** The exact wire models this harness serves, and nothing else. */
-export const KIMI_MODELS: readonly string[] = ['moonshotai/kimi-k2.6', 'moonshotai/kimi-k3']
+export const KIMI_MODELS: readonly string[] = [
+  'moonshotai/kimi-k2.6',
+  'moonshotai/kimi-k3',
+  'moonshotai/kimi-k3.1-pro',
+]
 
 /**
  * Whether this adapter serves the given reference.
